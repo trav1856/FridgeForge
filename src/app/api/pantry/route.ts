@@ -12,7 +12,7 @@ const createSchema = z.object({
   category: z.string().max(60).optional().nullable(),
   tags: z.array(z.string()).optional(),
   barcode: z.string().max(32).optional().nullable(),
-  expirationDate: z.string().datetime().optional().nullable(),
+  expirationDate: z.string().optional().nullable(),
   merge: z.boolean().optional().default(true),
 });
 
@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.flatten() }, { status: 400 });
     }
-    return NextResponse.json({ error: "Failed to create item" }, { status: 500 });
+    console.error("pantry POST", err);
+    const message = err instanceof Error ? err.message : "Failed to create item";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
