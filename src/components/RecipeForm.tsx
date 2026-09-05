@@ -20,6 +20,7 @@ export function RecipeForm() {
   const [costTier, setCostTier] = useState<"cheap" | "moderate">("cheap");
   const [tags, setTags] = useState("");
   const [servings, setServings] = useState("2");
+  const [cookTimeMinutes, setCookTimeMinutes] = useState("");
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
   const [stepsText, setStepsText] = useState("");
   const [tipsText, setTipsText] = useState("");
@@ -55,6 +56,11 @@ export function RecipeForm() {
       setTitle(r.title || "");
       setDescription(r.description || "");
       setImageUrl(r.imageUrl || null);
+      setCookTimeMinutes(
+        r.cookTimeMinutes != null && r.cookTimeMinutes > 0
+          ? String(r.cookTimeMinutes)
+          : ""
+      );
       setIngredients(
         (r.ingredients || []).map(
           (i: { name: string; quantity: number; unit: string }) => ({
@@ -98,6 +104,9 @@ export function RecipeForm() {
       costTier,
       tags: tagList,
       servings: Number(servings) || 2,
+      cookTimeMinutes: cookTimeMinutes.trim()
+        ? Number(cookTimeMinutes) || null
+        : null,
       isStruggleMeal,
       steps,
       techniqueTips: tipsText
@@ -205,7 +214,7 @@ export function RecipeForm() {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="label">Cost tier</label>
             <select
@@ -227,6 +236,17 @@ export function RecipeForm() {
               min="1"
               value={servings}
               onChange={(e) => setServings(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">Cook time (minutes)</label>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              placeholder="e.g. 30"
+              value={cookTimeMinutes}
+              onChange={(e) => setCookTimeMinutes(e.target.value)}
             />
           </div>
           <div className="flex items-end pb-1">

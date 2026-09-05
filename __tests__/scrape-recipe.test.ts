@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as cheerio from "cheerio";
-import { scrapeRecipeFromUrl } from "@/lib/scrape-recipe";
+import { isoDurationToMinutes, scrapeRecipeFromUrl } from "@/lib/scrape-recipe";
 import {
   RECIPE_PLACEHOLDER_PATH,
   deterministicFoodImageUrl,
@@ -19,6 +19,7 @@ const RECIPE_HTML = `<!doctype html>
     "@type": "Recipe",
     "name": "Test Pasta",
     "description": "A weeknight bowl.",
+    "totalTime": "PT25M",
     "image": "https://cdn.example.com/recipe-hero.jpg",
     "recipeIngredient": ["8 oz spaghetti", "2 tbsp olive oil"],
     "recipeInstructions": [
@@ -137,6 +138,23 @@ describe("resolveRecipeImageUrl", () => {
   });
 });
 
+
+describe("isoDurationToMinutes", () => {
+  it("parses common ISO 8601 recipe durations", () => {
+    expect(isoDurationToMinutes("PT15M")).toBe(15);
+    expect(isoDurationToMinutes("PT1H")).toBe(60);
+    expect(isoDurationToMinutes("PT1H30M")).toBe(90);
+    expect(isoDurationToMinutes("PT45S")).toBe(1);
+    expect(isoDurationToMinutes("P1DT2H")).toBe(1560);
+  });
+
+  it("returns undefined for empty or invalid values", () => {
+    expect(isoDurationToMinutes(undefined)).toBeUndefined();
+    expect(isoDurationToMinutes("")).toBeUndefined();
+    expect(isoDurationToMinutes("not-a-duration")).toBeUndefined();
+  });
+});
+
 describe("scrapeRecipeFromUrl", () => {
   it("retries once after 403 and then parses the recipe + image", async () => {
     let pageHits = 0;
@@ -159,6 +177,7 @@ describe("scrapeRecipeFromUrl", () => {
     expect(result.recipe.title).toBe("Test Pasta");
     expect(result.recipe.ingredients.length).toBeGreaterThanOrEqual(2);
     expect(result.recipe.steps.length).toBeGreaterThanOrEqual(2);
+    expect(result.recipe.cookTimeMinutes).toBe(25);
     expect(result.recipe.imageUrl).toBe("https://cdn.example.com/recipe-hero.jpg");
     expect(pageHits).toBe(2);
   });

@@ -24,6 +24,7 @@ export type RecipeInput = {
   costTier?: CostTier;
   tags?: string[];
   servings?: number;
+  cookTimeMinutes?: number | null;
   sourceUrl?: string | null;
   imageUrl?: string | null;
   isStruggleMeal?: boolean;
@@ -50,6 +51,7 @@ export type RecipeForMatch = {
   costTier: CostTier;
   tags: string[];
   servings: number;
+  cookTimeMinutes?: number | null;
   imageUrl?: string | null;
   isStruggleMeal: boolean;
   techniqueTips: string[];

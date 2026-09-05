@@ -10,6 +10,19 @@ export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
   const struggleMode = req.nextUrl.searchParams.get("struggle") === "1";
   const maxMissing = Number(req.nextUrl.searchParams.get("maxMissing") || "2");
+  const maxMinutesRaw = req.nextUrl.searchParams.get("maxMinutes");
+  const maxMinutesParsed =
+    maxMinutesRaw != null && maxMinutesRaw !== ""
+      ? Number(maxMinutesRaw)
+      : undefined;
+  const maxMinutes =
+    maxMinutesParsed != null &&
+    Number.isFinite(maxMinutesParsed) &&
+    maxMinutesParsed > 0
+      ? Math.floor(maxMinutesParsed)
+      : undefined;
+  const includeUnknownTime =
+    req.nextUrl.searchParams.get("includeUnknownTime") === "1";
 
   const couponWhere =
     householdId === null
@@ -30,6 +43,8 @@ export async function GET(req: NextRequest) {
   const suggestions = suggestMeals(recipeData, pantry, {
     struggleMode,
     maxMissing: Number.isFinite(maxMissing) ? maxMissing : 2,
+    maxMinutes,
+    includeUnknownTime,
   }).map((s) => ({
     ...s,
     deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
@@ -37,6 +52,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     struggleMode,
+    maxMinutes: maxMinutes ?? null,
     pantryCount: pantry.length,
     suggestions,
   });

@@ -52,6 +52,10 @@ const CREATIVE_PAIRINGS: { a: string; b: string; note: string }[] = [
 export type SuggestOptions = {
   struggleMode?: boolean;
   maxMissing?: number;
+  /** When set, only recipes with known cookTimeMinutes <= maxMinutes (unless includeUnknownTime). */
+  maxMinutes?: number;
+  /** Include recipes with null/undefined cookTimeMinutes when maxMinutes is set. Default false. */
+  includeUnknownTime?: boolean;
 };
 
 function findPantryMatch(
@@ -78,6 +82,18 @@ function creativeNoteFor(
   return undefined;
 }
 
+/** Soft score boost for shorter recipes when the user set a time budget. */
+function timeTightnessBoost(
+  cookTimeMinutes: number | null | undefined,
+  maxMinutes: number | undefined
+): number {
+  if (maxMinutes == null || cookTimeMinutes == null) return 0;
+  if (cookTimeMinutes > maxMinutes) return 0;
+  // More leftover time → higher boost (cap ~12). Tight fits still get a little credit.
+  const slack = maxMinutes - cookTimeMinutes;
+  return Math.min(12, 4 + Math.floor((slack / Math.max(maxMinutes, 1)) * 12));
+}
+
 /**
  * Score recipes against pantry.
  * Higher = better suggestion.
@@ -88,7 +104,7 @@ export function scoreRecipe(
   pantry: PantrySnapshot[],
   options: SuggestOptions = {}
 ): SuggestionResult {
-  const { struggleMode = false, maxMissing = 2 } = options;
+  const { struggleMode = false, maxMissing = 2, maxMinutes } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
   const missingIngredients: string[] = [];
@@ -144,6 +160,8 @@ export function scoreRecipe(
   const note = creativeNoteFor(matchedIngredients, missingIngredients);
   if (note) score += 5;
 
+  score += timeTightnessBoost(recipe.cookTimeMinutes, maxMinutes);
+
   return {
     recipe,
     score,
@@ -159,12 +177,28 @@ export function scoreRecipe(
   };
 }
 
+function fitsTimeBudget(
+  recipe: RecipeForMatch,
+  maxMinutes: number | undefined,
+  includeUnknownTime: boolean
+): boolean {
+  if (maxMinutes == null) return true;
+  const t = recipe.cookTimeMinutes;
+  if (t == null) return includeUnknownTime;
+  return t <= maxMinutes;
+}
+
 export function suggestMeals(
   recipes: RecipeForMatch[],
   pantry: PantrySnapshot[],
   options: SuggestOptions = {}
 ): SuggestionResult[] {
-  const { struggleMode = false, maxMissing = 2 } = options;
+  const {
+    struggleMode = false,
+    maxMissing = 2,
+    maxMinutes,
+    includeUnknownTime = false,
+  } = options;
 
   let pool = recipes;
   if (struggleMode) {
@@ -173,8 +207,12 @@ export function suggestMeals(
     pool = struggle.length > 0 ? struggle : recipes;
   }
 
+  pool = pool.filter((r) => fitsTimeBudget(r, maxMinutes, includeUnknownTime));
+
   return pool
-    .map((r) => scoreRecipe(r, pantry, { struggleMode, maxMissing }))
+    .map((r) =>
+      scoreRecipe(r, pantry, { struggleMode, maxMissing, maxMinutes })
+    )
     .filter((s) => s.canMakeNow || s.nearMiss || s.matchRatio >= 0.5)
     .sort((a, b) => b.score - a.score);
 }

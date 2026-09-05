@@ -81,6 +81,7 @@ model Recipe {
   costTier         String             @default("cheap") // cheap | moderate
   tags             String             @default("[]") // JSON array
   servings         Int                @default(2)
+  cookTimeMinutes  Int?               // null = unknown; excluded when maxMinutes filter is set
   sourceUrl        String?
   imageUrl         String?            // remote URL or /recipe-images/... path
   isStruggleMeal   Boolean            @default(false)

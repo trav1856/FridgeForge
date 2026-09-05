@@ -51,6 +51,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["struggle", "rice", "egg", "15-min"]),
       servings: 2,
+      cookTimeMinutes: 15,
       isStruggleMeal: true,
       techniqueTips: j([
         "Use cold leftover rice so it fries instead of steams.",
@@ -80,6 +81,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["struggle", "beans", "rice", "one-bowl"]),
       servings: 4,
+      cookTimeMinutes: 45,
       isStruggleMeal: true,
       techniqueTips: j([
         "Brown the onion past translucent — that's where sweetness lives.",
@@ -110,6 +112,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["struggle", "pasta", "canned", "weeknight"]),
       servings: 3,
+      cookTimeMinutes: 25,
       isStruggleMeal: true,
       techniqueTips: j([
         "Save pasta water — starch is free sauce insurance.",
@@ -138,6 +141,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["struggle", "potato", "egg", "brunch"]),
       servings: 2,
+      cookTimeMinutes: 30,
       isStruggleMeal: true,
       techniqueTips: j([
         "Dry potatoes well and don't crowd the pan — crowding steams.",
@@ -166,6 +170,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["struggle", "creative", "cabbage", "pasta"]),
       servings: 2,
+      cookTimeMinutes: 20,
       isStruggleMeal: true,
       techniqueTips: j([
         "Thin peanut butter with hot pasta water before it hits the pan.",
@@ -195,6 +200,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["breakfast", "egg", "quick"]),
       servings: 2,
+      cookTimeMinutes: 15,
       isStruggleMeal: true,
       techniqueTips: j([
         "Low heat for eggs — creamy beats rubbery.",
@@ -219,6 +225,7 @@ async function main() {
       costTier: "cheap",
       tags: j(["soup", "vegetarian", "comfort"]),
       servings: 4,
+      cookTimeMinutes: 40,
       isStruggleMeal: false,
       techniqueTips: j([
         "Sweat onions with a pinch of salt to draw out sweetness.",
@@ -246,6 +253,7 @@ async function main() {
       costTier: "moderate",
       tags: j(["pasta", "bright", "date-night-cheap"]),
       servings: 2,
+      cookTimeMinutes: 20,
       isStruggleMeal: false,
       techniqueTips: j([
         "Emulsify with pasta water — sauce should coat, not pool.",

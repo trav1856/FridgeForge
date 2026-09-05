@@ -38,3 +38,21 @@ npm run dev
 
 - Restaurant daily sales submission → trending dishes + grocery planning for kitchens
 - Supplier demand board (e.g. who needs okra/potatoes) connecting suppliers ↔ restaurants ↔ individuals
+
+## Recipe sharing (planned)
+
+- Visibility: `private` (default) | `household` | `public` | `invite` (selected households / share link)
+- Public recipes can be free to clone into another household’s book
+- Cross-household sharing is a cloud/network feature (Pro / Free+ads), not required for local CE
+- Monetization lean: self-host CE ad-free; cloud Free may use light ads or caps; Pro = no ads + network (live coupons, sharing, later F&B pulse)
+
+## Pricing (working — 2026-09-05)
+
+| Tier | Price | What you get |
+|------|-------|----------------|
+| **Community Edition (self-host)** | Free | Full local app, ad-free, no cloud network |
+| **Self-host Network** | **$1.99/mo** | CE + join the network (shared recipes, live deals, later F&B pulse) |
+| **Cloud Free** | Free | Full hosted app + light **manufacturer banner ads** (non-obstructive) |
+| **Cloud Pro** | **$4.99/mo** | No ads + Pro perks (live coupons, sharing network, priority support) |
+
+Ads: major food manufacturers / CPG — not independent growers (growers belong in marketplace listings). Never disguise an ad as a coupon or deal.

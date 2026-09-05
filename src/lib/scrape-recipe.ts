@@ -11,6 +11,7 @@ export type ScrapedRecipe = {
   steps: string[];
   sourceUrl: string;
   imageUrl?: string;
+  cookTimeMinutes?: number;
 };
 
 const DEFAULT_UA =
@@ -41,6 +42,45 @@ function browserHeaders(_url: string): Record<string, string> {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+
+/** Parse schema.org ISO 8601 durations (e.g. PT30M, PT1H15M) into whole minutes. */
+export function isoDurationToMinutes(raw: unknown): number | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+    return Math.round(raw);
+  }
+  const s = String(raw).trim().toUpperCase();
+  if (!s) return undefined;
+  // Plain minutes number as string
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    return n > 0 ? Math.round(n) : undefined;
+  }
+  // PnDTnHnMnS — days/hours/minutes/seconds
+  const m = s.match(
+    /^P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/
+  );
+  if (!m) return undefined;
+  const days = Number(m[1] || 0);
+  const hours = Number(m[2] || 0);
+  const minutes = Number(m[3] || 0);
+  const seconds = Number(m[4] || 0);
+  const total = days * 24 * 60 + hours * 60 + minutes + seconds / 60;
+  if (!Number.isFinite(total) || total <= 0) return undefined;
+  return Math.max(1, Math.round(total));
+}
+
+function cookMinutesFromJsonLd(data: Record<string, unknown>): number | undefined {
+  // Prefer totalTime; fall back to cookTime (+ prepTime if both present without total)
+  const total = isoDurationToMinutes(data.totalTime);
+  if (total != null) return total;
+  const cook = isoDurationToMinutes(data.cookTime);
+  const prep = isoDurationToMinutes(data.prepTime);
+  if (cook != null && prep != null) return cook + prep;
+  return cook ?? prep;
+}
+
 
 function parseIngredientLine(line: string): {
   name: string;
@@ -87,6 +127,10 @@ function fromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
         : [];
       const instructions = normalizeInstructions(data.recipeInstructions);
 
+      const cookTimeMinutes = cookMinutesFromJsonLd(
+        data as Record<string, unknown>
+      );
+
       return {
         title: String(data.name || "Imported recipe"),
         description: data.description
@@ -95,6 +139,7 @@ function fromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
         ingredients: ingredientsRaw.map(parseIngredientLine),
         steps: instructions,
         sourceUrl: "",
+        ...(cookTimeMinutes != null ? { cookTimeMinutes } : {}),
       };
     } catch {
       // try next script

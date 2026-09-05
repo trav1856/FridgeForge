@@ -37,6 +37,7 @@ Not in Community Edition / early paid (documented for later):
 - Bank linking
 - Real manufacturer portal / GS1 coupon standards
 - **Restaurant sales pulse** — restaurants submit daily dish sales → trending plates + prep/grocery planning
+- **Recipe sharing** — private (default), household-only, public free release, or invite-only to selected households
 - **Supplier demand match** — suppliers see which restaurants (and households) need produce (e.g. okra, potatoes) and connect directly
 - Broader trend analytics (consumer + F&B)
 
@@ -171,6 +172,13 @@ Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works
 - Seeded Pro demo: `pro@fridgeforge.local` / `prodemo`
 - Demo coupons remain free; Pro gates live manufacturer deals (`src/lib/edition.ts`)
 - Details: [PAID.md](./PAID.md)
+
+## Pricing (working)
+
+- Self-host CE: free, ad-free, offline
+- Self-host Network: $1.99/mo (join cloud network)
+- Cloud Free: full app + light manufacturer banner ads
+- Cloud Pro: $4.99/mo, no ads + Pro network features
 
 ## License
 

@@ -26,28 +26,48 @@ type Suggestion = {
     isStruggleMeal: boolean;
     tags: string[];
     servings: number;
+    cookTimeMinutes?: number | null;
     imageUrl?: string | null;
     techniqueTips: string[];
     flavorBoosters: string[];
   };
 };
 
+const TIME_OPTIONS: { label: string; value: number | null }[] = [
+  { label: "Any", value: null },
+  { label: "15 min", value: 15 },
+  { label: "30 min", value: 30 },
+  { label: "45 min", value: 45 },
+  { label: "60 min", value: 60 },
+];
+
+function timeHeadline(maxMinutes: number | null): string {
+  if (maxMinutes == null) return "What can you cook?";
+  return `I’ve got ${maxMinutes} minutes — what can I make?`;
+}
+
 export function SuggestionsView() {
   const { struggleMode } = useStruggleMode();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [pantryCount, setPantryCount] = useState(0);
+  const [maxMinutes, setMaxMinutes] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(
-      `/api/suggestions?struggle=${struggleMode ? "1" : "0"}&maxMissing=2`
-    );
+    const params = new URLSearchParams({
+      struggle: struggleMode ? "1" : "0",
+      maxMissing: "2",
+    });
+    if (maxMinutes != null) {
+      params.set("maxMinutes", String(maxMinutes));
+    }
+    const res = await fetch(`/api/suggestions?${params.toString()}`);
     const data = await res.json();
     setSuggestions(data.suggestions || []);
     setPantryCount(data.pantryCount || 0);
     setLoading(false);
-  }, [struggleMode]);
+  }, [struggleMode, maxMinutes]);
 
   useEffect(() => {
     load();
@@ -63,14 +83,41 @@ export function SuggestionsView() {
 
       <div className="card p-4 sm:p-5">
         <h1 className="font-display text-2xl font-bold text-sage-900">
-          What can you cook?
+          {timeHeadline(maxMinutes)}
         </h1>
         <p className="mt-1 text-sm text-sage-600">
           Scored from your {pantryCount} pantry item
           {pantryCount === 1 ? "" : "s"} — match quality, affordability
-          {struggleMode ? ", and struggle-meal priority" : ""}. Near-misses
-          allow 1–2 cheap missing staples.
+          {struggleMode ? ", and struggle-meal priority" : ""}
+          {maxMinutes != null ? ", and cook time" : ""}. Near-misses allow 1–2
+          cheap missing staples.
         </p>
+
+        <div className="mt-4">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-sage-500">
+            How much time do you have?
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {TIME_OPTIONS.map((opt) => {
+              const active = opt.value === maxMinutes;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setMaxMinutes(opt.value)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                    active
+                      ? "bg-sage-800 text-cream-50 shadow-sm"
+                      : "bg-sage-100 text-sage-800 hover:bg-sage-200"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -78,8 +125,9 @@ export function SuggestionsView() {
       ) : suggestions.length === 0 ? (
         <div className="card p-6 text-center">
           <p className="text-sage-700">
-            No strong matches yet. Add pantry staples or recipes to get
-            suggestions.
+            {maxMinutes != null
+              ? `No pantry matches that cook in ${maxMinutes} minutes or less. Try a longer window or add quicker recipes.`
+              : "No strong matches yet. Add pantry staples or recipes to get suggestions."}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link href="/pantry" className="btn-primary">
@@ -144,6 +192,11 @@ function Section({
                     <span className="badge bg-sage-100 text-sage-800">
                       {Math.round(s.matchRatio * 100)}% match
                     </span>
+                    {s.recipe.cookTimeMinutes != null && (
+                      <span className="badge bg-cream-100 text-sage-800">
+                        {s.recipe.cookTimeMinutes} min
+                      </span>
+                    )}
                     <span
                       className={`badge ${
                         s.recipe.costTier === "cheap"
