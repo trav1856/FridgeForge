@@ -18,6 +18,7 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 - Smart suggestions — pantry match + affordability + creative notes
 - Struggle Meal mode — toggle, prioritize cheap/struggle recipes
 - **Coupons** — clip sample manufacturer offers, filter active/expired/used, bright redeem view with QR/barcode
+- **Recipe deals** — when a dish is missing ingredients, match active coupons and show “You have deals available for this dish” (suggestions + recipe detail → redeem)
 - Seed data so first open feels alive
 
 ## Out of scope / roadmap
@@ -95,6 +96,14 @@ Limitations: OCR quality depends on lighting and print; heuristic parsing may mi
 3. **Clip / save** or open **Redeem view** (large discount text + QR or Code128)
 4. Use **Bright mode** at the register; mark used when done
 5. **Create demo coupon** is a local manufacturer/admin stub (no auth)
+
+### Deals on recipes / suggestions
+
+If you open a recipe (or a suggestion card) and you are **missing** one or more ingredients, FridgeForge fuzzy-matches those names against **active** coupons (brand, title, discount text, code keywords). When there is a hit, a warm banner says you have deals for that dish and links to `/coupons/[id]` redeem.
+
+- Fully stocked dishes (or missing items with no coupon match) hide the banner.
+- API: `GET /api/suggestions/deals?recipeId=` (also attached as `deals` on `/api/suggestions`).
+- Seed leaves pasta, beans, and tomatoes out of the pantry so struggle meals demo the banner with pasta / sauce / beans / butter coupons.
 
 Roadmap (not in MVP): authenticated manufacturer portal, GS1 digital coupon standards, retailer POS validation.
 

@@ -42,6 +42,11 @@ describe("normalize / namesMatch", () => {
     expect(namesMatch("soy sauce", "soy")).toBe(true);
     expect(namesMatch("spaghetti", "pasta")).toBe(true);
   });
+
+  it("does not treat peanut butter as butter", () => {
+    expect(namesMatch("peanut butter", "butter")).toBe(false);
+    expect(namesMatch("butter", "peanut butter")).toBe(false);
+  });
 });
 
 describe("scoreRecipe", () => {

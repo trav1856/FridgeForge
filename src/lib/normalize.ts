@@ -43,12 +43,22 @@ const ALIASES: Record<string, string[]> = {
   pepper: ["black pepper", "ground pepper"],
 };
 
+/** Compounds where the head noun must not match the standalone staple. */
+const FALSE_FRIENDS: [string, string][] = [
+  ["peanut butter", "butter"],
+  ["cocoa butter", "butter"],
+  ["pasta sauce", "pasta"],
+  ["pasta sauce", "spaghetti"],
+  ["apple butter", "butter"],
+];
+
 export function expandAliases(name: string): string[] {
   const n = normalizeName(name);
   const out = new Set<string>([n]);
   for (const [canonical, aliases] of Object.entries(ALIASES)) {
     const all = [canonical, ...aliases].map(normalizeName);
-    if (all.some((a) => n === a || n.includes(a) || a.includes(n))) {
+    // Exact membership only — avoids "peanut butter" joining the butter family.
+    if (all.includes(n)) {
       all.forEach((a) => out.add(a));
       out.add(canonical);
     }
@@ -56,13 +66,52 @@ export function expandAliases(name: string): string[] {
   return [...out];
 }
 
+function isFalseFriendPair(a: string, b: string): boolean {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  return FALSE_FRIENDS.some(
+    ([full, part]) =>
+      (na === full && (nb === part || expandAliases(b).includes(part))) ||
+      (nb === full && (na === part || expandAliases(a).includes(part)))
+  );
+}
+
+/** True if needle appears in haystack on word boundaries. */
+function phraseIncludes(haystack: string, needle: string): boolean {
+  if (!needle || !haystack) return false;
+  if (haystack === needle) return true;
+  return ` ${haystack} `.includes(` ${needle} `);
+}
+
 export function namesMatch(a: string, b: string): boolean {
   const na = normalizeName(a);
   const nb = normalizeName(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
-  if (na.includes(nb) || nb.includes(na)) return true;
+  if (isFalseFriendPair(a, b)) return false;
+
+  // Prefer word-boundary phrase containment over raw substring
+  // so "butter" does not match inside "peanut butter".
+  if (phraseIncludes(na, nb) || phraseIncludes(nb, na)) {
+    if (isFalseFriendPair(a, b)) return false;
+    // If longer phrase is a known false-friend compound vs shorter staple, block
+    const shorter = na.length <= nb.length ? na : nb;
+    const longer = na.length <= nb.length ? nb : na;
+    if (
+      FALSE_FRIENDS.some(
+        ([full, part]) => longer === full && shorter === part
+      )
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   const ea = expandAliases(a);
   const eb = expandAliases(b);
-  return ea.some((x) => eb.includes(x));
+  if (ea.some((x) => eb.includes(x))) {
+    if (isFalseFriendPair(a, b)) return false;
+    return true;
+  }
+  return false;
 }

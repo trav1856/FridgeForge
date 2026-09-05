@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
+import { RecipeDeals } from "@/components/RecipeDeals";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -56,6 +57,8 @@ export default async function RecipeDetailPage({ params }: Props) {
           )}
         </p>
       </div>
+
+      <RecipeDeals recipeId={recipe.id} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="card p-5">

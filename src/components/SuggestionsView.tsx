@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import { StruggleBanner } from "./StruggleBanner";
+import { DealsBanner } from "./DealsBanner";
+import type { DealCouponSummary } from "@/lib/deals";
 
 type Suggestion = {
   score: number;
@@ -14,6 +16,7 @@ type Suggestion = {
   canMakeNow: boolean;
   nearMiss: boolean;
   creativeNote?: string;
+  deals?: DealCouponSummary[];
   recipe: {
     id: string;
     title: string;
@@ -188,6 +191,8 @@ function Section({
                   ✨ {s.creativeNote}
                 </p>
               )}
+
+              <DealsBanner deals={s.deals || []} compact />
 
               {s.recipe.flavorBoosters.length > 0 && (
                 <p className="mt-2 text-xs text-sage-600">
