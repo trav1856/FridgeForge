@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { deterministicFoodImageUrl } from "../src/lib/recipe-image";
 
 const prisma = new PrismaClient();
 
@@ -264,6 +265,7 @@ async function main() {
     await prisma.recipe.create({
       data: {
         ...rest,
+        imageUrl: deterministicFoodImageUrl(rest.title),
         ingredients: {
           create: ingredients.map((i) => ({
             name: i.name,

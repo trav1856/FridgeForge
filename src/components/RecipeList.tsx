@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
+import { RecipeImage } from "./RecipeImage";
 
 type Recipe = {
   id: string;
@@ -13,6 +14,7 @@ type Recipe = {
   servings: number;
   isStruggleMeal: boolean;
   ingredients: { name: string }[];
+  imageUrl?: string | null;
 };
 
 export function RecipeList() {
@@ -78,7 +80,9 @@ export function RecipeList() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {list.map((r) => (
-            <li key={r.id} className="card flex flex-col p-4">
+            <li key={r.id} className="card flex flex-col overflow-hidden p-0">
+              <RecipeImage src={r.imageUrl} alt={r.title} className="rounded-none rounded-t-xl" />
+              <div className="flex flex-1 flex-col p-4">
               <div className="mb-2 flex flex-wrap gap-1.5">
                 <span
                   className={`badge ${
@@ -128,6 +132,7 @@ export function RecipeList() {
                 >
                   Delete
                 </button>
+              </div>
               </div>
             </li>
           ))}

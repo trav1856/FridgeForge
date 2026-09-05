@@ -1,4 +1,8 @@
 import * as cheerio from "cheerio";
+import {
+  extractRecipeImage,
+  resolveRecipeImageUrl,
+} from "@/lib/recipe-image";
 
 export type ScrapedRecipe = {
   title: string;
@@ -6,7 +10,37 @@ export type ScrapedRecipe = {
   ingredients: { name: string; quantity: number; unit: string }[];
   steps: string[];
   sourceUrl: string;
+  imageUrl?: string;
 };
+
+const DEFAULT_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+function browserHeaders(_url: string): Record<string, string> {
+  return {
+    "User-Agent": process.env.SCRAPE_USER_AGENT || DEFAULT_UA,
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Sec-Ch-Ua":
+      '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    Referer: "https://www.google.com/",
+  };
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function parseIngredientLine(line: string): {
   name: string;
@@ -160,6 +194,82 @@ function fromHtmlHeuristics($: cheerio.CheerioAPI): ScrapedRecipe | null {
   };
 }
 
+async function fetchRecipeHtml(
+  url: string
+): Promise<
+  | { ok: true; html: string }
+  | { ok: false; error: string; status?: number }
+> {
+  const headers = browserHeaders(url);
+  let lastStatus: number | undefined;
+  let lastError = "Fetch failed";
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt === 1) {
+      // Short backoff before retrying soft blocks (403/429)
+      await sleep(400 + Math.floor(Math.random() * 350));
+      // On retry, look more like a same-site navigation
+      try {
+        headers.Referer = new URL(url).origin + "/";
+        headers["Sec-Fetch-Site"] = "same-origin";
+      } catch {
+        // ignore
+      }
+    }
+
+    try {
+      const res = await fetch(url, {
+        headers,
+        redirect: "follow",
+        signal: AbortSignal.timeout(12000),
+      });
+      lastStatus = res.status;
+
+      if (res.ok) {
+        return { ok: true, html: await res.text() };
+      }
+
+      if ((res.status === 403 || res.status === 429) && attempt === 0) {
+        lastError = `Fetch failed (${res.status})`;
+        continue;
+      }
+
+      if (res.status === 403 || res.status === 429) {
+        return {
+          ok: false,
+          status: res.status,
+          error:
+            res.status === 403
+              ? "This site blocked the import (403). Many recipe sites reject automated fetches — open the page in your browser and paste ingredients/steps manually."
+              : "This site rate-limited the import (429). Wait a moment and try once more, or paste the recipe manually.",
+        };
+      }
+
+      return {
+        ok: false,
+        status: res.status,
+        error: `Fetch failed (${res.status})`,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "Scrape failed";
+      if (attempt === 0) continue;
+    }
+  }
+
+  if (lastStatus === 403 || lastStatus === 429) {
+    return {
+      ok: false,
+      status: lastStatus,
+      error:
+        lastStatus === 403
+          ? "This site blocked the import (403). Many recipe sites reject automated fetches — open the page in your browser and paste ingredients/steps manually."
+          : "This site rate-limited the import (429). Wait a moment and try once more, or paste the recipe manually.",
+    };
+  }
+
+  return { ok: false, status: lastStatus, error: lastError };
+}
+
 export async function scrapeRecipeFromUrl(
   url: string
 ): Promise<{ ok: true; recipe: ScrapedRecipe } | { ok: false; error: string }> {
@@ -173,20 +283,12 @@ export async function scrapeRecipeFromUrl(
   }
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          process.env.SCRAPE_USER_AGENT ||
-          "FridgeForge/0.1 (+local recipe import)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) {
-      return { ok: false, error: `Fetch failed (${res.status})` };
+    const fetched = await fetchRecipeHtml(url);
+    if (!fetched.ok) {
+      return { ok: false, error: fetched.error };
     }
-    const html = await res.text();
-    const $ = cheerio.load(html);
+
+    const $ = cheerio.load(fetched.html);
     const fromLd = fromJsonLd($);
     const recipe = fromLd ?? fromHtmlHeuristics($);
     if (!recipe || recipe.ingredients.length === 0 || recipe.steps.length === 0) {
@@ -196,7 +298,14 @@ export async function scrapeRecipeFromUrl(
           "Could not parse recipe from page. Paste ingredients and steps manually.",
       };
     }
+
     recipe.sourceUrl = url;
+    const scrapedImage = extractRecipeImage($, url);
+    recipe.imageUrl = await resolveRecipeImageUrl({
+      title: recipe.title,
+      scrapedImageUrl: scrapedImage,
+    });
+
     return { ok: true, recipe };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Scrape failed";

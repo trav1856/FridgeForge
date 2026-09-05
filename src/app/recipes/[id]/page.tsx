@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
 import { RecipeDeals } from "@/components/RecipeDeals";
+import { RecipeImage } from "@/components/RecipeImage";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -34,7 +35,10 @@ export default async function RecipeDetailPage({ params }: Props) {
             </span>
           ))}
         </div>
-        <h1 className="mt-2 font-display text-3xl font-bold text-sage-900 sm:text-4xl">
+        <div className="mt-3 max-w-2xl">
+          <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+        </div>
+        <h1 className="mt-3 font-display text-3xl font-bold text-sage-900 sm:text-4xl">
           {recipe.title}
         </h1>
         {recipe.description && (

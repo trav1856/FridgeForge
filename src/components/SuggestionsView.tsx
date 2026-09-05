@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import { StruggleBanner } from "./StruggleBanner";
 import { DealsBanner } from "./DealsBanner";
+import { RecipeImage } from "./RecipeImage";
 import type { DealCouponSummary } from "@/lib/deals";
 
 type Suggestion = {
@@ -25,6 +26,7 @@ type Suggestion = {
     isStruggleMeal: boolean;
     tags: string[];
     servings: number;
+    imageUrl?: string | null;
     techniqueTips: string[];
     flavorBoosters: string[];
   };
@@ -126,7 +128,13 @@ function Section({
       ) : (
         <ul className="space-y-3">
           {items.map((s) => (
-            <li key={s.recipe.id} className="card p-4">
+            <li key={s.recipe.id} className="card overflow-hidden p-0">
+              <RecipeImage
+                src={s.recipe.imageUrl}
+                alt={s.recipe.title}
+                className="rounded-none rounded-t-xl"
+              />
+              <div className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <div className="mb-1 flex flex-wrap gap-1.5">
@@ -207,6 +215,7 @@ function Section({
                   ))}
                 </ul>
               )}
+              </div>
             </li>
           ))}
         </ul>

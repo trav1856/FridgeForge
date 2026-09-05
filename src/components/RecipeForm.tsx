@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RecipeImage } from "./RecipeImage";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
 
@@ -25,31 +26,35 @@ export function RecipeForm() {
   const [boostersText, setBoostersText] = useState("");
   const [ingredients, setIngredients] = useState<Ing[]>([blankIng()]);
   const [importUrl, setImportUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function tryImport() {
+    if (importing || !importUrl.trim()) return;
     setImportMsg(null);
     setImporting(true);
     try {
       const res = await fetch("/api/recipes/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: importUrl }),
+        body: JSON.stringify({ url: importUrl.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setImportMsg(
-          data.error ||
-            "Could not scrape this URL. Paste the recipe manually below."
-        );
+        const err =
+          typeof data.error === "string"
+            ? data.error
+            : "Could not scrape this URL. Paste the recipe manually below.";
+        setImportMsg(err);
         return;
       }
       const r = data.recipe;
       setTitle(r.title || "");
       setDescription(r.description || "");
+      setImageUrl(r.imageUrl || null);
       setIngredients(
         (r.ingredients || []).map(
           (i: { name: string; quantity: number; unit: string }) => ({
@@ -61,7 +66,11 @@ export function RecipeForm() {
         )
       );
       setStepsText((r.steps || []).join("\n"));
-      setImportMsg("Imported — review and save.");
+      setImportMsg(
+        r.imageUrl
+          ? "Imported with image — review and save."
+          : "Imported — review and save."
+      );
     } catch {
       setImportMsg("Import failed. Use the manual form below.");
     } finally {
@@ -108,6 +117,7 @@ export function RecipeForm() {
           optional: i.optional,
         })),
       sourceUrl: importUrl.trim() || null,
+      imageUrl: imageUrl || null,
     };
 
     try {
@@ -144,7 +154,14 @@ export function RecipeForm() {
             className="input flex-1"
             placeholder="https://…"
             value={importUrl}
+            disabled={importing}
             onChange={(e) => setImportUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void tryImport();
+              }
+            }}
           />
           <button
             type="button"
@@ -159,6 +176,11 @@ export function RecipeForm() {
           <p className="text-sm text-ember-800 bg-ember-50 rounded-lg px-3 py-2">
             {importMsg}
           </p>
+        )}
+        {imageUrl && (
+          <div className="max-w-sm">
+            <RecipeImage src={imageUrl} alt={title || "Imported recipe"} />
+          </div>
         )}
       </div>
 

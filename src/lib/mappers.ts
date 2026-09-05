@@ -25,6 +25,7 @@ export function toRecipeForMatch(
     costTier: (recipe.costTier as CostTier) || "cheap",
     tags: parseStringArray(recipe.tags),
     servings: recipe.servings,
+    imageUrl: recipe.imageUrl,
     isStruggleMeal: recipe.isStruggleMeal,
     techniqueTips: parseStringArray(recipe.techniqueTips),
     flavorBoosters: parseStringArray(recipe.flavorBoosters),

@@ -14,7 +14,8 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 - **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry (manual add remains secondary)
 - **Receipt intake (experimental)** — demoted under Advanced; photo OCR / paste still available but not a peer primary tab
 - Recipes — manual add, cost tier, tags, struggle flag, tips/boosters
-- URL import — best-effort HTML/JSON-LD scrape with manual fallback
+- URL import — best-effort HTML/JSON-LD scrape (browser-like headers + one 403/429 retry) with manual fallback
+- Recipe images — scraped from the page, else a free food photo, else a branded placeholder
 - Smart suggestions — pantry match + affordability + creative notes
 - Struggle Meal mode — toggle, prioritize cheap/struggle recipes
 - **Coupons** — clip sample manufacturer offers, filter active/expired/used, bright redeem view with QR/barcode
@@ -121,11 +122,29 @@ If you open a recipe (or a suggestion card) and you are **missing** one or more 
 
 Roadmap (not in MVP): authenticated manufacturer portal, GS1 digital coupon standards, retailer POS validation.
 
+
+## Recipe URL import + images
+
+Paste a recipe page URL on **Add / import recipe**. The server fetches the HTML with a Chrome-like User-Agent and common browser headers (Accept-Language, Sec-Fetch-*, Referer). Many recipe hosts (Cloudflare / Akamai / bot walls) **403 the first request** when the old `FridgeForge/0.1` agent was used; the importer now retries **once** after a short backoff on 403/429 so you do not need to click Import twice. The button is disabled while the request is in flight. If the site still blocks, you get a clear “blocked — paste manually” message.
+
+### Image strategy
+
+`Recipe.imageUrl` stores a remote URL (or a local `/recipe-images/...` path). No paid API key.
+
+1. **Scrape** — JSON-LD `Recipe.image` → `og:image` → `twitter:image` → first large content `<img>`
+2. **Foodish** — `https://foodish-api.com/api/` (free, no key; category hint from the title when possible)
+3. **Branded fallback** — `/recipe-images/placeholder.svg`, or a client-side gradient + title initials if the remote image fails to load
+
+Seed recipes use **Lorem Flickr** food photos keyed by title (`https://loremflickr.com/800/600/food,{keyword}?lock={hash}`) so they stay stable across re-seeds. `source.unsplash.com` is deprecated and is not used.
+
+Override the scrape User-Agent with `SCRAPE_USER_AGENT` in `.env` if a site still rejects the default Chrome UA.
+
 ## Project structure
 
     src/app/           App Router pages + API routes
     src/components/    UI (BarcodeIntake, ReceiptIntake, Coupons*)
-    src/lib/           db, suggestions, scrape, normalize, OFF + receipt parse/resolve
+    src/lib/           db, suggestions, scrape, recipe-image, normalize, OFF + receipt parse/resolve
+    public/recipe-images  branded SVG placeholder
     prisma/            schema + seed
     __tests__/         Vitest
 

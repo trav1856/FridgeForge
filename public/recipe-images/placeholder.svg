@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="Recipe placeholder">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3d5a45"/>
+      <stop offset="55%" stop-color="#5c7a62"/>
+      <stop offset="100%" stop-color="#c45c26"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <circle cx="640" cy="120" r="90" fill="#f5f0e8" opacity="0.12"/>
+  <circle cx="120" cy="480" r="140" fill="#f5f0e8" opacity="0.1"/>
+  <g transform="translate(400 290)" fill="#f5f0e8" opacity="0.92">
+    <path d="M-70 20c0-18 12-34 28-42 4-28 28-48 56-42 18-22 52-22 70 2 26-4 48 16 46 42 18 10 28 30 22 50H-70c-4-16 0-32 14-42z" opacity="0.95"/>
+    <ellipse cx="0" cy="55" rx="92" ry="18" opacity="0.35"/>
+  </g>
+  <text x="400" y="520" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#f5f0e8" opacity="0.85">FridgeForge</text>
+</svg>

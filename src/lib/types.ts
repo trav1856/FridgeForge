@@ -25,6 +25,7 @@ export type RecipeInput = {
   tags?: string[];
   servings?: number;
   sourceUrl?: string | null;
+  imageUrl?: string | null;
   isStruggleMeal?: boolean;
   techniqueTips?: string[];
   flavorBoosters?: string[];
@@ -49,6 +50,7 @@ export type RecipeForMatch = {
   costTier: CostTier;
   tags: string[];
   servings: number;
+  imageUrl?: string | null;
   isStruggleMeal: boolean;
   techniqueTips: string[];
   flavorBoosters: string[];
