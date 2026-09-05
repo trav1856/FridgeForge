@@ -154,4 +154,4 @@ Recipes are scored by pantry match ratio, can-make-now / near-miss (at most 2 ch
 
 ## License
 
-MIT — built as an MVP scaffold.
+Apache-2.0 — see LICENSE and NOTICE. Free to use and modify; keep copyright and attribution.
