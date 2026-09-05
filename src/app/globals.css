@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #faf6f0;
+  --ink: #2c241b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at top left, rgba(249, 115, 22, 0.08), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(114, 128, 99, 0.1), transparent 40%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ember-500 focus-visible:ring-offset-2 disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-ember-600 text-white shadow-sm hover:bg-ember-700;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-sage-800 border border-sage-200 hover:bg-cream-100;
+  }
+  .btn-ghost {
+    @apply btn text-sage-700 hover:bg-sage-100/70;
+  }
+  .card {
+    @apply rounded-2xl bg-white/90 border border-cream-300/80 shadow-card backdrop-blur-sm;
+  }
+  .input {
+    @apply w-full rounded-xl border border-sage-200 bg-white px-3 py-2.5 text-sm text-sage-900 placeholder:text-sage-400 focus:border-ember-400 focus:outline-none focus:ring-2 focus:ring-ember-200;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-sage-600;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
