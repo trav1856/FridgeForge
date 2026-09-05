@@ -11,8 +11,8 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 ## MVP (this repo)
 
 - Pantry CRUD — name, qty, unit, category/tags, optional expiration + barcode
-- **Barcode intake** — camera scan or manual UPC/EAN; Open Food Facts lookup; confirm qty/category; merge into pantry
-- **Receipt intake** — photo/camera upload with in-browser OCR (Tesseract.js) or paste text; review checklist; bulk-add
+- **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry (manual add remains secondary)
+- **Receipt intake (experimental)** — demoted under Advanced; photo OCR / paste still available but not a peer primary tab
 - Recipes — manual add, cost tier, tags, struggle flag, tips/boosters
 - URL import — best-effort HTML/JSON-LD scrape with manual fallback
 - Smart suggestions — pantry match + affordability + creative notes
@@ -67,21 +67,25 @@ Open http://localhost:3000
 
 ## Pantry intake features
 
-### Barcode scanning
+**Strategy:** barcode-first. The reliable happy path is scan/type a UPC when you get home, look it up on Open Food Facts, confirm, and merge into pantry. Manual entry stays available as a secondary tab. Receipt OCR remains in the codebase but is **experimental** — collapsed under “Advanced: try receipt (experimental)” so it does not compete as a primary peer tab.
 
-1. Open Pantry, then the Barcode tab
+### Barcode scanning (primary)
+
+1. Open Pantry — **Scan barcode** is the default tab
 2. Tap Open camera or type a barcode and Look up
 3. Product data comes from Open Food Facts via /api/barcode/lookup
 4. Confirm name / qty / unit / category
 5. Item is created or merged (same barcode, or same name+unit)
 
-If there is no match, add manually; barcode is saved for next time.
+If there is no match, add the name manually on the confirm form; barcode is saved for next time. Use the **Manual** tab for free-form pantry items without a barcode.
 
 Limitations: coverage varies; camera needs localhost or TLS and consent.
 
-### Receipt scanning
+### Receipt scanning (experimental / Advanced)
 
-1. Open Pantry, then the Receipt tab
+Receipt is intentionally demoted in the UI. Resolver and OCR code are kept; do not treat this as the main intake path.
+
+1. Open Pantry → expand **Advanced: try receipt (experimental)**
 2. Upload or capture a receipt photo (Tesseract.js in the browser)
 3. Or paste text instead and parse
 4. Review the checklist — **resolved food names** are the editable default (not raw `GV` / `GRP` codes)

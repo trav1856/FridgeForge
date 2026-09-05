@@ -211,19 +211,19 @@ export function ReceiptIntake({ onAdded }: Props) {
     <div className="card space-y-4 p-4 sm:p-5">
       <div>
         <h2 className="font-display text-xl font-bold text-sage-900">
-          Scan receipt
+          Receipt (experimental)
         </h2>
         <p className="mt-1 text-sm text-sage-600">
-          Upload or capture a photo. We run best-effort OCR in your browser
-          (Tesseract.js), then resolve store shorthand and UPCs into food names.
-          Paste text if OCR is weak.
+          Best-effort only — OCR often misreads store receipts. Prefer scanning
+          barcodes when you can. Upload a photo or paste text; we resolve
+          shorthand and UPCs where possible, then you review before adding.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className="btn-primary"
+          className="btn-secondary"
           disabled={busy}
           onClick={() => fileRef.current?.click()}
         >

@@ -211,8 +211,9 @@ export function BarcodeIntake({ onAdded }: Props) {
           Scan barcode
         </h2>
         <p className="mt-1 text-sm text-sage-600">
-          Use your camera or type a UPC/EAN. We look up products on Open Food
-          Facts (free, community data).
+          Scan the barcode when you get home — camera or type the UPC/EAN. We
+          look it up on Open Food Facts, you confirm, and it lands in your
+          pantry.
         </p>
       </div>
 

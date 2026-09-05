@@ -33,7 +33,7 @@ export default function HomePage() {
           {
             href: "/pantry",
             title: "Pantry",
-            body: "CRUD, barcode scan, and receipt bulk-add for staples you already own.",
+            body: "Barcode-first pantry: scan UPC when you get home, confirm, done. Manual add anytime.",
             icon: "🫙",
           },
           {

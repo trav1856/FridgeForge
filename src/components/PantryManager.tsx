@@ -16,7 +16,7 @@ type PantryItem = {
   expirationDate: string | null;
 };
 
-type IntakeTab = "manual" | "barcode" | "receipt";
+type IntakeTab = "barcode" | "manual";
 
 const emptyForm = {
   name: "",
@@ -35,16 +35,22 @@ export function PantryManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [tab, setTab] = useState<IntakeTab>("manual");
+  const [tab, setTab] = useState<IntakeTab>("barcode");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/pantry");
       const data = await res.json();
-      setItems(data);
+      if (!res.ok) {
+        setError(typeof data?.error === "string" ? data.error : "Could not load pantry");
+        setItems([]);
+        return;
+      }
+      setItems(Array.isArray(data) ? data : []);
     } catch {
       setError("Could not load pantry");
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -82,12 +88,16 @@ export function PantryManager() {
           body: JSON.stringify(payload),
         }
       );
-      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error;
+        throw new Error(typeof msg === "string" ? msg : "Save failed");
+      }
       setForm(emptyForm);
       setEditingId(null);
       await load();
-    } catch {
-      setError("Could not save item");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save item");
     }
   }
 
@@ -131,13 +141,22 @@ export function PantryManager() {
   }, {});
 
   const tabs: { id: IntakeTab; label: string }[] = [
+    { id: "barcode", label: "Scan barcode" },
     { id: "manual", label: "Manual" },
-    { id: "barcode", label: "Barcode" },
-    { id: "receipt", label: "Receipt" },
   ];
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-sage-200/80 bg-gradient-to-br from-cream-50 to-sage-50/60 px-4 py-3 sm:px-5">
+        <p className="text-sm font-medium text-sage-800">
+          Scan the barcode when you get home — we’ll look it up and drop it in
+          your pantry.
+        </p>
+        <p className="mt-1 text-xs text-sage-600">
+          Prefer typing? Use Manual anytime. Receipt import lives under Advanced.
+        </p>
+      </div>
+
       <div className="flex flex-wrap gap-1 rounded-2xl bg-sage-100/70 p-1">
         {tabs.map((t) => (
           <button
@@ -156,7 +175,6 @@ export function PantryManager() {
       </div>
 
       {tab === "barcode" && <BarcodeIntake onAdded={load} />}
-      {tab === "receipt" && <ReceiptIntake onAdded={load} />}
 
       {tab === "manual" && (
         <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
@@ -261,6 +279,31 @@ export function PantryManager() {
         </form>
       )}
 
+      <details className="group rounded-2xl border border-dashed border-sage-300/80 bg-sage-50/40 open:bg-cream-50/60">
+        <summary className="cursor-pointer list-none px-4 py-3 sm:px-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-sage-800">
+                Advanced: try receipt (experimental)
+              </p>
+              <p className="mt-0.5 text-xs text-sage-600">
+                OCR from photos is unreliable — expect typos and missed lines.
+                Prefer barcode when you can.
+              </p>
+            </div>
+            <span className="mt-0.5 shrink-0 text-xs font-medium text-sage-500 group-open:hidden">
+              Show
+            </span>
+            <span className="mt-0.5 hidden shrink-0 text-xs font-medium text-sage-500 group-open:inline">
+              Hide
+            </span>
+          </div>
+        </summary>
+        <div className="border-t border-sage-200/60 px-2 pb-2 pt-1 sm:px-3">
+          <ReceiptIntake onAdded={load} />
+        </div>
+      </details>
+
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-bold text-sage-900">
           Your pantry ({items.length})
@@ -277,7 +320,8 @@ export function PantryManager() {
         <p className="text-sm text-sage-600">Loading pantry…</p>
       ) : filtered.length === 0 ? (
         <p className="card p-6 text-center text-sage-600">
-          No items yet. Add staples to unlock smart suggestions.
+          No items yet. Scan a barcode or add a staple to unlock smart
+          suggestions.
         </p>
       ) : (
         <div className="space-y-5">
