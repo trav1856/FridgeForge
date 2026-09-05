@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   title: "FridgeForge — Cook what you have",
   description:
     "Turn pantry staples into great meals. Smart suggestions and Struggle Meal mode for cooking well on a budget.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/Favorite.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
