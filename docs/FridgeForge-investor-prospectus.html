@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FridgeForge — Investor Prospectus</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #5c5c5c;
+    --rule: #e2ddd6;
+    --bg: #faf8f5;
+    --card: #ffffff;
+    --accent: #c45c26;
+    --accent-dark: #9a4519;
+    --sage: #3d6b4f;
+    --sage-soft: #e8f0eb;
+    --warm: #f3ebe3;
+    --warn: #8a6d3b;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 2.5rem 1.75rem 4rem;
+  }
+  header.cover {
+    background: linear-gradient(165deg, #2c1810 0%, #5c2e1a 45%, #c45c26 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 2.75rem 2.25rem 2.25rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 28px rgba(44, 24, 16, 0.18);
+  }
+  header.cover .eyebrow {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin: 0 0 0.75rem;
+  }
+  header.cover h1 {
+    font-size: 2.6rem;
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  header.cover .tagline {
+    font-size: 1.15rem;
+    opacity: 0.95;
+    margin: 0 0 1.5rem;
+    max-width: 36em;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.85rem;
+    border-top: 1px solid rgba(255,255,255,0.25);
+    padding-top: 1rem;
+  }
+  .meta-grid dt { opacity: 0.7; margin: 0; }
+  .meta-grid dd { margin: 0 0 0.4rem; font-weight: 600; }
+  .meta-grid a { color: #ffe8d6; }
+
+  h2 {
+    font-size: 1.45rem;
+    margin: 2.25rem 0 0.85rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--accent);
+    color: var(--accent-dark);
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin: 1.5rem 0 0.6rem;
+    color: var(--sage);
+    page-break-after: avoid;
+  }
+  p { margin: 0.65rem 0; }
+  a { color: var(--accent-dark); }
+  ul, ol { margin: 0.5rem 0 0.9rem; padding-left: 1.35rem; }
+  li { margin: 0.28rem 0; }
+  strong { font-weight: 700; }
+
+  .exec {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 5px solid var(--sage);
+    border-radius: 8px;
+    padding: 1.35rem 1.5rem 1.5rem;
+    margin: 1.5rem 0 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  .exec h2 {
+    margin-top: 0;
+    border-bottom-color: var(--sage);
+    color: var(--sage);
+  }
+  .exec .label {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin: 0 0 0.25rem;
+  }
+
+  .callout {
+    background: var(--warm);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+    border: 1px solid var(--rule);
+  }
+  .callout.warn {
+    background: #fff8e8;
+    border-color: #e8d9a8;
+    color: #3d3420;
+  }
+  .callout code, p code, li code, td code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: rgba(0,0,0,0.05);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.85rem 0 1.25rem;
+    font-size: 0.92rem;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--card);
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--sage-soft);
+    color: #1e3d28;
+    font-weight: 650;
+  }
+  tr:nth-child(even) td { background: #fcfbf9; }
+
+  .section-num {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  .placeholder {
+    border: 2px dashed #cbb9a8;
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin: 0.6rem 0;
+    color: var(--muted);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.9rem;
+  }
+  .placeholder strong { color: var(--ink); }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin: 1rem 0;
+  }
+  .pillar {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+  }
+  .pillar h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    color: var(--accent-dark);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .pillar p { margin: 0; font-size: 0.95rem; }
+
+  .roadmap {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .road-card {
+    border-radius: 8px;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+  }
+  .road-card.now { border-top: 4px solid var(--sage); }
+  .road-card.next { border-top: 4px solid var(--accent); }
+  .road-card.later { border-top: 4px solid #8a7a6a; }
+  .road-card h3 { margin-top: 0; }
+
+  footer.doc-foot {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .toc {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.9rem;
+    columns: 2;
+    column-gap: 2rem;
+    margin: 1rem 0 1.5rem;
+  }
+  .toc a { text-decoration: none; color: var(--ink); }
+  .toc a:hover { color: var(--accent); }
+  .toc li { margin: 0.2rem 0; }
+
+  @media (max-width: 640px) {
+    .meta-grid, .toc { columns: 1; grid-template-columns: 1fr; }
+    header.cover h1 { font-size: 2rem; }
+    .page { padding: 1.25rem 1rem 3rem; }
+  }
+
+  @media print {
+    body { background: #fff; font-size: 11pt; }
+    .page { max-width: none; padding: 0; }
+    header.cover {
+      box-shadow: none;
+      border-radius: 0;
+      break-inside: avoid;
+    }
+    .exec, .road-card, table, .pillar { break-inside: avoid; }
+    h2, h3 { break-after: avoid; }
+    a { text-decoration: none; color: inherit; }
+    .toc { display: none; }
+    footer.doc-foot { break-before: avoid; }
+  }
+  @page {
+    margin: 1.4cm 1.5cm;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="cover">
+  <p class="eyebrow">Investor Prospectus · Confidential draft</p>
+  <h1>FridgeForge</h1>
+  <p class="tagline">Turn what’s in your fridge into great cheap meals — with struggle-meal cooking, barcode pantry intake, local-food roadmap, and manufacturer deals.</p>
+  <dl class="meta-grid">
+    <div>
+      <dt>Stage</dt>
+      <dd>Pre-seed / seed exploration — early MVP</dd>
+      <dt>Repo</dt>
+      <dd><a href="https://github.com/trav1856/FridgeForge">github.com/trav1856/FridgeForge</a></dd>
+    </div>
+    <div>
+      <dt>Date</dt>
+      <dd>September 2026</dd>
+      <dt>Status</dt>
+      <dd>Draft — proposed prices &amp; illustrative market notes only</dd>
+    </div>
+  </dl>
+</header>
+
+<section class="exec" id="exec">
+  <p class="label">One-page executive summary</p>
+  <h2>Executive summary</h2>
+  <p><strong>FridgeForge</strong> helps households cook great food from what they already have — especially on a tight budget. The product starts from pantry reality, not an idealized grocery list: scan what’s on the shelf, get struggle-meal suggestions that taste intentional, clip manufacturer deals when ingredients are missing, and (over time) learn foundational cooking skills.</p>
+  <p><strong>Problem.</strong> Meal apps and store coupon silos assume either a full grocery run or a recipe collection in isolation. Families under budget pressure waste food, default to takeout, or cook the same three bland meals. Self-host recipe managers (e.g. Mealie) serve enthusiasts; consumer meal planners (Mealime, Paprika, Yummly) optimize for plans and catalogs; retailer apps keep coupons trapped in one chain. Few products connect <strong>what’s in the fridge</strong> + <strong>affordable cooking</strong> + <strong>deals</strong> + <strong>skills</strong>.</p>
+  <p><strong>Solution (MVP today).</strong> A responsive Next.js web/PWA with pantry CRUD and <strong>barcode-first</strong> UPC intake via Open Food Facts; recipes, URL import, <strong>Struggle Meal mode</strong>, and smart suggestions; coupons (demo/seed today — manufacturer portal is a GTM goal, not a signed contract); deals banner when a dish is missing coupon-matched ingredients; receipt OCR under Advanced only (experimental; unreliable — barcode-first is deliberate).</p>
+  <p><strong>Platform.</strong> Web/PWA first — phones, tablets, Echo Show browser, desktop. Native iOS/Android later. No separate Show app.</p>
+  <p><strong>Business model (proposed open-core freemium).</strong> Free/community (incl. optional self-host of core): pantry, barcode, recipes, struggle meals, suggestions, basic Learn later. Cloud subscription <strong>~$4.99/mo (proposed)</strong> for manufacturer coupons, smarter deals, priority support, household sharing, synced Learn certificates. Optional self-host supporter <strong>~$1.99/mo (proposed)</strong> — lower price because the customer brings infrastructure, still pays for coupon/deals network access. <strong>No manufacturer contracts claimed today.</strong></p>
+  <p><strong>Ask.</strong> Seed amount <strong>TBD</strong>. Sample use-of-funds outline with blanks in §12. Traction metrics and revenue are <strong>not</strong> invented here — early MVP; projections and assumptions are clearly labeled.</p>
+  <p><strong>Thesis in one line:</strong> Own the “cook from what you have, cheaply and well” wedge — pantry truth + struggle cooking + deals network + education — then expand into households, learning certificates, nutrition/body insights (estimates), and (later) local food and scale integrations.</p>
+</section>
+
+<nav aria-label="Contents">
+  <ol class="toc">
+    <li><a href="#cover">1. Cover / title</a></li>
+    <li><a href="#problem">2. Problem</a></li>
+    <li><a href="#solution">3. Solution</a></li>
+    <li><a href="#product">4. Product &amp; screenshots</a></li>
+    <li><a href="#business">5. Business model &amp; pricing</a></li>
+    <li><a href="#opencore">6. Open-core / licensing</a></li>
+    <li><a href="#market">7. Market opportunity</a></li>
+    <li><a href="#gtm">8. Go-to-market</a></li>
+    <li><a href="#competition">9. Competition</a></li>
+    <li><a href="#roadmap">10. Roadmap</a></li>
+    <li><a href="#risks">11. Risks &amp; mitigations</a></li>
+    <li><a href="#ask">12. The ask</a></li>
+    <li><a href="#appendix">13. Appendix</a></li>
+  </ol>
+</nav>
+
+<section id="cover">
+  <p class="section-num">SECTION 01</p>
+  <h2>Cover / title</h2>
+  <p><strong>One-liner:</strong> Turn what’s in your fridge into great cheap meals — with struggle-meal cooking, barcode pantry intake, local-food roadmap, and manufacturer deals.</p>
+  <p><strong>Building with:</strong> Technical partner/assistant · Early MVP (Next.js) · Public repo: <a href="https://github.com/trav1856/FridgeForge">github.com/trav1856/FridgeForge</a></p>
+  <div class="placeholder"><strong>Team:</strong> [Placeholder — founder to fill: name(s), roles, brief background. Do not invent bios.]</div>
+  <div class="placeholder"><strong>Contact:</strong> [Email / calendar link TBD] · <strong>Location:</strong> [TBD]</div>
+</section>
+
+<section id="problem">
+  <p class="section-num">SECTION 02</p>
+  <h2>Problem</h2>
+  <h3>People don’t cook from empty fantasy kitchens</h3>
+  <p>Most meal software starts with a recipe catalog or a weekly plan that assumes you will buy everything. Real life looks different:</p>
+  <ol>
+    <li><strong>The fridge is half-full and mismatched.</strong> Leftover rice, two eggs, a lonely jar of salsa, and something expiring tomorrow. “What can I make?” is the actual question — not “what’s trending on Yummly.”</li>
+    <li><strong>Budget pressure is constant.</strong> Struggle meals get a bad reputation as sad and beige. People want food they are proud to plate without spending like a food blogger.</li>
+    <li><strong>Coupons and pantry don’t talk.</strong> Manufacturer and store offers live in retailer apps or paper. They rarely meet “I’m cooking this dish tonight and I’m missing one item.”</li>
+    <li><strong>Skills gap.</strong> Many adults never learned foundational techniques. Recipe apps don’t teach knife skills or how to season; cooking schools and celebrity courses are expensive or intimidating.</li>
+    <li><strong>Fragmentation.</strong> Recipe managers, meal planners, store apps, and budgeting tools each own a slice. Switching costs and context loss are high.</li>
+  </ol>
+  <p><strong>Who hurts most:</strong> Budget-conscious households, students, young families, anyone cooking under constraint who still cares about taste and dignity at the table.</p>
+</section>
+
+<section id="solution">
+  <p class="section-num">SECTION 03</p>
+  <h2>Solution</h2>
+  <p><strong>FridgeForge</strong> is a pantry-first cooking companion.</p>
+  <div class="pillars">
+    <div class="pillar"><h4>Pantry truth</h4><p>Barcode-first intake (Open Food Facts) + manual add so the app knows what’s actually on hand.</p></div>
+    <div class="pillar"><h4>Struggle Meal mode</h4><p>Inexpensive staples elevated with technique and cheap flavor boosters (soy, vinegar, spices, citrus).</p></div>
+    <div class="pillar"><h4>Smart suggestions</h4><p>Match recipes to pantry + affordability; creative notes, not just exact matches.</p></div>
+    <div class="pillar"><h4>Deals bridge</h4><p>When a dish is missing ingredients, show matching manufacturer coupons.</p></div>
+    <div class="pillar"><h4>Learn to Cook (roadmap)</h4><p>Beginner path from boil water → knife skills → foundational methods; certificates; credible chef endorsement (chef TBD — <strong>not</strong> Jamie Oliver).</p></div>
+    <div class="pillar"><h4>Nutrition &amp; body (roadmap)</h4><p>Per-recipe calorie/macro <strong>estimates</strong>; optional body profile (height, weight, BMI, progress); Withings scale sync later.</p></div>
+    <div class="pillar"><h4>Local food (later)</h4><p>Grower marketplace / farm-to-table as a later expansion, not MVP.</p></div>
+  </div>
+  <p><strong>Design principle:</strong> Start from scarcity and creativity. Make cheap food taste like you meant it.</p>
+</section>
+
+<section id="product">
+  <p class="section-num">SECTION 04</p>
+  <h2>Product &amp; screenshots</h2>
+  <div class="callout warn"><strong>Screenshots:</strong> TBD — placeholders below describe the intended UI for a future deck insert.</div>
+
+  <h3>Navigation (target IA)</h3>
+  <p><strong>Home · Pantry · Recipes · Cook Now · Coupons · Learn to Cook</strong></p>
+
+  <h3>What’s live in the MVP (approx.)</h3>
+  <table>
+    <thead>
+      <tr><th>Area</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Pantry CRUD</td><td>Live</td><td>Name, qty, unit, category/tags, optional expiration + barcode</td></tr>
+      <tr><td>Barcode scan / UPC lookup</td><td>Live</td><td>Primary intake path; Open Food Facts; camera or type</td></tr>
+      <tr><td>Manual pantry add</td><td>Live</td><td>Secondary tab</td></tr>
+      <tr><td>Recipes + URL import</td><td>Live</td><td>Cost tier, tags, struggle flag, tips/boosters; best-effort scrape</td></tr>
+      <tr><td>Struggle Meal mode</td><td>Live</td><td>Toggle; prioritize cheap/struggle recipes</td></tr>
+      <tr><td>Smart suggestions</td><td>Live</td><td>Pantry match + affordability</td></tr>
+      <tr><td>Coupons</td><td>Demo / seed</td><td>Clip sample offers; redeem view; <strong>not</strong> live manufacturer contracts</td></tr>
+      <tr><td>Recipe deals banner</td><td>Live</td><td>Missing ingredients × active coupons</td></tr>
+      <tr><td>Receipt OCR</td><td>Experimental</td><td>Advanced only; unreliable — demoted by design</td></tr>
+      <tr><td>Auth / multi-user</td><td>Not shipped</td><td>SQLite local demo; household sharing is roadmap</td></tr>
+      <tr><td>Recipe finished-dish photos</td><td>Roadmap</td><td>Images of plated results</td></tr>
+      <tr><td>Learn to Cook</td><td>Roadmap</td><td>Curriculum + certificates</td></tr>
+      <tr><td>Per-recipe nutrition (cal + macros)</td><td>Roadmap (Next)</td><td><strong>Estimated</strong> from ingredients; labeled as estimates; visible on recipe/cook; export CSV/PDF</td></tr>
+      <tr><td>User body profile</td><td>Roadmap (Next)</td><td>Height, weight, BMI, progress over time</td></tr>
+      <tr><td>Withings smart scale</td><td>Roadmap (Later)</td><td>Integration for weight sync (user referred to as “Wise”)</td></tr>
+      <tr><td>Grower marketplace</td><td>Later</td><td>Explicitly out of v1</td></tr>
+      <tr><td>Diet mode</td><td>Later</td><td>Soft accountability; careful privacy</td></tr>
+    </tbody>
+  </table>
+
+  <h3>UI placeholders (for design / photo shoot)</h3>
+  <div class="placeholder"><strong>1. Home</strong> — Warm food-brand energy; “Cook from what’s here” hero; tonight’s suggestions; struggle toggle; deals teaser. <em>[Screenshot TBD]</em></div>
+  <div class="placeholder"><strong>2. Pantry</strong> — Default Scan barcode tab; confirm sheet after Open Food Facts hit; list with qty/expiry; Manual secondary; Advanced: receipt (collapsed). <em>[Screenshot TBD]</em></div>
+  <div class="placeholder"><strong>3. Recipes</strong> — Grid/list with cost tier and struggle badge; detail with tips/boosters + nutrition estimate strip; URL import; deals strip when ingredients missing. <em>[Screenshot TBD]</em></div>
+  <div class="placeholder"><strong>4. Cook Now</strong> — Step-through cook view for phone / Echo Show browser; large type; pantry checkmarks; estimated macros at a glance. <em>[Screenshot TBD]</em></div>
+  <div class="placeholder"><strong>5. Coupons</strong> — Clip / active / used; bright redeem surface. <em>[Screenshot TBD]</em></div>
+  <div class="placeholder"><strong>6. Learn to Cook</strong> — Lesson path cards; certificate preview (cloud sync — paid). <em>[Screenshot TBD]</em></div>
+
+  <p><strong>Tech snapshot:</strong> Next.js App Router, TypeScript, React, Tailwind, SQLite/Prisma, Vitest, html5-qrcode, tesseract.js (on-device OCR), Cheerio recipe parse, Open Food Facts API.</p>
+  <p><strong>Platform strategy:</strong> Responsive web/PWA first (phones, tablets, Echo Show browser, desktop). Native iOS/Android later. <strong>No separate Show app.</strong></p>
+</section>
+
+<section id="business">
+  <p class="section-num">SECTION 05</p>
+  <h2>Business model &amp; pricing (proposed)</h2>
+  <div class="callout warn">All prices below are <strong>proposed placeholders</strong> for discussion — not launched SKUs or committed pricing.</div>
+
+  <h3>Open-core freemium</h3>
+  <table>
+    <thead>
+      <tr><th>Tier</th><th>Proposed price</th><th>Includes (directionally)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Free / community</strong></td>
+        <td>$0</td>
+        <td>Pantry, barcode intake, recipes, struggle meals, suggestions; optional self-host of <strong>core</strong>; basic Learn later</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud subscription</strong></td>
+        <td><strong>~$4.99/mo (proposed)</strong></td>
+        <td>Manufacturer coupons &amp; smarter deals, priority support, household sharing, synced Learn certificates</td>
+      </tr>
+      <tr>
+        <td><strong>Self-host supporter</strong></td>
+        <td><strong>~$1.99/mo (proposed)</strong></td>
+        <td>Lower price because customer brings infra; still pays for <strong>coupon / deals network</strong> access</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Revenue logic (conceptual — not a forecast)</h3>
+  <ol>
+    <li><strong>Consumer subscriptions</strong> — cloud convenience + deals + households + certificates.</li>
+    <li><strong>Network access for self-hosters</strong> — keep open-core goodwill without giving away the deals graph for free.</li>
+    <li><strong>Manufacturer / brand side (GTM goal)</strong> — portal for offers and attribution. <strong>Do not treat as contracted revenue today.</strong> Brands pay for reach to pantry-intent cooks at “I’m missing this ingredient.”</li>
+  </ol>
+
+  <h3>What we are <em>not</em> claiming</h3>
+  <ul>
+    <li>No ARR, MAU, or conversion rates in this document.</li>
+    <li>No signed manufacturer contracts.</li>
+    <li>No audited TAM/SAM — see §7 for illustrative category framing only.</li>
+  </ul>
+</section>
+
+<section id="opencore">
+  <p class="section-num">SECTION 06</p>
+  <h2>Open-core / licensing stance</h2>
+  <p>FridgeForge intends an <strong>open-core</strong> posture:</p>
+  <ul>
+    <li><strong>Core (free / self-hostable):</strong> pantry, barcode intake, recipes, struggle meals, suggestions, and (later) basic learn-to-cook content that can run locally.</li>
+    <li><strong>Cloud / network value:</strong> manufacturer coupon network, smarter cross-recipe deals, sync, household sharing, certificate ledger, priority support.</li>
+    <li><strong>Community:</strong> public repo today (<a href="https://github.com/trav1856/FridgeForge">trav1856/FridgeForge</a>); contributors and self-hosters welcome on core. Exact license text and CLA: <strong>TBD (founder to confirm).</strong></li>
+    <li><strong>Rationale:</strong> Trust and distribution with privacy-minded and budget users; clear upgrade path when coupons and households matter.</li>
+  </ul>
+  <p>Self-host supporters still pay a modest fee for network access — honesty about infra vs. network value.</p>
+</section>
+
+<section id="market">
+  <p class="section-num">SECTION 07</p>
+  <h2>Market opportunity</h2>
+  <div class="callout warn"><strong>Illustrative only — not audited.</strong> Use for conversation framing; replace with primary research before a formal raise.</div>
+
+  <h3>Category framing (public / directional)</h3>
+  <p>FridgeForge sits at the intersection of:</p>
+  <ul>
+    <li><strong>Consumer meal planning &amp; recipe apps</strong> — large, crowded, often plan-first rather than pantry-first.</li>
+    <li><strong>Grocery / coupon &amp; retail media</strong> — manufacturers and retailers spend heavily to move SKUs; cook-time intent is underused by consumer apps.</li>
+    <li><strong>Food waste &amp; household budgeting</strong> — pantry visibility is a practical lever.</li>
+    <li><strong>Digital cooking education</strong> — room for a structured beginner path tied to <em>what you own</em>.</li>
+  </ul>
+
+  <h3>Illustrative sizing notes (assumptions — replace later)</h3>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Framing</th><th>Caution</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TAM (illustrative)</strong></td>
+        <td>Digitally engaged home cooks in English-speaking markets who use a smartphone for food decisions</td>
+        <td>Huge umbrella; FridgeForge will not “own cooking”</td>
+      </tr>
+      <tr>
+        <td><strong>SAM (illustrative)</strong></td>
+        <td>Budget-conscious households seeking meal ideas from inventory + deals</td>
+        <td>Define with census + app-category comps in diligence</td>
+      </tr>
+      <tr>
+        <td><strong>SOM (illustrative)</strong></td>
+        <td>Early adopters: students, young families, frugal enthusiasts, self-hosters who try the MVP</td>
+        <td>Near-term SOM should track waitlist/installs once marketing starts — <strong>not invented here</strong></td>
+      </tr>
+    </tbody>
+  </table>
+  <p><strong>Investor takeaway:</strong> The wedge is narrow and concrete (pantry + struggle + deals). Expansion (Learn, households, nutrition/body, local food) widens the aperture without requiring day-one marketplace liquidity.</p>
+</section>
+
+<section id="gtm">
+  <p class="section-num">SECTION 08</p>
+  <h2>Go-to-market</h2>
+
+  <h3>Near-term (pre-manufacturer contracts)</h3>
+  <ol>
+    <li><strong>Ship a shareable PWA</strong> — barcode intake and Struggle Meal mode as the demo hook.</li>
+    <li><strong>Content &amp; community</strong> — struggle-meal recipes, technique tips, “cook from 5 ingredients” challenges; warm food-brand voice without hype.</li>
+    <li><strong>Self-host / open-core</strong> — GitHub visibility; Reddit/HN/self-host circles as credible early users (expect low ARPU; high product feedback).</li>
+    <li><strong>Campus / community orgs</strong> — students and mutual-aid adjacent audiences who feel the struggle-meal problem acutely.</li>
+    <li><strong>SEO / recipe import</strong> — URL import helps migration from scattered bookmarks.</li>
+  </ol>
+
+  <h3>Manufacturer deals GTM (goal — not done)</h3>
+  <ul>
+    <li>Pilot with <strong>1–3 regional or mid-size brands</strong> willing to place offers against pantry-intent moments.</li>
+    <li>Prove attribution: “user cooking recipe X, missing SKU Y, redeemed offer Z.”</li>
+    <li>Graduate from seed/demo coupons → brand portal → (eventually) standards-aware coupon flows.</li>
+    <li><strong>Success metric ideas (to define):</strong> offer view → clip → redeem rates; brand willingness to renew. <em>No fabricated rates in this draft.</em></li>
+  </ul>
+
+  <p><strong>Platform GTM note:</strong> Echo Show browser and kitchen-counter tablets are a natural surface for <strong>Cook Now</strong> — via responsive web, not a separate Show APK.</p>
+</section>
+
+<section id="competition">
+  <p class="section-num">SECTION 09</p>
+  <h2>Competition</h2>
+  <table>
+    <thead>
+      <tr><th>Competitor type</th><th>Examples</th><th>Their strength</th><th>FridgeForge wedge</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Self-host recipe managers</td>
+        <td><strong>Mealie</strong></td>
+        <td>Privacy, catalogs, enthusiasts</td>
+        <td>Niche; not struggle-meal or deals-first</td>
+      </tr>
+      <tr>
+        <td>Meal planners / recipe apps</td>
+        <td>Mealime, Paprika, Yummly</td>
+        <td>Content, plans, polish</td>
+        <td>Plan/catalog-first; weaker pantry-truth + budget dignity</td>
+      </tr>
+      <tr>
+        <td>Store / retailer apps</td>
+        <td>Chain apps</td>
+        <td>Coupons, loyalty</td>
+        <td>Siloed to one retailer; not cook-from-pantry</td>
+      </tr>
+      <tr>
+        <td>Budgeting apps</td>
+        <td>Various</td>
+        <td>Spend tracking</td>
+        <td>Rarely help you plate dinner tonight</td>
+      </tr>
+      <tr>
+        <td>Generic AI chat</td>
+        <td>ChatGPT et al.</td>
+        <td>Flexible ideas</td>
+        <td>No durable pantry graph, coupons, or household product</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><strong>Positioning statement:</strong> FridgeForge is the app that starts from <strong>what’s in your fridge</strong>, optimizes for <strong>affordable food you’re proud of</strong>, connects <strong>deals at the moment of need</strong>, and teaches you to cook — not another plan that assumes a full cart.</p>
+</section>
+
+<section id="roadmap">
+  <p class="section-num">SECTION 10</p>
+  <h2>Roadmap</h2>
+  <div class="roadmap">
+    <div class="road-card now">
+      <h3>Now (MVP / foundation)</h3>
+      <ul>
+        <li>Pantry CRUD, barcode-first UPC, manual add</li>
+        <li>Recipes + URL import, Struggle Meal mode, smart suggestions</li>
+        <li>Coupons (demo/seed) + deals banner on missing ingredients</li>
+        <li>Responsive web/PWA; SQLite local demo</li>
+        <li>Receipt OCR kept experimental / Advanced only</li>
+      </ul>
+    </div>
+    <div class="road-card next">
+      <h3>Next</h3>
+      <ul>
+        <li>Multi-user auth &amp; <strong>households</strong></li>
+        <li>Recipe <strong>finished-dish images</strong></li>
+        <li>Nav polish: Home, Pantry, Recipes, Cook Now, Coupons, Learn to Cook</li>
+        <li><strong>Learn to Cook</strong> v1 — beginner techniques (boil water → knife skills → foundational methods); lesson certificates; seek <strong>credible chef endorsement (chef TBD; explicitly not Jamie Oliver)</strong></li>
+        <li><strong>Per-recipe nutrition</strong> — calories + macros (carbs, protein, fat), <strong>estimated</strong> from ingredients (always labeled as estimates, not lab assays); user-visible on recipe and Cook Now views; export (e.g. CSV / PDF summary)</li>
+        <li><strong>User body profile</strong> — height, weight, BMI, and progress tracking over time (privacy-minded; user-owned data)</li>
+        <li>Cloud sync; proposed subscription packaging</li>
+        <li>Manufacturer portal pilot (GTM)</li>
+        <li>Replace SQLite demo assumptions with production multi-tenant data as needed</li>
+      </ul>
+    </div>
+    <div class="road-card later">
+      <h3>Later</h3>
+      <ul>
+        <li>Grower marketplace / <strong>farm-to-table</strong></li>
+        <li><strong>Withings</strong> smart scale integration (weight sync into body profile; user said “Wise” — treated as Withings)</li>
+        <li>Diet mode with <strong>soft accountability</strong> (careful privacy — no shaming product); may lean on nutrition estimates + body profile</li>
+        <li>Native iOS / Android</li>
+        <li>Deeper retail media / standards-aligned coupons</li>
+        <li>Local-food logistics only if marketplace thesis clears supply/demand gates</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="risks">
+  <p class="section-num">SECTION 11</p>
+  <h2>Risks &amp; mitigations</h2>
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Why it matters</th><th>Mitigation</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Receipt OCR failure</strong></td>
+        <td>Users abandon intake if OCR is the “main” path</td>
+        <td><strong>Already decided:</strong> barcode-first; OCR demoted to Advanced/experimental</td>
+      </tr>
+      <tr>
+        <td><strong>Open Food Facts gaps</strong></td>
+        <td>Some UPCs missing or wrong</td>
+        <td>Confirm UI + manual override; save barcode for next time; expand data sources later</td>
+      </tr>
+      <tr>
+        <td><strong>No manufacturer contracts yet</strong></td>
+        <td>Deals pillar looks empty without brands</td>
+        <td>Seed/demo coupons for UX; GTM pilots; free tier valuable without deals</td>
+      </tr>
+      <tr>
+        <td><strong>Crowded meal-app category</strong></td>
+        <td>Discovery &amp; CAC</td>
+        <td>Sharp wedge (struggle + pantry); open-core distribution; content SEO</td>
+      </tr>
+      <tr>
+        <td><strong>Self-host ARPU pressure</strong></td>
+        <td>Community expects free forever</td>
+        <td>Clear open-core split; paid network access at lower ~$1.99 proposed</td>
+      </tr>
+      <tr>
+        <td><strong>Food / health claims</strong></td>
+        <td>Liability &amp; trust</td>
+        <td>Stay technique- and pantry-focused; diet mode later, privacy-first, soft accountability only</td>
+      </tr>
+      <tr>
+        <td><strong>Nutrition estimate accuracy</strong></td>
+        <td>Users may treat estimates as medical fact</td>
+        <td>Label clearly as <strong>estimates</strong> from ingredients; no clinical claims; optional sources/disclaimers on export</td>
+      </tr>
+      <tr>
+        <td><strong>Body / health data sensitivity</strong></td>
+        <td>Height, weight, BMI, scale sync are sensitive</td>
+        <td>User-owned, opt-in; careful retention; Withings only Later with explicit consent</td>
+      </tr>
+      <tr>
+        <td><strong>Single-founder bandwidth</strong></td>
+        <td>Execution risk</td>
+        <td>Technical partner/assistant; keep scope ruthless; public repo for leverage</td>
+      </tr>
+      <tr>
+        <td><strong>Marketplace timing</strong></td>
+        <td>Farm-to-table is hard</td>
+        <td>Explicitly <strong>Later</strong>; do not block MVP on logistics</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="ask">
+  <p class="section-num">SECTION 12</p>
+  <h2>The ask</h2>
+
+  <h3>Seed amount</h3>
+  <div class="placeholder"><strong>$[ ________ ] seed — amount TBD</strong><br />Instrument / terms: [SAFE / priced round TBD] · Target close: [Date TBD]</div>
+
+  <h3>Sample use-of-funds outline (blanks for founder)</h3>
+  <table>
+    <thead>
+      <tr><th>Bucket</th><th>Approx. %</th><th>Amount</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Product engineering (auth, sync, households, Learn, nutrition estimates, body profile, image pipeline)</td><td>___%</td><td>$______</td><td>Core cloud + mobile web quality</td></tr>
+      <tr><td>Design / brand / recipe photography</td><td>___%</td><td>$______</td><td>Finished-dish images; prospectus screenshots</td></tr>
+      <tr><td>Manufacturer GTM / partnerships</td><td>___%</td><td>$______</td><td>Pilots, portal, BD travel</td></tr>
+      <tr><td>Infrastructure &amp; security</td><td>___%</td><td>$______</td><td>Multi-tenant, backups, compliance basics (incl. health-adjacent data)</td></tr>
+      <tr><td>Content &amp; community (struggle recipes, Learn curriculum)</td><td>___%</td><td>$______</td><td>Chef advisor stipend TBD</td></tr>
+      <tr><td>Runway / ops / legal</td><td>___%</td><td>$______</td><td>Entity, license counsel, insurance</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>100%</strong></td><td><strong>$______</strong></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>12–18 month milestones (directional — not commitments)</h3>
+  <ul>
+    <li>Production auth + household sharing</li>
+    <li>Paid cloud tier live at proposed price (or revised after validation)</li>
+    <li>≥1 manufacturer pilot with measurable redeem loop</li>
+    <li>Learn to Cook v1 + first certificates</li>
+    <li>Nutrition estimates on recipe/cook + CSV/PDF export</li>
+    <li>Body profile (height/weight/BMI/progress) — opt-in</li>
+    <li>Screenshot-complete investor/consumer deck</li>
+    <li>Clear license + open-core boundary published</li>
+  </ul>
+</section>
+
+<section id="appendix">
+  <p class="section-num">SECTION 13</p>
+  <h2>Appendix</h2>
+
+  <h3>A. Glossary</h3>
+  <table>
+    <thead>
+      <tr><th>Term</th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Struggle meal</strong></td><td>A deliberately inexpensive meal built from staples, elevated with technique and cheap flavor boosters</td></tr>
+      <tr><td><strong>Barcode-first</strong></td><td>Primary pantry intake via UPC/EAN scan or entry + product database lookup</td></tr>
+      <tr><td><strong>Open Food Facts</strong></td><td>Free collaborative product database used for barcode lookup</td></tr>
+      <tr><td><strong>Open-core</strong></td><td>Core product self-hostable/free; valuable network/cloud features commercial</td></tr>
+      <tr><td><strong>PWA</strong></td><td>Progressive Web App — installable web experience without native store dependency</td></tr>
+      <tr><td><strong>Cook Now</strong></td><td>Guided cook surface optimized for kitchen devices (phone / tablet / Echo Show browser)</td></tr>
+      <tr><td><strong>Deals banner</strong></td><td>UI when a recipe’s missing ingredients match active coupons</td></tr>
+      <tr><td><strong>Learn certificates</strong></td><td>Proof of completed beginner lessons; sync intended as a paid/cloud feature</td></tr>
+      <tr><td><strong>Nutrition estimates</strong></td><td>Per-recipe calories and macros derived from ingredients — labeled estimates, not laboratory analysis</td></tr>
+      <tr><td><strong>Body profile</strong></td><td>User height, weight, BMI, and progress history for optional personal tracking</td></tr>
+      <tr><td><strong>Withings</strong></td><td>Third-party smart scale platform for later weight sync (referenced by user as “Wise”)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>B. Contact placeholders</h3>
+  <table>
+    <tbody>
+      <tr><td><strong>Company</strong></td><td>FridgeForge</td></tr>
+      <tr><td><strong>Founder</strong></td><td>[Name TBD]</td></tr>
+      <tr><td><strong>Email</strong></td><td>[hello@… TBD]</td></tr>
+      <tr><td><strong>Web</strong></td><td>[URL TBD]</td></tr>
+      <tr><td><strong>GitHub</strong></td><td><a href="https://github.com/trav1856/FridgeForge">https://github.com/trav1856/FridgeForge</a></td></tr>
+      <tr><td><strong>Calendly / booking</strong></td><td>[TBD]</td></tr>
+    </tbody>
+  </table>
+
+  <h3>C. Team placeholder</h3>
+  <div class="placeholder">[Founder to fill — short bios, prior work, why this problem. Technical partner/assistant noted; no invented credentials.]</div>
+
+  <h3>D. Document control</h3>
+  <table>
+    <thead>
+      <tr><th>Version</th><th>Date</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0.1 draft</td><td>Sep 2026</td><td>Initial prospectus from MVP facts; no fake traction</td></tr>
+      <tr><td>0.2 draft</td><td>Sep 2026</td><td>Added nutrition estimates, body profile (Next); Withings (Later)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer class="doc-foot">
+  <p><em>FridgeForge — cook great food from what you already have, especially on a budget.</em></p>
+  <p>This document is a confidential draft for discussion. Proposed prices and market figures are illustrative unless replaced with audited data. Manufacturer deals are a GTM goal, not existing contracts. Nutrition figures described in the roadmap are <strong>estimates</strong>, not lab assays or medical advice.</p>
+</footer>
+
+</div>
+</body>
+</html>

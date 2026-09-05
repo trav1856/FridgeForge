@@ -17,3 +17,7 @@ prisma/*.db-journal
 *.tsbuildinfo
 next-env.d.ts
 .vitest
+
+
+# Local Corelia ops (scripts, archives — not for GitHub)
+/ops/
