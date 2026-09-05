@@ -17,11 +17,16 @@ const QTY_IN_PARENS = /\((\d+(?:[.,]\d+)?)\s*(ea|each|ct|pk|pack|lb|oz|kg|g|ml|l
 const WEIGHT_QTY = /(\d+(?:[.,]\d+)?)\s*(lb|oz|kg|g|ml|l)\b/i;
 
 function cleanName(raw: string): string {
-  return raw
+  let s = raw
     .replace(/\$?\s*\d+[.,]\d{2}\s*[A-Z]?\s*$/g, "")
-    .replace(/\b\d{6,}\b/g, "") // PLU / SKU numbers
+    .replace(/\b\d{6,}\b/g, "") // long SKUs / UPCs (UPC kept via rawLine in resolver)
     .replace(/\s{2,}/g, " ")
-    .replace(/^[\d\W]+/, "")
+    .trim();
+  // Keep leading pack counts like "10 COUNT" / "12CT" / "6 PK"
+  if (!/^\d+(?:[.,]\d+)?\s*(?:COUNT|CNT|CT|PK|PACK|PKG|EA|EACH)\b/i.test(s)) {
+    s = s.replace(/^[\d\W]+/, "");
+  }
+  return s
     .replace(/[^\w\s&/'%-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

@@ -84,8 +84,18 @@ Limitations: coverage varies; camera needs localhost or TLS and consent.
 1. Open Pantry, then the Receipt tab
 2. Upload or capture a receipt photo (Tesseract.js in the browser)
 3. Or paste text instead and parse
-4. Review the checklist (toggle, edit names/qtys/categories)
-5. Bulk-add via /api/pantry/bulk (merge-aware)
+4. Review the checklist — **resolved food names** are the editable default (not raw `GV` / `GRP` codes)
+5. Bulk-add via /api/pantry/bulk (merge-aware; barcodes stored when detected)
+
+**Resolver pipeline** (`src/lib/receipt-resolve.ts`):
+
+1. Parse line items (`receipt-parse`)
+2. Extract UPC/EAN (8–14 digits) from the line — not prices or short PLUs
+3. If UPC found → Open Food Facts lookup; prefer that product name/brand/category
+4. Else expand store brands (`GV`→Great Value, `MS`→Marketside, …) and product abbrevs (`GRP`→grapes, `CHK`→chicken, …), plus pack counts (`10 COUNT`, `12CT`, `6 PK`)
+5. Optional: if `OLLAMA_HOST` is reachable, low-confidence lines may get a local LLM suggestion (fail-open)
+
+UI shows muted **Receipt said: …**, optional UPC used, and a **check this one** badge when confidence is low. Works fully offline via the dictionary when OFF/Ollama are unavailable.
 
 Limitations: OCR quality depends on lighting and print; heuristic parsing may miss odd layouts — always review. OCR stays on-device; extracted text is posted to the local parse route.
 
@@ -111,7 +121,7 @@ Roadmap (not in MVP): authenticated manufacturer portal, GS1 digital coupon stan
 
     src/app/           App Router pages + API routes
     src/components/    UI (BarcodeIntake, ReceiptIntake, Coupons*)
-    src/lib/           db, suggestions, scrape, normalize, OFF + receipt parse
+    src/lib/           db, suggestions, scrape, normalize, OFF + receipt parse/resolve
     prisma/            schema + seed
     __tests__/         Vitest
 

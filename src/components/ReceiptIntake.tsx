@@ -2,7 +2,21 @@
 
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { PANTRY_CATEGORIES } from "@/lib/categories";
-import type { ParsedReceiptItem } from "@/lib/receipt-parse";
+
+type ApiReceiptItem = {
+  name: string;
+  rawName?: string;
+  resolvedName?: string;
+  brand?: string | null;
+  quantity: number;
+  unit: string;
+  category?: string | null;
+  confidence: "high" | "medium" | "low";
+  notes?: string | null;
+  rawLine: string;
+  barcode?: string | null;
+  source?: "upc" | "dictionary" | "ollama" | "raw";
+};
 
 type ReviewItem = {
   id: string;
@@ -11,23 +25,38 @@ type ReviewItem = {
   unit: string;
   category: string;
   selected: boolean;
-  confidence: ParsedReceiptItem["confidence"];
+  confidence: ApiReceiptItem["confidence"];
   rawLine: string;
+  rawName: string;
+  barcode: string | null;
+  source: string;
+  notes: string | null;
 };
 
 type Props = { onAdded: () => void };
 
-function toReview(items: ParsedReceiptItem[]): ReviewItem[] {
-  return items.map((item, i) => ({
-    id: `${i}-${item.name}`,
-    name: item.name,
-    quantity: String(item.quantity),
-    unit: item.unit || "each",
-    category: "Other",
-    selected: item.confidence !== "low",
-    confidence: item.confidence,
-    rawLine: item.rawLine,
-  }));
+function toReview(items: ApiReceiptItem[]): ReviewItem[] {
+  return items.map((item, i) => {
+    const resolved = item.resolvedName || item.name;
+    const category =
+      item.category && PANTRY_CATEGORIES.includes(item.category as (typeof PANTRY_CATEGORIES)[number])
+        ? item.category
+        : "Other";
+    return {
+      id: `${i}-${resolved}`,
+      name: resolved,
+      quantity: String(item.quantity),
+      unit: item.unit || "each",
+      category,
+      selected: item.confidence !== "low",
+      confidence: item.confidence,
+      rawLine: item.rawLine,
+      rawName: item.rawName || item.name,
+      barcode: item.barcode ?? null,
+      source: item.source || "raw",
+      notes: item.notes ?? null,
+    };
+  });
 }
 
 export function ReceiptIntake({ onAdded }: Props) {
@@ -48,7 +77,7 @@ export function ReceiptIntake({ onAdded }: Props) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Parse failed");
-    const items = (data.items || []) as ParsedReceiptItem[];
+    const items = (data.items || []) as ApiReceiptItem[];
     setReview(toReview(items));
     if (items.length === 0) {
       setStatus(
@@ -56,8 +85,13 @@ export function ReceiptIntake({ onAdded }: Props) {
       );
       setShowPaste(true);
     } else {
+      const upcHits = items.filter((i) => i.source === "upc").length;
+      const extra =
+        upcHits > 0
+          ? ` (${upcHits} matched via UPC)`
+          : "";
       setStatus(
-        `Found ${items.length} possible item${items.length === 1 ? "" : "s"} — review before adding.`
+        `Found ${items.length} possible item${items.length === 1 ? "" : "s"}${extra} — review before adding.`
       );
     }
   }
@@ -153,6 +187,7 @@ export function ReceiptIntake({ onAdded }: Props) {
             unit: r.unit.trim() || "each",
             category: r.category || "Other",
             tags: ["receipt"],
+            barcode: r.barcode || null,
           })),
         }),
       });
@@ -180,8 +215,8 @@ export function ReceiptIntake({ onAdded }: Props) {
         </h2>
         <p className="mt-1 text-sm text-sage-600">
           Upload or capture a photo. We run best-effort OCR in your browser
-          (Tesseract.js), then heuristic line parsing. Paste text if OCR is
-          weak.
+          (Tesseract.js), then resolve store shorthand and UPCs into food names.
+          Paste text if OCR is weak.
         </p>
       </div>
 
@@ -228,7 +263,9 @@ export function ReceiptIntake({ onAdded }: Props) {
             className="input min-h-[140px] font-mono text-xs"
             value={ocrText}
             onChange={(e) => setOcrText(e.target.value)}
-            placeholder={"Milk 2%\nEggs large 12ct  3.49\n2x Rice  ..."}
+            placeholder={
+              "GV BEEF 0078742051234  5.99\n10 COUNT GRP  2.48\nMS ORGNC SPIN  3.29"
+            }
           />
           <button type="submit" className="btn-secondary" disabled={busy}>
             Parse text
@@ -290,7 +327,19 @@ export function ReceiptIntake({ onAdded }: Props) {
                   />
                   <div className="min-w-0 flex-1 grid gap-2 sm:grid-cols-4">
                     <div className="sm:col-span-2">
-                      <label className="label">Name</label>
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <label className="label mb-0">Name</label>
+                        {item.confidence === "low" && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                            check this one
+                          </span>
+                        )}
+                        {item.source === "upc" && (
+                          <span className="rounded-full bg-sage-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sage-700">
+                            UPC match
+                          </span>
+                        )}
+                      </div>
                       <input
                         className="input"
                         value={item.name}
@@ -298,6 +347,19 @@ export function ReceiptIntake({ onAdded }: Props) {
                           updateItem(item.id, { name: e.target.value })
                         }
                       />
+                      <p className="mt-1 text-[11px] text-sage-500">
+                        Receipt said:{" "}
+                        <span className="font-mono">
+                          {item.rawName || item.rawLine.slice(0, 80)}
+                        </span>
+                        {item.barcode ? (
+                          <>
+                            {" "}
+                            · UPC{" "}
+                            <span className="font-mono">{item.barcode}</span>
+                          </>
+                        ) : null}
+                      </p>
                     </div>
                     <div>
                       <label className="label">Qty</label>
@@ -340,7 +402,8 @@ export function ReceiptIntake({ onAdded }: Props) {
                     </div>
                     <div className="sm:col-span-2 text-[11px] text-sage-500">
                       {item.confidence} confidence
-                      {item.rawLine ? ` · “${item.rawLine.slice(0, 60)}”` : ""}
+                      {item.source ? ` · via ${item.source}` : ""}
+                      {item.notes ? ` · ${item.notes}` : ""}
                     </div>
                   </div>
                 </div>
