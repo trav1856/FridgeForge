@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { normalizeName } from "@/lib/normalize";
 import { serializePantry } from "@/lib/mappers";
@@ -14,19 +15,25 @@ export type UpsertPantryInput = {
 };
 
 /** Create or merge into an existing pantry row (same barcode, else same normalized name+unit). */
-export async function upsertPantryItem(data: UpsertPantryInput) {
+export async function upsertPantryItem(
+  data: UpsertPantryInput,
+  householdId: string | null = null
+) {
   const barcode = data.barcode?.replace(/\D/g, "") || null;
+  const scope = householdWhere(householdId);
 
   let existing = null as Awaited<
     ReturnType<typeof prisma.pantryItem.findFirst>
   >;
 
   if (barcode) {
-    existing = await prisma.pantryItem.findFirst({ where: { barcode } });
+    existing = await prisma.pantryItem.findFirst({
+      where: { ...scope, barcode },
+    });
   }
 
   if (!existing) {
-    const all = await prisma.pantryItem.findMany();
+    const all = await prisma.pantryItem.findMany({ where: scope });
     const target = normalizeName(data.name);
     existing =
       all.find(
@@ -67,6 +74,7 @@ export async function upsertPantryItem(data: UpsertPantryInput) {
       expirationDate: data.expirationDate
         ? new Date(data.expirationDate)
         : null,
+      householdId,
     },
   });
   return { item: serializePantry(created), merged: false as const };

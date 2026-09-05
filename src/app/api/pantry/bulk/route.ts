@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { resolveHouseholdId } from "@/lib/auth";
 import { upsertPantryItem } from "@/lib/pantry-upsert";
 
 const itemSchema = z.object({
@@ -18,11 +19,12 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const householdId = await resolveHouseholdId();
     const body = await req.json();
     const { items } = bodySchema.parse(body);
     const results = [];
     for (const item of items) {
-      results.push(await upsertPantryItem(item));
+      results.push(await upsertPantryItem(item, householdId));
     }
     return NextResponse.json({
       results,

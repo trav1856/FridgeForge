@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { generateInviteCode } from "../src/lib/household";
 import { deterministicFoodImageUrl } from "../src/lib/recipe-image";
 
 const prisma = new PrismaClient();
@@ -8,10 +10,14 @@ function j(arr: string[]) {
 }
 
 async function main() {
+  await prisma.session.deleteMany();
+  await prisma.householdMember.deleteMany();
   await prisma.recipeIngredient.deleteMany();
   await prisma.recipe.deleteMany();
   await prisma.pantryItem.deleteMany();
   await prisma.coupon.deleteMany();
+  await prisma.household.deleteMany();
+  await prisma.user.deleteMany();
 
   const pantry = [
     { name: "White rice", quantity: 4, unit: "cups", category: "Grains", tags: j(["staple", "struggle"]) },
@@ -378,7 +384,32 @@ async function main() {
     await prisma.coupon.create({ data: c });
   }
 
-  console.log(`Seeded ${pantry.length} pantry items, ${recipes.length} recipes, and ${coupons.length} coupons.`);
+  // Optional Pro demo user + household (paid-track scaffold). Guest CE data stays null householdId.
+  const proHash = await bcrypt.hash("prodemo", 10);
+  const proUser = await prisma.user.create({
+    data: {
+      email: "pro@fridgeforge.local",
+      name: "Pro Demo",
+      passwordHash: proHash,
+      plan: "pro",
+    },
+  });
+  const household = await prisma.household.create({
+    data: {
+      name: "Demo Pro Kitchen",
+      inviteCode: generateInviteCode(),
+      members: {
+        create: { userId: proUser.id, role: "owner" },
+      },
+    },
+  });
+
+  console.log(
+    `Seeded ${pantry.length} pantry items, ${recipes.length} recipes, and ${coupons.length} coupons (null householdId).`
+  );
+  console.log(
+    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode}`
+  );
 }
 
 main()

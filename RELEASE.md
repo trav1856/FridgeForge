@@ -1,3 +1,14 @@
+# FridgeForge Community Edition v1.1.0-alpha
+
+**Released:** 2026-09-05  
+**Edition:** Community + paid-track scaffold (auth / households)  
+**License:** Apache-2.0 (see LICENSE and NOTICE)
+
+## Alpha notes
+- Guest / CE single-user path unchanged (householdId null).
+- Auth + households APIs and /account UI landed; see PAID.md.
+- Version bump from stable CE 1.0.0 — Pro features remain gated.
+
 # FridgeForge Community Edition v1.0.0
 
 **Released:** 2026-09-05  

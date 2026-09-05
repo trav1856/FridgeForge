@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { resolveHouseholdId } from "@/lib/auth";
+import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
 
@@ -27,9 +29,13 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const householdId = await resolveHouseholdId();
   const struggle = req.nextUrl.searchParams.get("struggle");
   const recipes = await prisma.recipe.findMany({
-    where: struggle === "1" ? { isStruggleMeal: true } : undefined,
+    where: {
+      ...householdWhere(householdId),
+      ...(struggle === "1" ? { isStruggleMeal: true } : {}),
+    },
     include: { ingredients: true },
     orderBy: { title: "asc" },
   });
@@ -38,6 +44,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const householdId = await resolveHouseholdId();
     const body = await req.json();
     const data = createSchema.parse(body);
     const recipe = await prisma.recipe.create({
@@ -53,6 +60,7 @@ export async function POST(req: NextRequest) {
         isStruggleMeal: data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
         techniqueTips: stringifyArray(data.techniqueTips),
         flavorBoosters: stringifyArray(data.flavorBoosters),
+        householdId,
         ingredients: {
           create: data.ingredients.map((i) => ({
             name: i.name,

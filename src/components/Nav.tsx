@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import clsx from "clsx";
 
@@ -11,11 +12,31 @@ const links = [
   { href: "/recipes", label: "Recipes" },
   { href: "/suggestions", label: "Cook Now" },
   { href: "/coupons", label: "Coupons" },
+  { href: "/account", label: "Account" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
   const { struggleMode, toggle } = useStruggleMode();
+  const [planLabel, setPlanLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.user?.plan === "pro") setPlanLabel("Pro");
+        else if (data?.user) setPlanLabel("Community");
+        else setPlanLabel(null);
+      })
+      .catch(() => {
+        if (!cancelled) setPlanLabel(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-cream-300/70 bg-cream-50/90 backdrop-blur-md">
@@ -32,7 +53,9 @@ export function Nav() {
               FridgeForge
             </div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-sage-500">
-              Community Edition · stable
+              {planLabel
+                ? `${planLabel} · signed in`
+                : "Community Edition · stable"}
             </div>
           </div>
         </Link>

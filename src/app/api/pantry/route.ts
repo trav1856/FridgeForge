@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { resolveHouseholdId } from "@/lib/auth";
+import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
 import { upsertPantryItem } from "@/lib/pantry-upsert";
@@ -17,7 +19,9 @@ const createSchema = z.object({
 });
 
 export async function GET() {
+  const householdId = await resolveHouseholdId();
   const items = await prisma.pantryItem.findMany({
+    where: householdWhere(householdId),
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
   return NextResponse.json(items.map(serializePantry));
@@ -25,11 +29,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const householdId = await resolveHouseholdId();
     const body = await req.json();
     const data = createSchema.parse(body);
 
     if (data.merge !== false) {
-      const result = await upsertPantryItem(data);
+      const result = await upsertPantryItem(data, householdId);
       return NextResponse.json(result, { status: result.merged ? 200 : 201 });
     }
 
@@ -44,6 +49,7 @@ export async function POST(req: NextRequest) {
         expirationDate: data.expirationDate
           ? new Date(data.expirationDate)
           : null,
+        householdId,
       },
     });
     return NextResponse.json(

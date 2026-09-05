@@ -7,19 +7,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String?
+  passwordHash String?
+  plan         String            @default("community") // community | pro
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  sessions     Session[]
+  memberships  HouseholdMember[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Household {
+  id         String            @id @default(cuid())
+  name       String
+  inviteCode String            @unique
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  members    HouseholdMember[]
+  pantryItems PantryItem[]
+  recipes    Recipe[]
+  coupons    Coupon[]
+}
+
+model HouseholdMember {
+  id          String    @id @default(cuid())
+  householdId String
+  userId      String
+  role        String    @default("member") // owner | member
+  createdAt   DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId])
+}
+
 model PantryItem {
-  id             String    @id @default(cuid())
+  id             String     @id @default(cuid())
   name           String
-  quantity       Float     @default(1)
-  unit           String    @default("each")
+  quantity       Float      @default(1)
+  unit           String     @default("each")
   category       String?
-  tags           String    @default("[]") // JSON array string
+  tags           String     @default("[]") // JSON array string
   barcode        String?
   expirationDate DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  householdId    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  household      Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([barcode])
+  @@index([householdId])
 }
 
 model Recipe {
@@ -35,9 +86,13 @@ model Recipe {
   isStruggleMeal   Boolean            @default(false)
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
+  householdId      String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   ingredients      RecipeIngredient[]
+  household        Household?         @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  @@index([householdId])
 }
 
 model RecipeIngredient {
@@ -51,20 +106,23 @@ model RecipeIngredient {
 }
 
 model Coupon {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   brand        String
   title        String
   discountText String
   terms        String?
   codeValue    String
-  codeType     String    @default("qr") // qr | barcode
+  codeType     String     @default("qr") // qr | barcode
   expiresAt    DateTime?
-  clipped      Boolean   @default(false)
-  used         Boolean   @default(false)
+  clipped      Boolean    @default(false)
+  used         Boolean    @default(false)
   usedAt       DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  householdId  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  household    Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([brand])
   @@index([expiresAt])
+  @@index([householdId])
 }

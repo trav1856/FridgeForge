@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolveHouseholdId } from "@/lib/auth";
+import { householdWhere } from "@/lib/household";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { scoreRecipe } from "@/lib/suggestions";
@@ -17,13 +19,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const householdId = await resolveHouseholdId();
+  const couponWhere =
+    householdId === null
+      ? householdWhere(null)
+      : { OR: [{ householdId: null }, { householdId }] };
+
   const [recipe, pantryItems, coupons] = await Promise.all([
     prisma.recipe.findUnique({
       where: { id: recipeId },
       include: { ingredients: true },
     }),
-    prisma.pantryItem.findMany(),
-    prisma.coupon.findMany(),
+    prisma.pantryItem.findMany({ where: householdWhere(householdId) }),
+    prisma.coupon.findMany({ where: couponWhere }),
   ]);
 
   if (!recipe) {

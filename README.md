@@ -1,6 +1,6 @@
 # FridgeForge Community Edition
 
-**Status: stable · v1.0.0 (Community Edition)**
+**Status: stable CE · v1.1.0-alpha (paid-track scaffold)**
 
 **Cook great food from what you already have — especially on a budget.**
 
@@ -29,14 +29,17 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 
 ## Out of scope / roadmap
 
-Not in v1 (documented for later only):
+Not in Community Edition / early paid (documented for later):
 
 - Grower marketplace
 - Shipping / fulfillment
 - Diet mode
 - Bank linking
-- Trend analytics
 - Real manufacturer portal / GS1 coupon standards
+- **Restaurant sales pulse** — restaurants submit daily dish sales → trending plates + prep/grocery planning
+- **Supplier demand match** — suppliers see which restaurants (and households) need produce (e.g. okra, potatoes) and connect directly
+- Broader trend analytics (consumer + F&B)
+
 
 ## Tech stack
 
@@ -156,6 +159,18 @@ Override the scrape User-Agent with `SCRAPE_USER_AGENT` in `.env` if a site stil
 ## Suggestion scoring (brief)
 
 Recipes are scored by pantry match ratio, can-make-now / near-miss (at most 2 cheap missing staples), cost tier, and Struggle Meal boosts. Creative pairing notes (e.g. peanut + cabbage) surface when relevant.
+
+
+
+## Paid track (in progress)
+
+Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works without login** (nullable householdId).
+
+- Sign up / sign in at **/account**
+- Create or join a household (invite code)
+- Seeded Pro demo: `pro@fridgeforge.local` / `prodemo`
+- Demo coupons remain free; Pro gates live manufacturer deals (`src/lib/edition.ts`)
+- Details: [PAID.md](./PAID.md)
 
 ## License
 

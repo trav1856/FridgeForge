@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { resolveHouseholdId } from "@/lib/auth";
+import { householdWhere } from "@/lib/household";
 import { serializeCoupon } from "@/lib/coupons";
 
 const createSchema = z.object({
@@ -15,8 +17,16 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const householdId = await resolveHouseholdId();
   const filter = req.nextUrl.searchParams.get("filter") || "all";
+  // Demo/CE coupons (null household) are always visible; household users also see theirs.
   const items = await prisma.coupon.findMany({
+    where:
+      householdId === null
+        ? householdWhere(null)
+        : {
+            OR: [{ householdId: null }, { householdId }],
+          },
     orderBy: [{ clipped: "desc" }, { expiresAt: "asc" }, { brand: "asc" }],
   });
   let out = items.map(serializeCoupon);
@@ -35,6 +45,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const householdId = await resolveHouseholdId();
     const body = await req.json();
     const data = createSchema.parse(body);
     const coupon = await prisma.coupon.create({
@@ -47,6 +58,7 @@ export async function POST(req: NextRequest) {
         codeType: data.codeType,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         clipped: data.clipped ?? false,
+        householdId,
       },
     });
     return NextResponse.json(serializeCoupon(coupon), { status: 201 });
