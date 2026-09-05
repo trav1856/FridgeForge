@@ -21,15 +21,18 @@ export function Nav() {
     <header className="sticky top-0 z-40 border-b border-cream-300/70 bg-cream-50/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="group flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ember-600 text-lg text-white shadow-sm">
-            🍳
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="FridgeForge"
+            className="h-9 w-9 rounded-xl shadow-sm"
+          />
           <div>
             <div className="font-display text-lg font-bold leading-tight text-sage-900 group-hover:text-ember-700">
               FridgeForge
             </div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-sage-500">
-              Cook what you have
+              Community Edition · stable
             </div>
           </div>
         </Link>

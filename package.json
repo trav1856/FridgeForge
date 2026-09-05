@@ -1,7 +1,7 @@
 {
   "license": "Apache-2.0",
-  "name": "fridgeforge",
-  "version": "0.1.0",
+  "name": "fridgeforge-community",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

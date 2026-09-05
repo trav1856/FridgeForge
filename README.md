@@ -1,6 +1,11 @@
-# FridgeForge
+# FridgeForge Community Edition
+
+**Status: stable · v1.0.0 (Community Edition)**
 
 **Cook great food from what you already have — especially on a budget.**
+
+This repository is the **Community Edition** — Apache-2.0, self-hostable, barcode-first pantry + recipes + struggle meals + demo coupons. The paid/cloud edition (households, live manufacturer deals network, priority support, Learn certificates sync) will be developed separately.
+
 
 FridgeForge is a mobile-first web app for pantry tracking, recipes, and smart meal suggestions. **Struggle Meal mode** optimizes for inexpensive staples (rice, beans, eggs, pasta, canned goods) turned into food you are proud to plate — with technique tips and cheap flavor boosters (soy, vinegar, spices, citrus).
 
@@ -8,7 +13,7 @@ FridgeForge is a mobile-first web app for pantry tracking, recipes, and smart me
 
 Too many meal apps assume a full grocery run. FridgeForge starts from scarcity and creativity: what is in the cupboard, what can you make tonight, and how do you make it taste like you meant it?
 
-## MVP (this repo)
+## Community Edition (this repo — stable)
 
 - Pantry CRUD — name, qty, unit, category/tags, optional expiration + barcode
 - **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry (manual add remains secondary)
