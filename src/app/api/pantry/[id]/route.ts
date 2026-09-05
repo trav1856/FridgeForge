@@ -10,6 +10,7 @@ const updateSchema = z.object({
   unit: z.string().min(1).max(40).optional(),
   category: z.string().max(60).optional().nullable(),
   tags: z.array(z.string()).optional(),
+  barcode: z.string().max(32).optional().nullable(),
   expirationDate: z.string().datetime().optional().nullable(),
 });
 
@@ -28,6 +29,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         ...(data.unit !== undefined && { unit: data.unit }),
         ...(data.category !== undefined && { category: data.category }),
         ...(data.tags !== undefined && { tags: stringifyArray(data.tags) }),
+        ...(data.barcode !== undefined && {
+          barcode: data.barcode?.replace(/\D/g, "") || null,
+        }),
         ...(data.expirationDate !== undefined && {
           expirationDate: data.expirationDate
             ? new Date(data.expirationDate)

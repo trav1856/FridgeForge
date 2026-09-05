@@ -10,6 +10,7 @@ export function toPantrySnapshot(item: PantryItem): PantrySnapshot {
     unit: item.unit,
     category: item.category,
     tags: parseStringArray(item.tags),
+    barcode: item.barcode,
   };
 }
 

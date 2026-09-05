@@ -1,6 +1,9 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { PANTRY_CATEGORIES } from "@/lib/categories";
+import { BarcodeIntake } from "./BarcodeIntake";
+import { ReceiptIntake } from "./ReceiptIntake";
 
 type PantryItem = {
   id: string;
@@ -9,19 +12,11 @@ type PantryItem = {
   unit: string;
   category: string | null;
   tags: string[];
+  barcode?: string | null;
   expirationDate: string | null;
 };
 
-const CATEGORIES = [
-  "Grains",
-  "Proteins",
-  "Produce",
-  "Dairy",
-  "Canned",
-  "Spices",
-  "Oils & Condiments",
-  "Other",
-];
+type IntakeTab = "manual" | "barcode" | "receipt";
 
 const emptyForm = {
   name: "",
@@ -29,6 +24,7 @@ const emptyForm = {
   unit: "each",
   category: "Other",
   tags: "",
+  barcode: "",
   expirationDate: "",
 };
 
@@ -39,6 +35,7 @@ export function PantryManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [tab, setTab] = useState<IntakeTab>("manual");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,9 +66,11 @@ export function PantryManager() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+      barcode: form.barcode.trim() || null,
       expirationDate: form.expirationDate
         ? new Date(form.expirationDate).toISOString()
         : null,
+      merge: !editingId,
     };
 
     try {
@@ -99,6 +98,7 @@ export function PantryManager() {
   }
 
   function startEdit(item: PantryItem) {
+    setTab("manual");
     setEditingId(item.id);
     setForm({
       name: item.name,
@@ -106,6 +106,7 @@ export function PantryManager() {
       unit: item.unit,
       category: item.category || "Other",
       tags: item.tags.join(", "),
+      barcode: item.barcode || "",
       expirationDate: item.expirationDate
         ? item.expirationDate.slice(0, 10)
         : "",
@@ -118,6 +119,7 @@ export function PantryManager() {
     return (
       i.name.toLowerCase().includes(q) ||
       (i.category || "").toLowerCase().includes(q) ||
+      (i.barcode || "").includes(q) ||
       i.tags.some((t) => t.toLowerCase().includes(q))
     );
   });
@@ -128,98 +130,136 @@ export function PantryManager() {
     return acc;
   }, {});
 
+  const tabs: { id: IntakeTab; label: string }[] = [
+    { id: "manual", label: "Manual" },
+    { id: "barcode", label: "Barcode" },
+    { id: "receipt", label: "Receipt" },
+  ];
+
   return (
     <div className="space-y-6">
-      <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
-        <h2 className="font-display text-xl font-bold text-sage-900">
-          {editingId ? "Edit item" : "Add to pantry"}
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="label">Name</label>
-            <input
-              className="input"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Jasmine rice"
-            />
-          </div>
-          <div>
-            <label className="label">Quantity</label>
-            <input
-              className="input"
-              type="number"
-              min="0.01"
-              step="any"
-              required
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">Unit</label>
-            <input
-              className="input"
-              value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              placeholder="cups, cans, each…"
-            />
-          </div>
-          <div>
-            <label className="label">Category</label>
-            <select
-              className="input"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Expires (optional)</label>
-            <input
-              className="input"
-              type="date"
-              value={form.expirationDate}
-              onChange={(e) =>
-                setForm({ ...form, expirationDate: e.target.value })
-              }
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label">Tags (comma-separated)</label>
-            <input
-              className="input"
-              value={form.tags}
-              onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              placeholder="staple, struggle, fridge"
-            />
-          </div>
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className="btn-primary">
-            {editingId ? "Save changes" : "Add item"}
+      <div className="flex flex-wrap gap-1 rounded-2xl bg-sage-100/70 p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={
+              tab === t.id
+                ? "flex-1 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-sage-900 shadow-sm"
+                : "flex-1 rounded-xl px-3 py-2 text-sm font-medium text-sage-600 hover:text-sage-900"
+            }
+          >
+            {t.label}
           </button>
-          {editingId && (
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                setEditingId(null);
-                setForm(emptyForm);
-              }}
-            >
-              Cancel
+        ))}
+      </div>
+
+      {tab === "barcode" && <BarcodeIntake onAdded={load} />}
+      {tab === "receipt" && <ReceiptIntake onAdded={load} />}
+
+      {tab === "manual" && (
+        <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
+          <h2 className="font-display text-xl font-bold text-sage-900">
+            {editingId ? "Edit item" : "Add to pantry"}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="label">Name</label>
+              <input
+                className="input"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Jasmine rice"
+              />
+            </div>
+            <div>
+              <label className="label">Quantity</label>
+              <input
+                className="input"
+                type="number"
+                min="0.01"
+                step="any"
+                required
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Unit</label>
+              <input
+                className="input"
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                placeholder="cups, cans, each…"
+              />
+            </div>
+            <div>
+              <label className="label">Category</label>
+              <select
+                className="input"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              >
+                {PANTRY_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Expires (optional)</label>
+              <input
+                className="input"
+                type="date"
+                value={form.expirationDate}
+                onChange={(e) =>
+                  setForm({ ...form, expirationDate: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label className="label">Barcode (optional)</label>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={form.barcode}
+                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                placeholder="UPC / EAN"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">Tags (comma-separated)</label>
+              <input
+                className="input"
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                placeholder="staple, struggle, fridge"
+              />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="btn-primary">
+              {editingId ? "Save changes" : "Add item"}
             </button>
-          )}
-        </div>
-      </form>
+            {editingId && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(emptyForm);
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      )}
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-bold text-sage-900">
@@ -258,6 +298,11 @@ export function PantryManager() {
                       </div>
                       <div className="text-sm text-sage-600">
                         {item.quantity} {item.unit}
+                        {item.barcode && (
+                          <span className="ml-2 font-mono text-xs text-sage-500">
+                            · #{item.barcode}
+                          </span>
+                        )}
                         {item.expirationDate && (
                           <span className="ml-2 text-ember-700">
                             · exp {item.expirationDate.slice(0, 10)}

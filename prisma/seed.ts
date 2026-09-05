@@ -10,6 +10,7 @@ async function main() {
   await prisma.recipeIngredient.deleteMany();
   await prisma.recipe.deleteMany();
   await prisma.pantryItem.deleteMany();
+  await prisma.coupon.deleteMany();
 
   const pantry = [
     { name: "White rice", quantity: 4, unit: "cups", category: "Grains", tags: j(["staple", "struggle"]) },
@@ -278,7 +279,77 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${pantry.length} pantry items and ${recipes.length} recipes.`);
+
+  const coupons = [
+    {
+      brand: "Sunrise Grains",
+      title: "Any Sunrise rice 2 lb+",
+      discountText: "$1.00 OFF",
+      terms: "One coupon per purchase. Valid on Sunrise white or brown rice 2 lb or larger. Not stackable with other Sunrise offers. Demo only.",
+      codeValue: "SUNRISE-RICE-100",
+      codeType: "qr",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 60),
+      clipped: true,
+    },
+    {
+      brand: "Valley Beans Co.",
+      title: "Canned black or pinto beans",
+      discountText: "BOGO 50% OFF",
+      terms: "Buy one can, get second 50% off equal or lesser value. Limit 2. Demo manufacturer coupon.",
+      codeValue: "812345678901",
+      codeType: "barcode",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
+      clipped: false,
+    },
+    {
+      brand: "Harbor Catch",
+      title: "Chunk light tuna (5 oz)",
+      discountText: "$0.75 OFF",
+      terms: "Valid on Harbor Catch chunk light tuna 5 oz cans. Limit one. Demo only.",
+      codeValue: "HARBOR-TUNA-75",
+      codeType: "qr",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      clipped: true,
+    },
+    {
+      brand: "Golden Nest",
+      title: "Large eggs dozen",
+      discountText: "$1.50 OFF",
+      terms: "Any Golden Nest large grade A dozen. Cannot be combined with store card fuel offers. Demo.",
+      codeValue: "GOLDEN-EGGS-150",
+      codeType: "qr",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 20),
+      clipped: false,
+    },
+    {
+      brand: "Spice Route",
+      title: "Any Spice Route chili flakes",
+      discountText: "FREE jar ≤ $2.50",
+      terms: "Receive one Spice Route chili flakes jar up to $2.50 free with any $10 Spice Route purchase. Expired sample for filter demos.",
+      codeValue: "SPICE-CHILI-FREE",
+      codeType: "barcode",
+      expiresAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
+      clipped: false,
+    },
+    {
+      brand: "Lumen Soy",
+      title: "Lumen soy sauce 10 oz",
+      discountText: "$0.50 OFF",
+      terms: "One use. Mark used after redeem in app for demo tracking.",
+      codeValue: "LUMEN-SOY-50",
+      codeType: "qr",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90),
+      clipped: false,
+      used: true,
+      usedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    },
+  ];
+
+  for (const c of coupons) {
+    await prisma.coupon.create({ data: c });
+  }
+
+  console.log(`Seeded ${pantry.length} pantry items, ${recipes.length} recipes, and ${coupons.length} coupons.`);
 }
 
 main()

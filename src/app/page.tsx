@@ -28,12 +28,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             href: "/pantry",
             title: "Pantry",
-            body: "CRUD for staples with quantities, units, categories, and optional expiration dates.",
+            body: "CRUD, barcode scan, and receipt bulk-add for staples you already own.",
             icon: "🫙",
           },
           {
@@ -47,6 +47,12 @@ export default function HomePage() {
             title: "Cook Now",
             body: "Match pantry to recipes. Near-misses suggest 1–2 cheap staples to pick up.",
             icon: "✨",
+          },
+          {
+            href: "/coupons",
+            title: "Coupons",
+            body: "Clip sample manufacturer offers and open a bright, scannable redeem view.",
+            icon: "🎟️",
           },
         ].map((c) => (
           <Link

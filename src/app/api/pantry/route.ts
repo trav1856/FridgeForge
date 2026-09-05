@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
+import { upsertPantryItem } from "@/lib/pantry-upsert";
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -10,7 +11,9 @@ const createSchema = z.object({
   unit: z.string().min(1).max(40).default("each"),
   category: z.string().max(60).optional().nullable(),
   tags: z.array(z.string()).optional(),
+  barcode: z.string().max(32).optional().nullable(),
   expirationDate: z.string().datetime().optional().nullable(),
+  merge: z.boolean().optional().default(true),
 });
 
 export async function GET() {
@@ -24,6 +27,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const data = createSchema.parse(body);
+
+    if (data.merge !== false) {
+      const result = await upsertPantryItem(data);
+      return NextResponse.json(result, { status: result.merged ? 200 : 201 });
+    }
+
     const item = await prisma.pantryItem.create({
       data: {
         name: data.name,
@@ -31,12 +40,16 @@ export async function POST(req: NextRequest) {
         unit: data.unit,
         category: data.category ?? null,
         tags: stringifyArray(data.tags),
+        barcode: data.barcode?.replace(/\D/g, "") || null,
         expirationDate: data.expirationDate
           ? new Date(data.expirationDate)
           : null,
       },
     });
-    return NextResponse.json(serializePantry(item), { status: 201 });
+    return NextResponse.json(
+      { item: serializePantry(item), merged: false },
+      { status: 201 }
+    );
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.flatten() }, { status: 400 });

@@ -10,6 +10,7 @@ const links = [
   { href: "/pantry", label: "Pantry" },
   { href: "/recipes", label: "Recipes" },
   { href: "/suggestions", label: "Cook Now" },
+  { href: "/coupons", label: "Coupons" },
 ];
 
 export function Nav() {

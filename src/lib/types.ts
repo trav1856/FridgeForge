@@ -6,6 +6,7 @@ export type PantryItemInput = {
   unit: string;
   category?: string | null;
   tags?: string[];
+  barcode?: string | null;
   expirationDate?: string | null;
 };
 
@@ -37,6 +38,7 @@ export type PantrySnapshot = {
   unit: string;
   category: string | null;
   tags: string[];
+  barcode?: string | null;
 };
 
 export type RecipeForMatch = {
