@@ -16,7 +16,8 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 ## Community Edition (this repo — stable)
 
 - Pantry CRUD — name, qty, unit, category/tags, optional expiration + barcode
-- **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry (manual add remains secondary)
+- **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry
+- **Category-first manual add** — Manual tab: pick category chips → common staples grid → qty/unit presets (+ custom name); posts with merge
 - **Receipt intake (experimental)** — demoted under Advanced; photo OCR / paste still available but not a peer primary tab
 - Recipes — manual add, cost tier, tags, struggle flag, tips/boosters
 - URL import — best-effort HTML/JSON-LD scrape (browser-like headers + one 403/429 retry) with manual fallback
@@ -87,7 +88,18 @@ Open http://localhost:3000
 4. Confirm name / qty / unit / category
 5. Item is created or merged (same barcode, or same name+unit)
 
-If there is no match, add the name manually on the confirm form; barcode is saved for next time. Use the **Manual** tab for free-form pantry items without a barcode.
+If there is no match, add the name manually on the confirm form; barcode is saved for next time.
+
+### Manual add (category-first)
+
+1. Open Pantry → **Manual** tab (always available; barcode stays the default tab)
+2. Tap a **category chip** (Meat/Proteins, Vegetables, Fruit, Grains & pasta, …)
+3. Tap a **common item** from the grid (sensible default qty/unit, e.g. spaghetti → 8 oz)
+4. Adjust qty/unit presets, or use **Add your own** for a custom name in that category
+5. Optional: expand **More details** for expires / barcode / tags
+6. **Add item** → `POST /api/pantry` with `merge: true`
+
+Catalog lives in `src/lib/pantry-catalog.ts`; UI in `ManualPantryIntake.tsx`.
 
 Limitations: coverage varies; camera needs localhost or TLS and consent.
 
@@ -151,8 +163,8 @@ Override the scrape User-Agent with `SCRAPE_USER_AGENT` in `.env` if a site stil
 ## Project structure
 
     src/app/           App Router pages + API routes
-    src/components/    UI (BarcodeIntake, ReceiptIntake, Coupons*)
-    src/lib/           db, suggestions, scrape, recipe-image, normalize, OFF + receipt parse/resolve
+    src/components/    UI (BarcodeIntake, ManualPantryIntake, ReceiptIntake, Coupons*)
+    src/lib/           db, pantry-catalog, clone-staples, suggestions, scrape, recipe-image, normalize, OFF + receipt parse/resolve
     public/recipe-images  branded SVG placeholder
     prisma/            schema + seed
     __tests__/         Vitest
@@ -172,6 +184,11 @@ Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works
 - Seeded Pro demo: `pro@fridgeforge.local` / `prodemo`
 - Demo coupons remain free; Pro gates live manufacturer deals (`src/lib/edition.ts`)
 - Details: [PAID.md](./PAID.md)
+
+### Seed staples vs household starter pack
+
+CE seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Re-seed after pulling.
+
 
 ## Pricing (working)
 

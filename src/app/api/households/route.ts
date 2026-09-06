@@ -6,6 +6,7 @@ import {
   generateInviteCode,
   requireUser,
 } from "@/lib/auth";
+import { cloneStapleRecipesToHousehold } from "@/lib/clone-staples";
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -61,12 +62,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Copy global staple/classic recipes into the new household starter pack
+    let staplesCloned = 0;
+    try {
+      staplesCloned = await cloneStapleRecipesToHousehold(prisma, household.id);
+    } catch (cloneErr) {
+      console.error("households POST staple clone", cloneErr);
+    }
+
     return NextResponse.json(
       {
         id: household.id,
         name: household.name,
         inviteCode: household.inviteCode,
         role: "owner",
+        staplesCloned,
       },
       { status: 201 }
     );

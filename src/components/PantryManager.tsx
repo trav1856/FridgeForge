@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { PANTRY_CATEGORIES } from "@/lib/categories";
+import { useCallback, useEffect, useState } from "react";
 import { BarcodeIntake } from "./BarcodeIntake";
+import { ManualPantryIntake } from "./ManualPantryIntake";
 import { ReceiptIntake } from "./ReceiptIntake";
 
 type PantryItem = {
@@ -18,21 +18,21 @@ type PantryItem = {
 
 type IntakeTab = "barcode" | "manual";
 
-const emptyForm = {
-  name: "",
-  quantity: "1",
-  unit: "each",
-  category: "Other",
-  tags: "",
-  barcode: "",
-  expirationDate: "",
+type EditForm = {
+  name: string;
+  quantity: string;
+  unit: string;
+  category: string;
+  tags: string;
+  barcode: string;
+  expirationDate: string;
 };
 
 export function PantryManager() {
   const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [tab, setTab] = useState<IntakeTab>("barcode");
@@ -60,47 +60,6 @@ export function PantryManager() {
     load();
   }, [load]);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const payload = {
-      name: form.name.trim(),
-      quantity: Number(form.quantity) || 1,
-      unit: form.unit.trim() || "each",
-      category: form.category || null,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      barcode: form.barcode.trim() || null,
-      expirationDate: form.expirationDate
-        ? new Date(form.expirationDate).toISOString()
-        : null,
-      merge: !editingId,
-    };
-
-    try {
-      const res = await fetch(
-        editingId ? `/api/pantry/${editingId}` : "/api/pantry",
-        {
-          method: editingId ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data?.error;
-        throw new Error(typeof msg === "string" ? msg : "Save failed");
-      }
-      setForm(emptyForm);
-      setEditingId(null);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save item");
-    }
-  }
-
   async function remove(id: string) {
     if (!confirm("Remove this pantry item?")) return;
     await fetch(`/api/pantry/${id}`, { method: "DELETE" });
@@ -110,7 +69,7 @@ export function PantryManager() {
   function startEdit(item: PantryItem) {
     setTab("manual");
     setEditingId(item.id);
-    setForm({
+    setEditForm({
       name: item.name,
       quantity: String(item.quantity),
       unit: item.unit,
@@ -121,6 +80,11 @@ export function PantryManager() {
         ? item.expirationDate.slice(0, 10)
         : "",
     });
+  }
+
+  function clearEdit() {
+    setEditingId(null);
+    setEditForm(null);
   }
 
   const filtered = items.filter((i) => {
@@ -149,11 +113,12 @@ export function PantryManager() {
     <div className="space-y-6">
       <div className="rounded-2xl border border-sage-200/80 bg-gradient-to-br from-cream-50 to-sage-50/60 px-4 py-3 sm:px-5">
         <p className="text-sm font-medium text-sage-800">
-          Scan the barcode when you get home — we’ll look it up and drop it in
+          Scan the barcode when you get home — we will look it up and drop it in
           your pantry.
         </p>
         <p className="mt-1 text-xs text-sage-600">
-          Prefer typing? Use Manual anytime. Receipt import lives under Advanced.
+          Prefer typing? Use Manual anytime — pick a category, tap a staple, set
+          qty. Receipt import lives under Advanced.
         </p>
       </div>
 
@@ -177,106 +142,20 @@ export function PantryManager() {
       {tab === "barcode" && <BarcodeIntake onAdded={load} />}
 
       {tab === "manual" && (
-        <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
-          <h2 className="font-display text-xl font-bold text-sage-900">
-            {editingId ? "Edit item" : "Add to pantry"}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="label">Name</label>
-              <input
-                className="input"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Jasmine rice"
-              />
-            </div>
-            <div>
-              <label className="label">Quantity</label>
-              <input
-                className="input"
-                type="number"
-                min="0.01"
-                step="any"
-                required
-                value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Unit</label>
-              <input
-                className="input"
-                value={form.unit}
-                onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                placeholder="cups, cans, each…"
-              />
-            </div>
-            <div>
-              <label className="label">Category</label>
-              <select
-                className="input"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              >
-                {PANTRY_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Expires (optional)</label>
-              <input
-                className="input"
-                type="date"
-                value={form.expirationDate}
-                onChange={(e) =>
-                  setForm({ ...form, expirationDate: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="label">Barcode (optional)</label>
-              <input
-                className="input"
-                inputMode="numeric"
-                value={form.barcode}
-                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                placeholder="UPC / EAN"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="label">Tags (comma-separated)</label>
-              <input
-                className="input"
-                value={form.tags}
-                onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                placeholder="staple, struggle, fridge"
-              />
-            </div>
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex flex-wrap gap-2">
-            <button type="submit" className="btn-primary">
-              {editingId ? "Save changes" : "Add item"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
+        <ManualPantryIntake
+          editingId={editingId}
+          editForm={editForm}
+          onCancelEdit={clearEdit}
+          onSaved={async () => {
+            clearEdit();
+            setError(null);
+            await load();
+          }}
+        />
+      )}
+
+      {error && tab !== "manual" && (
+        <p className="text-sm text-red-600">{error}</p>
       )}
 
       <details className="group rounded-2xl border border-dashed border-sage-300/80 bg-sage-50/40 open:bg-cream-50/60">
