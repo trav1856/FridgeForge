@@ -4,6 +4,7 @@ import { resolveHouseholdId } from "@/lib/auth";
 import { householdWhere } from "@/lib/household";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
+import { parseMoodParam } from "@/lib/moods";
 import { suggestMeals } from "@/lib/suggestions";
 
 export async function GET(req: NextRequest) {
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
       : undefined;
   const includeUnknownTime =
     req.nextUrl.searchParams.get("includeUnknownTime") === "1";
+  const mood = parseMoodParam(req.nextUrl.searchParams.get("mood"));
 
   const couponWhere =
     householdId === null
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
     maxMissing: Number.isFinite(maxMissing) ? maxMissing : 2,
     maxMinutes,
     includeUnknownTime,
+    mood,
   }).map((s) => ({
     ...s,
     deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
@@ -53,6 +56,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     struggleMode,
     maxMinutes: maxMinutes ?? null,
+    mood: mood ?? "any",
     pantryCount: pantry.length,
     suggestions,
   });

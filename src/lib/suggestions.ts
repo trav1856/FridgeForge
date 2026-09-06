@@ -1,4 +1,5 @@
 import { namesMatch } from "./normalize";
+import { matchesMood, moodBoost, type MoodId } from "./moods";
 import type {
   PantrySnapshot,
   RecipeForMatch,
@@ -56,6 +57,8 @@ export type SuggestOptions = {
   maxMinutes?: number;
   /** Include recipes with null/undefined cookTimeMinutes when maxMinutes is set. Default false. */
   includeUnknownTime?: boolean;
+  /** Mood filter/boost — pantry match stays primary. */
+  mood?: MoodId;
 };
 
 function findPantryMatch(
@@ -104,7 +107,7 @@ export function scoreRecipe(
   pantry: PantrySnapshot[],
   options: SuggestOptions = {}
 ): SuggestionResult {
-  const { struggleMode = false, maxMissing = 2, maxMinutes } = options;
+  const { struggleMode = false, maxMissing = 2, maxMinutes, mood } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
   const missingIngredients: string[] = [];
@@ -161,6 +164,7 @@ export function scoreRecipe(
   if (note) score += 5;
 
   score += timeTightnessBoost(recipe.cookTimeMinutes, maxMinutes);
+  score += moodBoost(recipe, mood);
 
   return {
     recipe,
@@ -198,6 +202,7 @@ export function suggestMeals(
     maxMissing = 2,
     maxMinutes,
     includeUnknownTime = false,
+    mood,
   } = options;
 
   let pool = recipes;
@@ -209,9 +214,19 @@ export function suggestMeals(
 
   pool = pool.filter((r) => fitsTimeBudget(r, maxMinutes, includeUnknownTime));
 
+  // Mood is an additional filter — pantry scoring remains primary within the mood pool
+  if (mood && mood !== "any") {
+    pool = pool.filter((r) => matchesMood(r, mood));
+  }
+
   return pool
     .map((r) =>
-      scoreRecipe(r, pantry, { struggleMode, maxMissing, maxMinutes })
+      scoreRecipe(r, pantry, {
+        struggleMode,
+        maxMissing,
+        maxMinutes,
+        mood,
+      })
     )
     .filter((s) => s.canMakeNow || s.nearMiss || s.matchRatio >= 0.5)
     .sort((a, b) => b.score - a.score);
