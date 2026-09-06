@@ -28,7 +28,7 @@ function DvCell({
 }) {
   const pct = percentDailyValue(amount, nutrient);
   if (pct == null) {
-    return <span className="tabular-nums text-black/40">—</span>;
+    return <span className="tabular-nums text-sage-400">—</span>;
   }
   return <span className="tabular-nums">{pct}%</span>;
 }
@@ -55,25 +55,27 @@ function NutrientRow({
   return (
     <div
       className={[
-        "flex items-end justify-between gap-2 py-[2px] text-[13px] leading-tight text-black",
-        thickTop ? "border-t-[7px] border-black pt-1" : "",
-        thinTop ? "border-t border-black" : "",
+        "flex items-end justify-between gap-2 py-1 text-sm leading-tight text-sage-900",
+        thickTop ? "mt-1 border-t-4 border-sage-800 pt-2" : "",
+        thinTop ? "border-t border-sage-200" : "",
         indent ? "pl-4" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="min-w-0 flex-1">
-        <span className={bold ? "font-bold" : "font-normal"}>{label}</span>
+        <span className={bold ? "font-semibold" : "font-normal"}>{label}</span>
         {amountText != null && (
           <>
             {" "}
-            <span className="tabular-nums">{amountText}</span>
+            <span className="tabular-nums text-sage-800">{amountText}</span>
           </>
         )}
       </div>
       {showDv && (
-        <div className="shrink-0 font-bold tabular-nums">{dv ?? null}</div>
+        <div className="shrink-0 font-semibold tabular-nums text-sage-800">
+          {dv ?? null}
+        </div>
       )}
     </div>
   );
@@ -101,12 +103,12 @@ function VitaminRow({
 }) {
   if (amount === undefined) return null;
   return (
-    <div className="flex items-end justify-between border-t border-black py-[3px] text-[13px] leading-tight text-black">
+    <div className="flex items-end justify-between border-t border-sage-200 py-1.5 text-sm leading-tight text-sage-900">
       <span>
         {label} {fmtAmount(amount, unit === "mcg" ? 1 : 0)}
         {unit}
       </span>
-      <span className="font-bold">
+      <span className="font-semibold text-sage-800">
         <DvCell amount={amount} nutrient={nutrient} />
       </span>
     </div>
@@ -118,12 +120,12 @@ function optionalDv(
   nutrient: FdaDailyValueKey
 ): React.ReactNode {
   if (value === undefined) {
-    return <span className="tabular-nums text-black/40">—</span>;
+    return <span className="tabular-nums text-sage-400">—</span>;
   }
   return <DvCell amount={value} nutrient={nutrient} />;
 }
 
-/** FDA-style Nutrition Facts label estimated from recipe ingredients. */
+/** FridgeForge-themed Nutrition Facts (FDA info structure, app styling). */
 export function RecipeNutritionCard({ estimate, className = "" }: Props) {
   const { perServing, total, coverageLabel, matchedCount, servings } = estimate;
   const [mode, setMode] = useState<"serving" | "recipe">("serving");
@@ -133,13 +135,13 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
   const macros: Macros = mode === "serving" ? perServing : total;
   const servingsLine =
     servings === 1
-      ? "1 serving per container"
-      : `${servings} servings per container`;
+      ? "1 serving per recipe"
+      : `${servings} servings per recipe`;
 
   return (
     <section className={className}>
       {matchedCount === 0 ? (
-        <div className="rounded-lg border border-sage-200 bg-cream-50 p-4 text-sm text-sage-700">
+        <div className="card border-sage-100 bg-gradient-to-br from-sage-50/90 to-cream-50 p-5 text-sm text-sage-700">
           Couldn&apos;t estimate nutrition for these ingredients yet. Values are
           approximate when available.
           {coverageLabel && (
@@ -151,13 +153,10 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-sage-500">
               {coverageLabel}
-              <span className="text-sage-400">
-                {" "}
-                · default shows per serving
-              </span>
+              <span className="text-sage-400"> · default shows per serving</span>
             </p>
             <div
-              className="inline-flex overflow-hidden rounded-md border border-sage-200 text-[11px] font-semibold"
+              className="inline-flex overflow-hidden rounded-full border border-sage-200 text-[11px] font-semibold"
               role="group"
               aria-label="Nutrition amount basis"
             >
@@ -166,8 +165,8 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
                 onClick={() => setMode("serving")}
                 className={
                   mode === "serving"
-                    ? "bg-sage-800 px-2.5 py-1 text-white"
-                    : "bg-white px-2.5 py-1 text-sage-700 hover:bg-sage-50"
+                    ? "bg-sage-800 px-3 py-1 text-cream-50"
+                    : "bg-cream-50 px-3 py-1 text-sage-700 hover:bg-sage-100"
                 }
               >
                 Per serving
@@ -177,8 +176,8 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
                 onClick={() => setMode("recipe")}
                 className={
                   mode === "recipe"
-                    ? "bg-sage-800 px-2.5 py-1 text-white"
-                    : "bg-white px-2.5 py-1 text-sage-700 hover:bg-sage-50"
+                    ? "bg-sage-800 px-3 py-1 text-cream-50"
+                    : "bg-cream-50 px-3 py-1 text-sage-700 hover:bg-sage-100"
                 }
               >
                 Whole recipe
@@ -186,21 +185,19 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
             </div>
           </div>
 
-          <div
-            className="w-full max-w-[320px] border-[3px] border-black bg-white p-1 text-black"
-            style={{
-              fontFamily: 'Arial, Helvetica, "Helvetica Neue", sans-serif',
-            }}
-          >
-            <div className="border-b-[14px] border-black px-1 pb-0.5">
-              <h2 className="text-[36px] font-black leading-none tracking-tight">
+          <div className="card w-full max-w-[340px] overflow-hidden border-sage-200/80 bg-gradient-to-br from-cream-50 to-sage-50/60 p-0 shadow-sm">
+            <div className="border-b-4 border-ember-600 bg-cream-50/90 px-4 pb-2 pt-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ember-700">
+                FridgeForge
+              </p>
+              <h2 className="font-display text-2xl font-bold leading-tight text-sage-900">
                 Nutrition Facts
               </h2>
             </div>
 
-            <div className="border-b border-black px-1 py-1 text-[14px] leading-snug">
+            <div className="border-b border-sage-200 px-4 py-2 text-sm leading-snug text-sage-800">
               <div>{servingsLine}</div>
-              <div className="flex justify-between font-bold">
+              <div className="mt-0.5 flex justify-between font-semibold text-sage-900">
                 <span>Serving size</span>
                 <span>
                   {mode === "serving"
@@ -210,25 +207,25 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
               </div>
             </div>
 
-            <div className="border-b-[7px] border-black px-1 py-1">
-              <div className="text-[11px] font-bold leading-none">
+            <div className="border-b-4 border-sage-800 px-4 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
                 Amount per serving
               </div>
-              <div className="flex items-end justify-between">
-                <span className="text-[28px] font-black leading-none">
+              <div className="mt-1 flex items-end justify-between">
+                <span className="font-display text-xl font-bold text-sage-900">
                   Calories
                 </span>
-                <span className="text-[36px] font-black leading-none tabular-nums">
+                <span className="font-display text-3xl font-bold tabular-nums text-ember-700">
                   {fmtAmount(macros.kcal)}
                 </span>
               </div>
             </div>
 
-            <div className="border-b border-black px-1 py-0.5 text-right text-[11px] font-bold">
+            <div className="border-b border-sage-200 px-4 py-1 text-right text-[11px] font-semibold text-sage-500">
               % Daily Value*
             </div>
 
-            <div className="px-1">
+            <div className="px-4 pb-1">
               <NutrientRow
                 label="Total Fat"
                 amountText={amountWithUnit(macros.fat, "g")}
@@ -309,7 +306,7 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
               />
             </div>
 
-            <div className="border-t-[14px] border-black px-1 pt-0.5">
+            <div className="border-t-4 border-sage-800 px-4 pt-1">
               <VitaminRow
                 label="Vitamin D"
                 amount={macros.vitaminD}
@@ -336,14 +333,15 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
               />
             </div>
 
-            <div className="mt-1 border-t border-black px-1 pt-1 text-[10px] leading-snug text-black">
+            <div className="mt-1 border-t border-sage-200 bg-sage-50/50 px-4 py-3 text-[10px] leading-snug text-sage-600">
               <p>
                 * The % Daily Value (DV) tells you how much a nutrient in a
                 serving of food contributes to a daily diet. 2,000 calories a
                 day is used for general nutrition advice.
               </p>
-              <p className="mt-1">
-                Estimated from recipe ingredients — not a lab analysis.
+              <p className="mt-1.5 text-sage-500">
+                FridgeForge estimate from recipe ingredients — not a lab
+                analysis.
               </p>
             </div>
           </div>
