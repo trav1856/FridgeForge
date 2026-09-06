@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
 import { getCurrentUser } from "@/lib/auth";
+import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIngredients } from "@/components/RecipeIngredients";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeDetailActions } from "@/components/RecipeDetailActions";
+import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -32,6 +34,14 @@ export default async function RecipeDetailPage({ params }: Props) {
     favorites?: unknown;
   };
   const recipe = serializeRecipe(rest);
+
+  const nutritionEstimate = estimateRecipeNutrition(
+    recipe.ingredients,
+    recipe.servings
+  );
+
+  const hasPlaybook =
+    recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0;
 
   return (
     <article className="space-y-6">
@@ -115,25 +125,39 @@ export default async function RecipeDetailPage({ params }: Props) {
         </section>
       </div>
 
-      {(recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0) && (
-        <section className="card border-ember-100 bg-gradient-to-br from-ember-50/80 to-cream-50 p-5">
-          <h2 className="font-display text-lg font-bold text-ember-900">
-            Proud-plate playbook
-          </h2>
-          {recipe.flavorBoosters.length > 0 && (
-            <p className="mt-2 text-sm text-sage-800">
-              <span className="font-semibold">Flavor boosters:</span>{" "}
-              {recipe.flavorBoosters.join(" · ")}
-            </p>
+      {(nutritionEstimate.totalCount > 0 || hasPlaybook) && (
+        <div
+          className={
+            hasPlaybook && nutritionEstimate.totalCount > 0
+              ? "grid gap-4 md:grid-cols-2"
+              : "grid gap-4"
+          }
+        >
+          {nutritionEstimate.totalCount > 0 && (
+            <RecipeNutritionCard estimate={nutritionEstimate} />
           )}
-          {recipe.techniqueTips.length > 0 && (
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-sage-800">
-              {recipe.techniqueTips.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
+
+          {hasPlaybook && (
+            <section className="card border-ember-100 bg-gradient-to-br from-ember-50/80 to-cream-50 p-5">
+              <h2 className="font-display text-lg font-bold text-ember-900">
+                Proud-plate playbook
+              </h2>
+              {recipe.flavorBoosters.length > 0 && (
+                <p className="mt-2 text-sm text-sage-800">
+                  <span className="font-semibold">Flavor boosters:</span>{" "}
+                  {recipe.flavorBoosters.join(" · ")}
+                </p>
+              )}
+              {recipe.techniqueTips.length > 0 && (
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-sage-800">
+                  {recipe.techniqueTips.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
           )}
-        </section>
+        </div>
       )}
     </article>
   );
