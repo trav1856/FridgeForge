@@ -6,6 +6,10 @@ import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
 import { upsertPantryItem } from "@/lib/pantry-upsert";
+import {
+  searchNutritionByName,
+  stringifyNutrition,
+} from "@/lib/open-food-facts";
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -15,6 +19,7 @@ const createSchema = z.object({
   tags: z.array(z.string()).optional(),
   barcode: z.string().max(32).optional().nullable(),
   expirationDate: z.string().optional().nullable(),
+  nutritionJson: z.string().max(4000).optional().nullable(),
   merge: z.boolean().optional().default(true),
 });
 
@@ -38,6 +43,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result, { status: result.merged ? 200 : 201 });
     }
 
+    let nutritionJson = data.nutritionJson ?? null;
+    if (!nutritionJson) {
+      try {
+        const snap = await searchNutritionByName(data.name);
+        nutritionJson = stringifyNutrition(snap);
+      } catch {
+        nutritionJson = null;
+      }
+    }
+
     const item = await prisma.pantryItem.create({
       data: {
         name: data.name,
@@ -49,6 +64,7 @@ export async function POST(req: NextRequest) {
         expirationDate: data.expirationDate
           ? new Date(data.expirationDate)
           : null,
+        nutritionJson,
         householdId,
       },
     });

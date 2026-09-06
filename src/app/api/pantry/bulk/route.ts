@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const { items } = bodySchema.parse(body);
     const results = [];
     for (const item of items) {
-      results.push(await upsertPantryItem(item, householdId));
+      results.push(await upsertPantryItem({ ...item, lookupNutrition: false }, householdId));
     }
     return NextResponse.json({
       results,

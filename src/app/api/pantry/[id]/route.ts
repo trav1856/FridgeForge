@@ -12,6 +12,7 @@ const updateSchema = z.object({
   tags: z.array(z.string()).optional(),
   barcode: z.string().max(32).optional().nullable(),
   expirationDate: z.string().datetime().optional().nullable(),
+  nutritionJson: z.string().max(4000).optional().nullable(),
 });
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -36,6 +37,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           expirationDate: data.expirationDate
             ? new Date(data.expirationDate)
             : null,
+        }),
+        ...(data.nutritionJson !== undefined && {
+          nutritionJson: data.nutritionJson,
         }),
       },
     });

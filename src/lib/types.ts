@@ -8,6 +8,7 @@ export type PantryItemInput = {
   tags?: string[];
   barcode?: string | null;
   expirationDate?: string | null;
+  nutritionJson?: string | null;
 };
 
 export type RecipeIngredientInput = {
@@ -41,6 +42,7 @@ export type PantrySnapshot = {
   category: string | null;
   tags: string[];
   barcode?: string | null;
+  nutritionJson?: string | null;
 };
 
 export type RecipeForMatch = {

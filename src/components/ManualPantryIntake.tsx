@@ -3,8 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import {
   CATALOG_CHIPS,
+  FAT_CONTENT_OPTIONS,
   PANTRY_UNITS,
+  fatTagFromSelection,
   itemsForChip,
+  suggestedUnitForCategory,
   type CatalogChip,
   type CatalogItem,
 } from "@/lib/pantry-catalog";
@@ -30,6 +33,7 @@ const emptyDetails = {
   tags: "",
   barcode: "",
   expirationDate: "",
+  fatContent: "" as string,
 };
 
 export function ManualPantryIntake({
@@ -41,7 +45,8 @@ export function ManualPantryIntake({
   const [chipId, setChipId] = useState<string | null>(null);
   const [selected, setSelected] = useState<CatalogItem | null>(null);
   const [customName, setCustomName] = useState("");
-  const [quantity, setQuantity] = useState("1");
+  /** Blank until user enters — never prefilled from catalog defaultQty. */
+  const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("each");
   const [details, setDetails] = useState(emptyDetails);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -57,6 +62,13 @@ export function ManualPantryIntake({
     () => (chip ? itemsForChip(chip) : []),
     [chip]
   );
+
+  const showFatContent =
+    chip?.category === "Proteins" ||
+    selected?.category === "Proteins" ||
+    /beef|turkey|pork|chicken|meat|ground/i.test(
+      selected?.name || customName || ""
+    );
 
   // Edit mode: classic full form
   if (editingId && editForm) {
@@ -75,24 +87,27 @@ export function ManualPantryIntake({
     setChipId(c.id);
     setSelected(null);
     setCustomName("");
-    setQuantity("1");
-    setUnit("each");
+    setQuantity("");
+    setUnit(suggestedUnitForCategory(c.category));
+    setDetails((d) => ({ ...d, fatContent: "" }));
     setError(null);
   }
 
   function pickItem(item: CatalogItem) {
     setSelected(item);
     setCustomName("");
-    setQuantity(String(item.defaultQty));
-    setUnit(item.defaultUnit);
+    setQuantity("");
+    setUnit(
+      item.suggestedUnit || suggestedUnitForCategory(item.category)
+    );
     setError(null);
   }
 
   function useCustom() {
     setSelected(null);
     if (chip) {
-      setQuantity("1");
-      setUnit("each");
+      setQuantity("");
+      setUnit(suggestedUnitForCategory(chip.category));
     }
   }
 
@@ -106,17 +121,27 @@ export function ManualPantryIntake({
       setError("Pick a catalog item or enter a custom name");
       return;
     }
+    const qtyNum = Number(quantity);
+    if (!quantity.trim() || !Number.isFinite(qtyNum) || qtyNum <= 0) {
+      setError("Enter a quantity (e.g. 8)");
+      return;
+    }
     setSaving(true);
     try {
+      const tags = details.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const fatTag = fatTagFromSelection(details.fatContent);
+      if (fatTag && !tags.some((t) => t.startsWith("fat:"))) {
+        tags.push(fatTag);
+      }
       const payload = {
         name,
-        quantity: Number(quantity) || 1,
+        quantity: qtyNum,
         unit: unit.trim() || "each",
         category,
-        tags: details.tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        tags,
         barcode: details.barcode.trim() || null,
         expirationDate: details.expirationDate
           ? new Date(details.expirationDate).toISOString()
@@ -135,8 +160,8 @@ export function ManualPantryIntake({
       }
       setSelected(null);
       setCustomName("");
-      setQuantity("1");
-      setUnit("each");
+      setQuantity("");
+      setUnit(chip ? suggestedUnitForCategory(chip.category) : "each");
       setDetails(emptyDetails);
       setMoreOpen(false);
       onSaved();
@@ -154,7 +179,8 @@ export function ManualPantryIntake({
           Add to pantry
         </h2>
         <p className="mt-1 text-sm text-sage-600">
-          Pick a category, tap a staple, set qty — or add your own.
+          Pick a category, tap a staple, then enter weight/size and how many —
+          or add your own.
         </p>
       </div>
 
@@ -197,9 +223,6 @@ export function ManualPantryIntake({
                     }
                   >
                     <span className="block leading-snug">{item.name}</span>
-                    <span className="mt-0.5 block text-xs font-normal text-sage-500">
-                      {item.defaultQty} {item.defaultUnit}
-                    </span>
                   </button>
                 );
               })}
@@ -223,102 +246,146 @@ export function ManualPantryIntake({
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Quantity</label>
-              <input
-                className="input"
-                type="number"
-                min="0.01"
-                step="any"
-                required
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Unit</label>
-              <select
-                className="input"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
+          {(selected || customName.trim()) && (
+            <>
+              <div>
+                <p className="label">3. How much?</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="label" htmlFor="pantry-qty">
+                      Quantity
+                    </label>
+                    <input
+                      id="pantry-qty"
+                      className="input"
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      required
+                      value={quantity}
+                      placeholder="e.g. 8"
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="pantry-unit">
+                      Unit
+                    </label>
+                    <select
+                      id="pantry-unit"
+                      className="input"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                    >
+                      {PANTRY_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                      {!PANTRY_UNITS.includes(unit as never) && unit && (
+                        <option value={unit}>{unit}</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {showFatContent && (
+                <div>
+                  <label className="label" htmlFor="fat-content">
+                    Fat content (optional, meats)
+                  </label>
+                  <select
+                    id="fat-content"
+                    className="input max-w-xs"
+                    value={details.fatContent}
+                    onChange={(e) =>
+                      setDetails({ ...details, fatContent: e.target.value })
+                    }
+                  >
+                    <option value="">— blank —</option>
+                    {FAT_CONTENT_OPTIONS.filter((o) => o !== "").map((o) => (
+                      <option key={o} value={o}>
+                        {o === "other" ? "Other" : o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <details
+                className="rounded-xl border border-dashed border-sage-300/80 bg-sage-50/40"
+                open={moreOpen}
+                onToggle={(e) =>
+                  setMoreOpen((e.target as HTMLDetailsElement).open)
+                }
               >
-                {PANTRY_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-                {!PANTRY_UNITS.includes(unit as never) && unit && (
-                  <option value={unit}>{unit}</option>
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-sage-800">
+                  More details
+                </summary>
+                <div className="grid gap-3 border-t border-sage-200/60 px-3 pb-3 pt-2 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Expires (optional)</label>
+                    <input
+                      className="input"
+                      type="date"
+                      value={details.expirationDate}
+                      onChange={(e) =>
+                        setDetails({
+                          ...details,
+                          expirationDate: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Barcode (optional)</label>
+                    <input
+                      className="input"
+                      inputMode="numeric"
+                      value={details.barcode}
+                      onChange={(e) =>
+                        setDetails({ ...details, barcode: e.target.value })
+                      }
+                      placeholder="UPC / EAN"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="label">Tags (comma-separated)</label>
+                    <input
+                      className="input"
+                      value={details.tags}
+                      onChange={(e) =>
+                        setDetails({ ...details, tags: e.target.value })
+                      }
+                      placeholder="staple, fridge"
+                    />
+                  </div>
+                </div>
+              </details>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={saving || !name}
+                >
+                  {saving ? "Adding…" : "Add item"}
+                </button>
+                {name && (
+                  <span className="text-xs text-sage-600">
+                    {name}
+                    {quantity ? ` · ${quantity} ${unit}` : ""} · {category}
+                    {details.fatContent
+                      ? ` · fat ${details.fatContent}`
+                      : ""}
+                  </span>
                 )}
-              </select>
-            </div>
-          </div>
-
-          <details
-            className="rounded-xl border border-dashed border-sage-300/80 bg-sage-50/40"
-            open={moreOpen}
-            onToggle={(e) =>
-              setMoreOpen((e.target as HTMLDetailsElement).open)
-            }
-          >
-            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-sage-800">
-              More details
-            </summary>
-            <div className="grid gap-3 border-t border-sage-200/60 px-3 pb-3 pt-2 sm:grid-cols-2">
-              <div>
-                <label className="label">Expires (optional)</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={details.expirationDate}
-                  onChange={(e) =>
-                    setDetails({ ...details, expirationDate: e.target.value })
-                  }
-                />
               </div>
-              <div>
-                <label className="label">Barcode (optional)</label>
-                <input
-                  className="input"
-                  inputMode="numeric"
-                  value={details.barcode}
-                  onChange={(e) =>
-                    setDetails({ ...details, barcode: e.target.value })
-                  }
-                  placeholder="UPC / EAN"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="label">Tags (comma-separated)</label>
-                <input
-                  className="input"
-                  value={details.tags}
-                  onChange={(e) =>
-                    setDetails({ ...details, tags: e.target.value })
-                  }
-                  placeholder="staple, fridge"
-                />
-              </div>
-            </div>
-          </details>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={saving || !name}
-            >
-              {saving ? "Adding…" : "Add item"}
-            </button>
-            {name && (
-              <span className="text-xs text-sage-600">
-                {name} · {quantity} {unit} · {category}
-              </span>
-            )}
-          </div>
+            </>
+          )}
         </>
       )}
     </form>

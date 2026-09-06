@@ -3,6 +3,10 @@ import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { normalizeName } from "@/lib/normalize";
 import { serializePantry } from "@/lib/mappers";
+import {
+  searchNutritionByName,
+  stringifyNutrition,
+} from "@/lib/open-food-facts";
 
 export type UpsertPantryInput = {
   name: string;
@@ -12,6 +16,9 @@ export type UpsertPantryInput = {
   tags?: string[];
   barcode?: string | null;
   expirationDate?: string | null;
+  nutritionJson?: string | null;
+  /** When true (default), best-effort OFF name lookup if nutritionJson missing. */
+  lookupNutrition?: boolean;
 };
 
 /** Create or merge into an existing pantry row (same barcode, else same normalized name+unit). */
@@ -43,6 +50,20 @@ export async function upsertPantryItem(
       ) ?? null;
   }
 
+  let nutritionJson = data.nutritionJson ?? null;
+  if (
+    !nutritionJson &&
+    data.lookupNutrition !== false &&
+    !existing?.nutritionJson
+  ) {
+    try {
+      const snap = await searchNutritionByName(data.name);
+      nutritionJson = stringifyNutrition(snap);
+    } catch {
+      nutritionJson = null;
+    }
+  }
+
   if (existing) {
     const updated = await prisma.pantryItem.update({
       where: { id: existing.id },
@@ -58,6 +79,8 @@ export async function upsertPantryItem(
             ? new Date(data.expirationDate)
             : existing.expirationDate,
         }),
+        ...(!existing.nutritionJson &&
+          nutritionJson && { nutritionJson }),
       },
     });
     return { item: serializePantry(updated), merged: true as const };
@@ -74,6 +97,7 @@ export async function upsertPantryItem(
       expirationDate: data.expirationDate
         ? new Date(data.expirationDate)
         : null,
+      nutritionJson,
       householdId,
     },
   });

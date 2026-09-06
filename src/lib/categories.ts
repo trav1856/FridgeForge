@@ -6,6 +6,7 @@ export const PANTRY_CATEGORIES = [
   "Canned",
   "Spices",
   "Oils & Condiments",
+  "Baking",
   "Other",
 ] as const;
 
@@ -19,7 +20,11 @@ export function suggestCategoryFromOff(
   const blob = [...categoriesTags, categoriesText].join(" ").toLowerCase();
 
   const rules: [RegExp, PantryCategory][] = [
-    [/\b(rice|pasta|noodle|grain|cereal|flour|bread|oat)\b/, "Grains"],
+    [
+      /\b(baking|flours?|sugars?|yeast|cocoa|cornstarch|corn.?starch|chocolate.?chips?|vanilla.?extract|powdered.?sugar|brown.?sugar|baking.?powder|baking.?soda)\b/,
+      "Baking",
+    ],
+    [/\b(rice|pastas?|noodles?|grains?|cereal|breads?|oats?|tortillas?|spaghetti|penne)\b/, "Grains"],
     [/\b(meat|poultry|chicken|beef|pork|fish|seafood|egg|tofu|bean|lentil|protein)\b/, "Proteins"],
     [/\b(fruit|vegetable|produce|salad|herb|fresh)\b/, "Produce"],
     [/\b(dairy|milk|cheese|yogurt|butter|cream)\b/, "Dairy"],

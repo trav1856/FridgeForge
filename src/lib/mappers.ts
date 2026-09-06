@@ -11,6 +11,7 @@ export function toPantrySnapshot(item: PantryItem): PantrySnapshot {
     category: item.category,
     tags: parseStringArray(item.tags),
     barcode: item.barcode,
+    nutritionJson: item.nutritionJson,
   };
 }
 

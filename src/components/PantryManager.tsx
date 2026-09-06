@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BarcodeIntake } from "./BarcodeIntake";
 import { ManualPantryIntake } from "./ManualPantryIntake";
 import { ReceiptIntake } from "./ReceiptIntake";
+import { formatNutritionBlurb } from "@/lib/open-food-facts";
 
 type PantryItem = {
   id: string;
@@ -14,6 +15,7 @@ type PantryItem = {
   tags: string[];
   barcode?: string | null;
   expirationDate: string | null;
+  nutritionJson?: string | null;
 };
 
 type IntakeTab = "barcode" | "manual";
@@ -117,8 +119,8 @@ export function PantryManager() {
           your pantry.
         </p>
         <p className="mt-1 text-xs text-sage-600">
-          Prefer typing? Use Manual anytime — pick a category, tap a staple, set
-          qty. Receipt import lives under Advanced.
+          Prefer typing? Use Manual anytime — pick a category, tap a staple, then
+          enter how much. Receipt import lives under Advanced.
         </p>
       </div>
 
@@ -243,6 +245,11 @@ export function PantryManager() {
                             </span>
                           ))}
                         </div>
+                      )}
+                      {formatNutritionBlurb(item.nutritionJson) && (
+                        <p className="mt-1 text-xs text-sage-500">
+                          {formatNutritionBlurb(item.nutritionJson)}
+                        </p>
                       )}
                     </div>
                     <div className="flex shrink-0 gap-1">

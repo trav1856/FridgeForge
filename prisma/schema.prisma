@@ -64,6 +64,8 @@ model PantryItem {
   tags           String     @default("[]") // JSON array string
   barcode        String?
   expirationDate DateTime?
+  /** Optional OFF/macros snapshot JSON: calories/protein/fat/carbs per 100g */
+  nutritionJson  String?
   householdId    String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt

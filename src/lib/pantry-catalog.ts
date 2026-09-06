@@ -13,11 +13,16 @@ export const PANTRY_UNITS = [
 
 export type PantryUnit = (typeof PANTRY_UNITS)[number];
 
+/**
+ * Catalog staple — name + category for chips.
+ * `suggestedUnit` is a soft default for the unit select AFTER selection;
+ * quantity is never prefilled from the catalog.
+ */
 export type CatalogItem = {
   name: string;
-  defaultQty: number;
-  defaultUnit: PantryUnit | string;
   category: PantryCategory;
+  /** Soft unit suggestion after selection — not shown on the chip. */
+  suggestedUnit?: PantryUnit | string;
 };
 
 /**
@@ -40,6 +45,7 @@ export const CATALOG_CHIPS: CatalogChip[] = [
   { id: "grains", label: "Grains & pasta", category: "Grains" },
   { id: "dairy", label: "Dairy", category: "Dairy" },
   { id: "canned", label: "Canned", category: "Canned" },
+  { id: "baking", label: "Baking", category: "Baking" },
   { id: "spices", label: "Spices", category: "Spices" },
   { id: "oils", label: "Oils & condiments", category: "Oils & Condiments" },
   { id: "other", label: "Other", category: "Other" },
@@ -78,111 +84,161 @@ const produceFruit = new Set([
   "Avocado",
 ]);
 
-/** Staple catalog — ~8–15 per major category. */
+/** Sensible unit default by category when an item has no suggestedUnit. */
+export function suggestedUnitForCategory(category: PantryCategory | string): string {
+  switch (category) {
+    case "Proteins":
+      return "oz";
+    case "Produce":
+      return "each";
+    case "Grains":
+      return "oz";
+    case "Baking":
+      return "cups";
+    case "Dairy":
+      return "each";
+    case "Canned":
+      return "cans";
+    case "Spices":
+      return "each";
+    case "Oils & Condiments":
+      return "each";
+    default:
+      return "each";
+  }
+}
+
+/** Fat % presets for meats (stored as tags like fat:80%). */
+export const FAT_CONTENT_OPTIONS = [
+  "",
+  "70%",
+  "80%",
+  "85%",
+  "90%",
+  "93%",
+  "other",
+] as const;
+
+export type FatContentOption = (typeof FAT_CONTENT_OPTIONS)[number];
+
+export function fatTagFromSelection(value: string): string | null {
+  const v = value.trim();
+  if (!v || v === "other") return v === "other" ? "fat:other" : null;
+  const pct = v.replace(/\s/g, "");
+  if (!/^\d{2,3}%$/.test(pct)) return null;
+  return `fat:${pct}`;
+}
+
+/** Staple catalog — name (+ category) only for display chips. */
 export const PANTRY_CATALOG: CatalogItem[] = [
   // Proteins
-  { name: "Ground beef", defaultQty: 0.5, defaultUnit: "lb", category: "Proteins" },
-  { name: "Chicken breast", defaultQty: 1, defaultUnit: "lb", category: "Proteins" },
-  { name: "Chicken thighs", defaultQty: 1, defaultUnit: "lb", category: "Proteins" },
-  { name: "Whole chicken", defaultQty: 1, defaultUnit: "each", category: "Proteins" },
-  { name: "Eggs", defaultQty: 12, defaultUnit: "each", category: "Proteins" },
-  { name: "Bacon", defaultQty: 12, defaultUnit: "oz", category: "Proteins" },
-  { name: "Pork chops", defaultQty: 1, defaultUnit: "lb", category: "Proteins" },
-  { name: "Ground turkey", defaultQty: 1, defaultUnit: "lb", category: "Proteins" },
-  { name: "Canned tuna", defaultQty: 2, defaultUnit: "cans", category: "Proteins" },
-  { name: "Peanut butter", defaultQty: 1, defaultUnit: "each", category: "Proteins" },
-  { name: "Black beans (dry)", defaultQty: 1, defaultUnit: "lb", category: "Proteins" },
-  { name: "Tofu", defaultQty: 14, defaultUnit: "oz", category: "Proteins" },
+  { name: "Ground beef", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Chicken breast", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Chicken thighs", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Whole chicken", suggestedUnit: "each", category: "Proteins" },
+  { name: "Eggs", suggestedUnit: "each", category: "Proteins" },
+  { name: "Bacon", suggestedUnit: "oz", category: "Proteins" },
+  { name: "Pork chops", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Ground turkey", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Canned tuna", suggestedUnit: "cans", category: "Proteins" },
+  { name: "Peanut butter", suggestedUnit: "each", category: "Proteins" },
+  { name: "Black beans (dry)", suggestedUnit: "lb", category: "Proteins" },
+  { name: "Tofu", suggestedUnit: "oz", category: "Proteins" },
 
   // Produce — vegetables
-  { name: "Yellow onion", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Garlic", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Potato", defaultQty: 3, defaultUnit: "each", category: "Produce" },
-  { name: "Carrot", defaultQty: 4, defaultUnit: "each", category: "Produce" },
-  { name: "Celery", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Bell pepper", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Tomato", defaultQty: 2, defaultUnit: "each", category: "Produce" },
-  { name: "Broccoli", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Spinach", defaultQty: 1, defaultUnit: "pack", category: "Produce" },
-  { name: "Lettuce", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Cabbage", defaultQty: 1, defaultUnit: "each", category: "Produce" },
-  { name: "Zucchini", defaultQty: 2, defaultUnit: "each", category: "Produce" },
-  { name: "Mushrooms", defaultQty: 8, defaultUnit: "oz", category: "Produce" },
+  { name: "Yellow onion", suggestedUnit: "each", category: "Produce" },
+  { name: "Garlic", suggestedUnit: "each", category: "Produce" },
+  { name: "Potato", suggestedUnit: "each", category: "Produce" },
+  { name: "Carrot", suggestedUnit: "each", category: "Produce" },
+  { name: "Celery", suggestedUnit: "each", category: "Produce" },
+  { name: "Bell pepper", suggestedUnit: "each", category: "Produce" },
+  { name: "Tomato", suggestedUnit: "each", category: "Produce" },
+  { name: "Broccoli", suggestedUnit: "each", category: "Produce" },
+  { name: "Spinach", suggestedUnit: "pack", category: "Produce" },
+  { name: "Lettuce", suggestedUnit: "each", category: "Produce" },
+  { name: "Cabbage", suggestedUnit: "each", category: "Produce" },
+  { name: "Zucchini", suggestedUnit: "each", category: "Produce" },
+  { name: "Mushrooms", suggestedUnit: "oz", category: "Produce" },
 
   // Produce — fruit
-  { name: "Apple", defaultQty: 3, defaultUnit: "each", category: "Produce" },
-  { name: "Banana", defaultQty: 6, defaultUnit: "each", category: "Produce" },
-  { name: "Orange", defaultQty: 4, defaultUnit: "each", category: "Produce" },
-  { name: "Lemon", defaultQty: 2, defaultUnit: "each", category: "Produce" },
-  { name: "Lime", defaultQty: 2, defaultUnit: "each", category: "Produce" },
-  { name: "Grapes", defaultQty: 1, defaultUnit: "lb", category: "Produce" },
-  { name: "Strawberries", defaultQty: 1, defaultUnit: "lb", category: "Produce" },
-  { name: "Avocado", defaultQty: 2, defaultUnit: "each", category: "Produce" },
+  { name: "Apple", suggestedUnit: "each", category: "Produce" },
+  { name: "Banana", suggestedUnit: "each", category: "Produce" },
+  { name: "Orange", suggestedUnit: "each", category: "Produce" },
+  { name: "Lemon", suggestedUnit: "each", category: "Produce" },
+  { name: "Lime", suggestedUnit: "each", category: "Produce" },
+  { name: "Grapes", suggestedUnit: "lb", category: "Produce" },
+  { name: "Strawberries", suggestedUnit: "lb", category: "Produce" },
+  { name: "Avocado", suggestedUnit: "each", category: "Produce" },
 
   // Grains
-  { name: "Spaghetti", defaultQty: 8, defaultUnit: "oz", category: "Grains" },
-  { name: "White rice", defaultQty: 2, defaultUnit: "cups", category: "Grains" },
-  { name: "Brown rice", defaultQty: 2, defaultUnit: "cups", category: "Grains" },
-  { name: "Flour", defaultQty: 2, defaultUnit: "cups", category: "Grains" },
-  { name: "Bread", defaultQty: 1, defaultUnit: "each", category: "Grains" },
-  { name: "Oats", defaultQty: 2, defaultUnit: "cups", category: "Grains" },
-  { name: "Penne pasta", defaultQty: 12, defaultUnit: "oz", category: "Grains" },
-  { name: "Flour tortillas", defaultQty: 10, defaultUnit: "each", category: "Grains" },
-  { name: "Cornmeal", defaultQty: 1, defaultUnit: "cups", category: "Grains" },
-  { name: "Breadcrumbs", defaultQty: 1, defaultUnit: "cups", category: "Grains" },
+  { name: "Spaghetti", suggestedUnit: "oz", category: "Grains" },
+  { name: "White rice", suggestedUnit: "cups", category: "Grains" },
+  { name: "Brown rice", suggestedUnit: "cups", category: "Grains" },
+  { name: "Bread", suggestedUnit: "each", category: "Grains" },
+  { name: "Oats", suggestedUnit: "cups", category: "Grains" },
+  { name: "Penne pasta", suggestedUnit: "oz", category: "Grains" },
+  { name: "Flour tortillas", suggestedUnit: "each", category: "Grains" },
+  { name: "Cornmeal", suggestedUnit: "cups", category: "Grains" },
+  { name: "Breadcrumbs", suggestedUnit: "cups", category: "Grains" },
 
   // Dairy
-  { name: "Milk", defaultQty: 1, defaultUnit: "each", category: "Dairy" },
-  { name: "Butter", defaultQty: 1, defaultUnit: "each", category: "Dairy" },
-  { name: "Cheddar cheese", defaultQty: 8, defaultUnit: "oz", category: "Dairy" },
-  { name: "Mozzarella", defaultQty: 8, defaultUnit: "oz", category: "Dairy" },
-  { name: "Yogurt", defaultQty: 1, defaultUnit: "each", category: "Dairy" },
-  { name: "Cream cheese", defaultQty: 8, defaultUnit: "oz", category: "Dairy" },
-  { name: "Sour cream", defaultQty: 8, defaultUnit: "oz", category: "Dairy" },
-  { name: "Parmesan", defaultQty: 4, defaultUnit: "oz", category: "Dairy" },
+  { name: "Milk", suggestedUnit: "each", category: "Dairy" },
+  { name: "Butter", suggestedUnit: "each", category: "Dairy" },
+  { name: "Cheddar cheese", suggestedUnit: "oz", category: "Dairy" },
+  { name: "Mozzarella", suggestedUnit: "oz", category: "Dairy" },
+  { name: "Yogurt", suggestedUnit: "each", category: "Dairy" },
+  { name: "Cream cheese", suggestedUnit: "oz", category: "Dairy" },
+  { name: "Sour cream", suggestedUnit: "oz", category: "Dairy" },
+  { name: "Parmesan", suggestedUnit: "oz", category: "Dairy" },
 
   // Canned
-  { name: "Canned diced tomatoes", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Tomato sauce", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Canned black beans", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Canned chickpeas", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Canned corn", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Canned tuna", defaultQty: 2, defaultUnit: "cans", category: "Canned" },
-  { name: "Chicken broth", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Coconut milk", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
-  { name: "Canned green beans", defaultQty: 1, defaultUnit: "cans", category: "Canned" },
+  { name: "Canned diced tomatoes", suggestedUnit: "cans", category: "Canned" },
+  { name: "Tomato sauce", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned black beans", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned chickpeas", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned corn", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned tuna", suggestedUnit: "cans", category: "Canned" },
+  { name: "Chicken broth", suggestedUnit: "cans", category: "Canned" },
+  { name: "Coconut milk", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned green beans", suggestedUnit: "cans", category: "Canned" },
+
+  // Baking
+  { name: "Flour", suggestedUnit: "cups", category: "Baking" },
+  { name: "Sugar", suggestedUnit: "cups", category: "Baking" },
+  { name: "Brown sugar", suggestedUnit: "cups", category: "Baking" },
+  { name: "Powdered sugar", suggestedUnit: "cups", category: "Baking" },
+  { name: "Baking powder", suggestedUnit: "each", category: "Baking" },
+  { name: "Baking soda", suggestedUnit: "each", category: "Baking" },
+  { name: "Chocolate chips", suggestedUnit: "oz", category: "Baking" },
+  { name: "Cornstarch", suggestedUnit: "each", category: "Baking" },
+  { name: "Yeast", suggestedUnit: "pack", category: "Baking" },
+  { name: "Cocoa powder", suggestedUnit: "each", category: "Baking" },
+  { name: "Vanilla extract", suggestedUnit: "each", category: "Baking" },
 
   // Spices
-  { name: "Salt", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Black pepper", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Garlic powder", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Paprika", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Cumin", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Chili flakes", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Oregano", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Cinnamon", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Bay leaves", defaultQty: 1, defaultUnit: "each", category: "Spices" },
-  { name: "Sugar", defaultQty: 2, defaultUnit: "cups", category: "Spices" },
+  { name: "Salt", suggestedUnit: "each", category: "Spices" },
+  { name: "Black pepper", suggestedUnit: "each", category: "Spices" },
+  { name: "Garlic powder", suggestedUnit: "each", category: "Spices" },
+  { name: "Paprika", suggestedUnit: "each", category: "Spices" },
+  { name: "Cumin", suggestedUnit: "each", category: "Spices" },
+  { name: "Chili flakes", suggestedUnit: "each", category: "Spices" },
+  { name: "Oregano", suggestedUnit: "each", category: "Spices" },
+  { name: "Cinnamon", suggestedUnit: "each", category: "Spices" },
+  { name: "Bay leaves", suggestedUnit: "each", category: "Spices" },
 
   // Oils & Condiments
-  { name: "Olive oil", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Vegetable oil", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Soy sauce", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "White vinegar", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Ketchup", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Mustard", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Mayonnaise", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Hot sauce", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Honey", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
-  { name: "Vanilla extract", defaultQty: 1, defaultUnit: "each", category: "Oils & Condiments" },
+  { name: "Olive oil", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Vegetable oil", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Soy sauce", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "White vinegar", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Ketchup", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Mustard", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Mayonnaise", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Hot sauce", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Honey", suggestedUnit: "each", category: "Oils & Condiments" },
 
   // Other
-  { name: "Baking powder", defaultQty: 1, defaultUnit: "each", category: "Other" },
-  { name: "Baking soda", defaultQty: 1, defaultUnit: "each", category: "Other" },
-  { name: "Chocolate chips", defaultQty: 12, defaultUnit: "oz", category: "Other" },
-  { name: "Broth cubes", defaultQty: 1, defaultUnit: "pack", category: "Other" },
-  { name: "Cornstarch", defaultQty: 1, defaultUnit: "each", category: "Other" },
-  { name: "Yeast", defaultQty: 1, defaultUnit: "pack", category: "Other" },
+  { name: "Broth cubes", suggestedUnit: "pack", category: "Other" },
 ];
 
 export function itemsForChip(chip: CatalogChip): CatalogItem[] {
