@@ -27,6 +27,8 @@ describe("pantry catalog", () => {
     expect(findCatalogItem("Spaghetti")?.suggestedUnit).toBe("oz");
     expect(findCatalogItem("Ground beef")?.suggestedUnit).toBe("lb");
     expect(findCatalogItem("Flour")?.category).toBe("Baking");
+    expect(findCatalogItem("Milk")?.suggestedUnit).toBe("fl oz");
+    expect(findCatalogItem("Milk")?.measureKind).toBe("liquid");
     expect(findCatalogItem("Brown sugar")?.category).toBe("Baking");
   });
 

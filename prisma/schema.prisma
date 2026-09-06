@@ -40,6 +40,7 @@ model Household {
   pantryItems PantryItem[]
   recipes    Recipe[]
   coupons    Coupon[]
+  customStaples CustomPantryStaple[]
 }
 
 model HouseholdMember {
@@ -128,4 +129,22 @@ model Coupon {
   @@index([brand])
   @@index([expiresAt])
   @@index([householdId])
+}
+
+
+model CustomPantryStaple {
+  id          String     @id @default(cuid())
+  name        String
+  category    String
+  measureKind String?
+  suggestedUnit String?
+  hidden      Boolean    @default(false)
+  householdId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  @@unique([householdId, name, category])
+  @@index([householdId])
+  @@index([category])
 }

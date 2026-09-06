@@ -1,12 +1,23 @@
 import type { PantryCategory } from "./categories";
+import type { MeasureKind } from "./units";
 
-/** Units offered as presets on Manual pantry add. */
+/** Broad unit list (fallback / edit forms). Prefer `unitsForItem` for intake. */
 export const PANTRY_UNITS = [
   "each",
+  "dozen",
   "oz",
   "lb",
+  "g",
+  "kg",
+  "fl oz",
   "cups",
   "tbsp",
+  "tsp",
+  "pints",
+  "quarts",
+  "gallons",
+  "ml",
+  "L",
   "cans",
   "pack",
 ] as const;
@@ -23,6 +34,8 @@ export type CatalogItem = {
   category: PantryCategory;
   /** Soft unit suggestion after selection — not shown on the chip. */
   suggestedUnit?: PantryUnit | string;
+  /** Substance measure kind for unit picker; inferred from name/category if omitted. */
+  measureKind?: MeasureKind;
 };
 
 /**
@@ -96,13 +109,13 @@ export function suggestedUnitForCategory(category: PantryCategory | string): str
     case "Baking":
       return "cups";
     case "Dairy":
-      return "each";
+      return "oz";
     case "Canned":
       return "cans";
     case "Spices":
-      return "each";
+      return "tsp";
     case "Oils & Condiments":
-      return "each";
+      return "fl oz";
     default:
       return "each";
   }
@@ -132,113 +145,113 @@ export function fatTagFromSelection(value: string): string | null {
 /** Staple catalog — name (+ category) only for display chips. */
 export const PANTRY_CATALOG: CatalogItem[] = [
   // Proteins
-  { name: "Ground beef", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Chicken breast", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Chicken thighs", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Whole chicken", suggestedUnit: "each", category: "Proteins" },
-  { name: "Eggs", suggestedUnit: "each", category: "Proteins" },
-  { name: "Bacon", suggestedUnit: "oz", category: "Proteins" },
-  { name: "Pork chops", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Ground turkey", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Canned tuna", suggestedUnit: "cans", category: "Proteins" },
-  { name: "Peanut butter", suggestedUnit: "each", category: "Proteins" },
-  { name: "Black beans (dry)", suggestedUnit: "lb", category: "Proteins" },
-  { name: "Tofu", suggestedUnit: "oz", category: "Proteins" },
+  { name: "Ground beef", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Chicken breast", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Chicken thighs", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Whole chicken", suggestedUnit: "each", category: "Proteins", measureKind: "count" },
+  { name: "Eggs", suggestedUnit: "each", category: "Proteins", measureKind: "count" },
+  { name: "Bacon", suggestedUnit: "oz", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Pork chops", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Ground turkey", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Canned tuna", suggestedUnit: "cans", category: "Proteins", measureKind: "canned" },
+  { name: "Peanut butter", suggestedUnit: "oz", category: "Proteins", measureKind: "semi_solid" },
+  { name: "Black beans (dry)", suggestedUnit: "lb", category: "Proteins", measureKind: "solid_weight" },
+  { name: "Tofu", suggestedUnit: "oz", category: "Proteins", measureKind: "solid_weight" },
 
   // Produce — vegetables
-  { name: "Yellow onion", suggestedUnit: "each", category: "Produce" },
-  { name: "Garlic", suggestedUnit: "each", category: "Produce" },
-  { name: "Potato", suggestedUnit: "each", category: "Produce" },
-  { name: "Carrot", suggestedUnit: "each", category: "Produce" },
-  { name: "Celery", suggestedUnit: "each", category: "Produce" },
-  { name: "Bell pepper", suggestedUnit: "each", category: "Produce" },
-  { name: "Tomato", suggestedUnit: "each", category: "Produce" },
-  { name: "Broccoli", suggestedUnit: "each", category: "Produce" },
-  { name: "Spinach", suggestedUnit: "pack", category: "Produce" },
-  { name: "Lettuce", suggestedUnit: "each", category: "Produce" },
-  { name: "Cabbage", suggestedUnit: "each", category: "Produce" },
-  { name: "Zucchini", suggestedUnit: "each", category: "Produce" },
-  { name: "Mushrooms", suggestedUnit: "oz", category: "Produce" },
+  { name: "Yellow onion", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Garlic", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Potato", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Carrot", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Celery", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Bell pepper", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Tomato", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Broccoli", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Spinach", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Lettuce", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Cabbage", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Zucchini", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Mushrooms", suggestedUnit: "oz", category: "Produce", measureKind: "produce" },
 
   // Produce — fruit
-  { name: "Apple", suggestedUnit: "each", category: "Produce" },
-  { name: "Banana", suggestedUnit: "each", category: "Produce" },
-  { name: "Orange", suggestedUnit: "each", category: "Produce" },
-  { name: "Lemon", suggestedUnit: "each", category: "Produce" },
-  { name: "Lime", suggestedUnit: "each", category: "Produce" },
-  { name: "Grapes", suggestedUnit: "lb", category: "Produce" },
-  { name: "Strawberries", suggestedUnit: "lb", category: "Produce" },
-  { name: "Avocado", suggestedUnit: "each", category: "Produce" },
+  { name: "Apple", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Banana", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Orange", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Lemon", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Lime", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
+  { name: "Grapes", suggestedUnit: "lb", category: "Produce", measureKind: "produce" },
+  { name: "Strawberries", suggestedUnit: "lb", category: "Produce", measureKind: "produce" },
+  { name: "Avocado", suggestedUnit: "each", category: "Produce", measureKind: "produce" },
 
   // Grains
-  { name: "Spaghetti", suggestedUnit: "oz", category: "Grains" },
-  { name: "White rice", suggestedUnit: "cups", category: "Grains" },
-  { name: "Brown rice", suggestedUnit: "cups", category: "Grains" },
-  { name: "Bread", suggestedUnit: "each", category: "Grains" },
-  { name: "Oats", suggestedUnit: "cups", category: "Grains" },
-  { name: "Penne pasta", suggestedUnit: "oz", category: "Grains" },
-  { name: "Flour tortillas", suggestedUnit: "each", category: "Grains" },
-  { name: "Cornmeal", suggestedUnit: "cups", category: "Grains" },
-  { name: "Breadcrumbs", suggestedUnit: "cups", category: "Grains" },
+  { name: "Spaghetti", suggestedUnit: "oz", category: "Grains", measureKind: "solid_weight" },
+  { name: "White rice", suggestedUnit: "cups", category: "Grains", measureKind: "volume_dry" },
+  { name: "Brown rice", suggestedUnit: "cups", category: "Grains", measureKind: "volume_dry" },
+  { name: "Bread", suggestedUnit: "each", category: "Grains", measureKind: "count" },
+  { name: "Oats", suggestedUnit: "cups", category: "Grains", measureKind: "volume_dry" },
+  { name: "Penne pasta", suggestedUnit: "oz", category: "Grains", measureKind: "solid_weight" },
+  { name: "Flour tortillas", suggestedUnit: "each", category: "Grains", measureKind: "count" },
+  { name: "Cornmeal", suggestedUnit: "cups", category: "Grains", measureKind: "volume_dry" },
+  { name: "Breadcrumbs", suggestedUnit: "cups", category: "Grains", measureKind: "volume_dry" },
 
   // Dairy
-  { name: "Milk", suggestedUnit: "each", category: "Dairy" },
-  { name: "Butter", suggestedUnit: "each", category: "Dairy" },
-  { name: "Cheddar cheese", suggestedUnit: "oz", category: "Dairy" },
-  { name: "Mozzarella", suggestedUnit: "oz", category: "Dairy" },
-  { name: "Yogurt", suggestedUnit: "each", category: "Dairy" },
-  { name: "Cream cheese", suggestedUnit: "oz", category: "Dairy" },
-  { name: "Sour cream", suggestedUnit: "oz", category: "Dairy" },
-  { name: "Parmesan", suggestedUnit: "oz", category: "Dairy" },
+  { name: "Milk", suggestedUnit: "fl oz", category: "Dairy", measureKind: "liquid" },
+  { name: "Butter", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Cheddar cheese", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Mozzarella", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Yogurt", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Cream cheese", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Sour cream", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
+  { name: "Parmesan", suggestedUnit: "oz", category: "Dairy", measureKind: "semi_solid" },
 
   // Canned
-  { name: "Canned diced tomatoes", suggestedUnit: "cans", category: "Canned" },
-  { name: "Tomato sauce", suggestedUnit: "cans", category: "Canned" },
-  { name: "Canned black beans", suggestedUnit: "cans", category: "Canned" },
-  { name: "Canned chickpeas", suggestedUnit: "cans", category: "Canned" },
-  { name: "Canned corn", suggestedUnit: "cans", category: "Canned" },
-  { name: "Canned tuna", suggestedUnit: "cans", category: "Canned" },
-  { name: "Chicken broth", suggestedUnit: "cans", category: "Canned" },
-  { name: "Coconut milk", suggestedUnit: "cans", category: "Canned" },
-  { name: "Canned green beans", suggestedUnit: "cans", category: "Canned" },
+  { name: "Canned diced tomatoes", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Tomato sauce", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Canned black beans", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Canned chickpeas", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Canned corn", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Canned tuna", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Chicken broth", suggestedUnit: "cans", category: "Canned", measureKind: "liquid" },
+  { name: "Coconut milk", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
+  { name: "Canned green beans", suggestedUnit: "cans", category: "Canned", measureKind: "canned" },
 
   // Baking
-  { name: "Flour", suggestedUnit: "cups", category: "Baking" },
-  { name: "Sugar", suggestedUnit: "cups", category: "Baking" },
-  { name: "Brown sugar", suggestedUnit: "cups", category: "Baking" },
-  { name: "Powdered sugar", suggestedUnit: "cups", category: "Baking" },
-  { name: "Baking powder", suggestedUnit: "each", category: "Baking" },
-  { name: "Baking soda", suggestedUnit: "each", category: "Baking" },
-  { name: "Chocolate chips", suggestedUnit: "oz", category: "Baking" },
-  { name: "Cornstarch", suggestedUnit: "each", category: "Baking" },
-  { name: "Yeast", suggestedUnit: "pack", category: "Baking" },
-  { name: "Cocoa powder", suggestedUnit: "each", category: "Baking" },
-  { name: "Vanilla extract", suggestedUnit: "each", category: "Baking" },
+  { name: "Flour", suggestedUnit: "cups", category: "Baking", measureKind: "volume_dry" },
+  { name: "Sugar", suggestedUnit: "cups", category: "Baking", measureKind: "volume_dry" },
+  { name: "Brown sugar", suggestedUnit: "cups", category: "Baking", measureKind: "volume_dry" },
+  { name: "Powdered sugar", suggestedUnit: "cups", category: "Baking", measureKind: "volume_dry" },
+  { name: "Baking powder", suggestedUnit: "tsp", category: "Baking", measureKind: "spice" },
+  { name: "Baking soda", suggestedUnit: "tsp", category: "Baking", measureKind: "spice" },
+  { name: "Chocolate chips", suggestedUnit: "oz", category: "Baking", measureKind: "solid_weight" },
+  { name: "Cornstarch", suggestedUnit: "tbsp", category: "Baking", measureKind: "spice" },
+  { name: "Yeast", suggestedUnit: "pack", category: "Baking", measureKind: "count" },
+  { name: "Cocoa powder", suggestedUnit: "cups", category: "Baking", measureKind: "volume_dry" },
+  { name: "Vanilla extract", suggestedUnit: "tsp", category: "Baking", measureKind: "spice" },
 
   // Spices
-  { name: "Salt", suggestedUnit: "each", category: "Spices" },
-  { name: "Black pepper", suggestedUnit: "each", category: "Spices" },
-  { name: "Garlic powder", suggestedUnit: "each", category: "Spices" },
-  { name: "Paprika", suggestedUnit: "each", category: "Spices" },
-  { name: "Cumin", suggestedUnit: "each", category: "Spices" },
-  { name: "Chili flakes", suggestedUnit: "each", category: "Spices" },
-  { name: "Oregano", suggestedUnit: "each", category: "Spices" },
-  { name: "Cinnamon", suggestedUnit: "each", category: "Spices" },
-  { name: "Bay leaves", suggestedUnit: "each", category: "Spices" },
+  { name: "Salt", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Black pepper", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Garlic powder", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Paprika", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Cumin", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Chili flakes", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Oregano", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Cinnamon", suggestedUnit: "tsp", category: "Spices", measureKind: "spice" },
+  { name: "Bay leaves", suggestedUnit: "each", category: "Spices", measureKind: "count" },
 
   // Oils & Condiments
-  { name: "Olive oil", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Vegetable oil", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Soy sauce", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "White vinegar", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Ketchup", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Mustard", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Mayonnaise", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Hot sauce", suggestedUnit: "each", category: "Oils & Condiments" },
-  { name: "Honey", suggestedUnit: "each", category: "Oils & Condiments" },
+  { name: "Olive oil", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Vegetable oil", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Soy sauce", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "White vinegar", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Ketchup", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Mustard", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Mayonnaise", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Hot sauce", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
+  { name: "Honey", suggestedUnit: "fl oz", category: "Oils & Condiments", measureKind: "oil" },
 
   // Other
-  { name: "Broth cubes", suggestedUnit: "pack", category: "Other" },
+  { name: "Broth cubes", suggestedUnit: "pack", category: "Other", measureKind: "count" },
 ];
 
 export function itemsForChip(chip: CatalogChip): CatalogItem[] {

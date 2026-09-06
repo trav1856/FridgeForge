@@ -1,16 +1,26 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   CATALOG_CHIPS,
   FAT_CONTENT_OPTIONS,
   PANTRY_UNITS,
   fatTagFromSelection,
+  findCatalogItem,
   itemsForChip,
   suggestedUnitForCategory,
   type CatalogChip,
   type CatalogItem,
 } from "@/lib/pantry-catalog";
+import {
+  defaultUnitForItem,
+  unitsForItem,
+  type MeasureKind,
+} from "@/lib/units";
+import {
+  mergeCatalogWithCustoms,
+  type CustomStapleDTO,
+} from "@/lib/custom-staples-shared";
 
 type EditForm = {
   name: string;
@@ -29,12 +39,19 @@ type Props = {
   onSaved: () => void;
 };
 
+type SelectableItem = CatalogItem & {
+  customId?: string;
+  isCustom?: boolean;
+};
+
 const emptyDetails = {
   tags: "",
   barcode: "",
   expirationDate: "",
   fatContent: "" as string,
 };
+
+const OTHER_UNIT = "__other__";
 
 export function ManualPantryIntake({
   editingId,
@@ -43,25 +60,70 @@ export function ManualPantryIntake({
   onSaved,
 }: Props) {
   const [chipId, setChipId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<CatalogItem | null>(null);
+  const [selected, setSelected] = useState<SelectableItem | null>(null);
   const [customName, setCustomName] = useState("");
-  /** Blank until user enters — never prefilled from catalog defaultQty. */
+  /** Blank until user enters — never prefilled from catalog. */
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("each");
+  const [customUnit, setCustomUnit] = useState("");
   const [details, setDetails] = useState(emptyDetails);
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [customs, setCustoms] = useState<CustomStapleDTO[]>([]);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const chip: CatalogChip | null = useMemo(
     () => CATALOG_CHIPS.find((c) => c.id === chipId) ?? null,
     [chipId]
   );
 
-  const catalogItems = useMemo(
-    () => (chip ? itemsForChip(chip) : []),
-    [chip]
+  const loadCustoms = useCallback(async (category?: string) => {
+    const qs = category
+      ? `?category=${encodeURIComponent(category)}`
+      : "";
+    try {
+      const res = await fetch(`/api/pantry/staples${qs}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as CustomStapleDTO[];
+      setCustoms(Array.isArray(data) ? data : []);
+    } catch {
+      /* ignore offline */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (chip?.category) {
+      void loadCustoms(chip.category);
+    } else {
+      setCustoms([]);
+    }
+  }, [chip?.category, loadCustoms]);
+
+  const catalogItems: SelectableItem[] = useMemo(() => {
+    if (!chip) return [];
+    const staticItems = itemsForChip(chip);
+    // Customs filtered by the chip's stored category (Proteins, Produce, Baking, …).
+    const forCategory = customs.filter(
+      (c) => !c.hidden && c.category === chip.category
+    );
+    return mergeCatalogWithCustoms(staticItems, forCategory);
+  }, [chip, customs]);
+
+  const name = selected?.name || customName.trim();
+  const category = selected?.category || chip?.category || "Other";
+  const measureKind = selected?.measureKind as MeasureKind | undefined;
+
+  const unitOptions = useMemo(
+    () => unitsForItem(name, category, measureKind),
+    [name, category, measureKind]
   );
+
+  const unitSelectValue = useMemo(() => {
+    if (unitOptions.includes(unit)) return unit;
+    if (unit && unit !== "each") return OTHER_UNIT;
+    return unitOptions[0] ?? "each";
+  }, [unit, unitOptions]);
 
   const showFatContent =
     chip?.category === "Proteins" ||
@@ -83,22 +145,35 @@ export function ManualPantryIntake({
     );
   }
 
+  function applyDefaultUnit(
+    itemName: string,
+    itemCategory: string,
+    suggested?: string | null,
+    kind?: MeasureKind | null
+  ) {
+    setUnit(defaultUnitForItem(itemName, itemCategory, suggested, kind));
+    setCustomUnit("");
+  }
+
   function pickChip(c: CatalogChip) {
     setChipId(c.id);
     setSelected(null);
     setCustomName("");
     setQuantity("");
-    setUnit(suggestedUnitForCategory(c.category));
+    applyDefaultUnit("", c.category, suggestedUnitForCategory(c.category));
     setDetails((d) => ({ ...d, fatContent: "" }));
     setError(null);
   }
 
-  function pickItem(item: CatalogItem) {
+  function pickItem(item: SelectableItem) {
     setSelected(item);
     setCustomName("");
     setQuantity("");
-    setUnit(
-      item.suggestedUnit || suggestedUnitForCategory(item.category)
+    applyDefaultUnit(
+      item.name,
+      item.category,
+      item.suggestedUnit,
+      item.measureKind
     );
     setError(null);
   }
@@ -107,12 +182,40 @@ export function ManualPantryIntake({
     setSelected(null);
     if (chip) {
       setQuantity("");
-      setUnit(suggestedUnitForCategory(chip.category));
     }
   }
 
-  const name = selected?.name || customName.trim();
-  const category = selected?.category || chip?.category || "Other";
+  function onCustomNameChange(value: string) {
+    useCustom();
+    setCustomName(value);
+    if (chip) {
+      const catalogHit = findCatalogItem(value);
+      applyDefaultUnit(
+        value,
+        catalogHit?.category || chip.category,
+        catalogHit?.suggestedUnit,
+        catalogHit?.measureKind
+      );
+    }
+  }
+
+  async function hideCustom(id: string) {
+    try {
+      const res = await fetch(`/api/pantry/staples/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hidden: true }),
+      });
+      if (!res.ok) return;
+      if (selected?.customId === id) {
+        setSelected(null);
+        setQuantity("");
+      }
+      if (chip?.category) await loadCustoms(chip.category);
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -126,6 +229,10 @@ export function ManualPantryIntake({
       setError("Enter a quantity (e.g. 8)");
       return;
     }
+    const resolvedUnit =
+      unitSelectValue === OTHER_UNIT
+        ? customUnit.trim() || "each"
+        : unit.trim() || unitOptions[0] || "each";
     setSaving(true);
     try {
       const tags = details.tags
@@ -139,7 +246,7 @@ export function ManualPantryIntake({
       const payload = {
         name,
         quantity: qtyNum,
-        unit: unit.trim() || "each",
+        unit: resolvedUnit,
         category,
         tags,
         barcode: details.barcode.trim() || null,
@@ -162,8 +269,10 @@ export function ManualPantryIntake({
       setCustomName("");
       setQuantity("");
       setUnit(chip ? suggestedUnitForCategory(chip.category) : "each");
+      setCustomUnit("");
       setDetails(emptyDetails);
       setMoreOpen(false);
+      if (chip?.category) await loadCustoms(chip.category);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save item");
@@ -171,6 +280,8 @@ export function ManualPantryIntake({
       setSaving(false);
     }
   }
+
+  const managedCustoms = customs.filter((c) => c.category === chip?.category);
 
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-4">
@@ -180,7 +291,7 @@ export function ManualPantryIntake({
         </h2>
         <p className="mt-1 text-sm text-sage-600">
           Pick a category, tap a staple, then enter weight/size and how many —
-          or add your own.
+          or add your own (customs stay under that category).
         </p>
       </div>
 
@@ -212,18 +323,39 @@ export function ManualPantryIntake({
               {catalogItems.map((item) => {
                 const active = selected?.name === item.name;
                 return (
-                  <button
-                    key={item.name}
-                    type="button"
-                    onClick={() => pickItem(item)}
-                    className={
-                      active
-                        ? "rounded-xl border-2 border-ember-500 bg-ember-50 px-3 py-2.5 text-left text-sm font-semibold text-ember-900"
-                        : "rounded-xl border border-sage-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-sage-800 hover:border-sage-300 hover:bg-cream-50"
-                    }
-                  >
-                    <span className="block leading-snug">{item.name}</span>
-                  </button>
+                  <div key={`${item.isCustom ? "c" : "s"}-${item.name}`} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => pickItem(item)}
+                      className={
+                        active
+                          ? "w-full rounded-xl border-2 border-ember-500 bg-ember-50 px-3 py-2.5 text-left text-sm font-semibold text-ember-900"
+                          : "w-full rounded-xl border border-sage-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-sage-800 hover:border-sage-300 hover:bg-cream-50"
+                      }
+                    >
+                      <span className="block leading-snug pr-4">{item.name}</span>
+                      {item.isCustom ? (
+                        <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-sage-500">
+                          yours
+                        </span>
+                      ) : null}
+                    </button>
+                    {item.isCustom && item.customId ? (
+                      <button
+                        type="button"
+                        title="Hide custom staple"
+                        aria-label={`Hide ${item.name}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void hideCustom(item.customId!);
+                        }}
+                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-sage-400 hover:bg-sage-100 hover:text-sage-800"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -237,13 +369,13 @@ export function ManualPantryIntake({
               id="custom-pantry-name"
               className="input"
               value={customName}
-              onChange={(e) => {
-                useCustom();
-                setCustomName(e.target.value);
-              }}
+              onChange={(e) => onCustomNameChange(e.target.value)}
               onFocus={useCustom}
               placeholder={`Custom ${chip.label.toLowerCase()} item…`}
             />
+            <p className="mt-1 text-xs text-sage-500">
+              Saved customs reappear under {chip.label} next time.
+            </p>
           </div>
 
           {(selected || customName.trim()) && (
@@ -274,18 +406,36 @@ export function ManualPantryIntake({
                     <select
                       id="pantry-unit"
                       className="input"
-                      value={unit}
-                      onChange={(e) => setUnit(e.target.value)}
+                      value={unitSelectValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === OTHER_UNIT) {
+                          setUnit(customUnit || "");
+                        } else {
+                          setUnit(v);
+                          setCustomUnit("");
+                        }
+                      }}
                     >
-                      {PANTRY_UNITS.map((u) => (
+                      {unitOptions.map((u) => (
                         <option key={u} value={u}>
                           {u}
                         </option>
                       ))}
-                      {!PANTRY_UNITS.includes(unit as never) && unit && (
-                        <option value={unit}>{unit}</option>
-                      )}
+                      <option value={OTHER_UNIT}>other…</option>
                     </select>
+                    {unitSelectValue === OTHER_UNIT && (
+                      <input
+                        className="input mt-2"
+                        value={customUnit}
+                        onChange={(e) => {
+                          setCustomUnit(e.target.value);
+                          setUnit(e.target.value);
+                        }}
+                        placeholder="Custom unit"
+                        aria-label="Custom unit"
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -377,7 +527,14 @@ export function ManualPantryIntake({
                 {name && (
                   <span className="text-xs text-sage-600">
                     {name}
-                    {quantity ? ` · ${quantity} ${unit}` : ""} · {category}
+                    {quantity
+                      ? ` · ${quantity} ${
+                          unitSelectValue === OTHER_UNIT
+                            ? customUnit || "…"
+                            : unit
+                        }`
+                      : ""}{" "}
+                    · {category}
                     {details.fatContent
                       ? ` · fat ${details.fatContent}`
                       : ""}
@@ -385,6 +542,44 @@ export function ManualPantryIntake({
                 )}
               </div>
             </>
+          )}
+
+          {managedCustoms.length > 0 && (
+            <details
+              className="rounded-xl border border-sage-200 bg-white"
+              open={manageOpen}
+              onToggle={(e) =>
+                setManageOpen((e.target as HTMLDetailsElement).open)
+              }
+            >
+              <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-sage-800">
+                Manage custom staples ({managedCustoms.filter((c) => !c.hidden).length} in{" "}
+                {chip.label})
+              </summary>
+              <ul className="space-y-1 border-t border-sage-100 px-3 py-2">
+                {managedCustoms.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 text-sm text-sage-800"
+                  >
+                    <span>
+                      {c.name}
+                      {c.hidden ? (
+                        <span className="ml-1 text-xs text-sage-500">(hidden)</span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-ember-700 hover:underline"
+                      onClick={() => void hideCustom(c.id)}
+                      disabled={c.hidden}
+                    >
+                      {c.hidden ? "Hidden" : "Hide"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </>
       )}
@@ -440,6 +635,11 @@ function EditPantryForm({
     }
   }
 
+  const editUnitOptions = useMemo(
+    () => unitsForItem(form.name, form.category),
+    [form.name, form.category]
+  );
+
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
       <h2 className="font-display text-xl font-bold text-sage-900">Edit item</h2>
@@ -467,11 +667,26 @@ function EditPantryForm({
         </div>
         <div>
           <label className="label">Unit</label>
-          <input
+          <select
             className="input"
-            value={form.unit}
+            value={
+              editUnitOptions.includes(form.unit) ||
+              PANTRY_UNITS.includes(form.unit as never)
+                ? form.unit
+                : form.unit
+            }
             onChange={(e) => setForm({ ...form, unit: e.target.value })}
-          />
+          >
+            {Array.from(
+              new Set([...editUnitOptions, form.unit, ...PANTRY_UNITS])
+            )
+              .filter(Boolean)
+              .map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+          </select>
         </div>
         <div>
           <label className="label">Category</label>

@@ -6,6 +6,9 @@ import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
 import { upsertPantryItem } from "@/lib/pantry-upsert";
+import { upsertCustomStaple } from "@/lib/custom-staples";
+import { findCatalogItem } from "@/lib/pantry-catalog";
+import { inferMeasureKind } from "@/lib/units";
 import {
   searchNutritionByName,
   stringifyNutrition,
@@ -40,6 +43,24 @@ export async function POST(req: NextRequest) {
 
     if (data.merge !== false) {
       const result = await upsertPantryItem(data, householdId);
+
+      // Persist custom name under the category it was added in (any category).
+      if (data.category && !findCatalogItem(data.name)) {
+        try {
+          await upsertCustomStaple(
+            {
+              name: data.name,
+              category: data.category,
+              measureKind: inferMeasureKind(data.name, data.category),
+              suggestedUnit: data.unit,
+            },
+            householdId
+          );
+        } catch (e) {
+          console.warn("custom staple upsert skipped", e);
+        }
+      }
+
       return NextResponse.json(result, { status: result.merged ? 200 : 201 });
     }
 
@@ -68,6 +89,24 @@ export async function POST(req: NextRequest) {
         householdId,
       },
     });
+
+    // Persist custom name under the category it was added in (any category, not Dairy-only).
+    if (data.category && !findCatalogItem(data.name)) {
+      try {
+        await upsertCustomStaple(
+          {
+            name: data.name,
+            category: data.category,
+            measureKind: inferMeasureKind(data.name, data.category),
+            suggestedUnit: data.unit,
+          },
+          householdId
+        );
+      } catch (e) {
+        console.warn("custom staple upsert skipped", e);
+      }
+    }
+
     return NextResponse.json(
       { item: serializePantry(item), merged: false },
       { status: 201 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
+import { RecipeIngredients } from "@/components/RecipeIngredients";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -65,26 +66,7 @@ export default async function RecipeDetailPage({ params }: Props) {
       <RecipeDeals recipeId={recipe.id} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="font-display text-lg font-bold text-sage-900">
-            Ingredients
-          </h2>
-          <ul className="mt-3 space-y-2">
-            {recipe.ingredients.map((i) => (
-              <li key={i.id} className="flex justify-between gap-3 text-sm">
-                <span className="text-sage-900">
-                  {i.name}
-                  {i.optional ? (
-                    <span className="text-sage-500"> (optional)</span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 text-sage-600">
-                  {i.quantity} {i.unit}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <RecipeIngredients ingredients={recipe.ingredients} />
 
         <section className="card p-5">
           <h2 className="font-display text-lg font-bold text-sage-900">Steps</h2>
