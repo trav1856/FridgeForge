@@ -4,6 +4,8 @@ import {
   findNutritionEntry,
   quantityToGrams,
   NUTRITION_TABLE,
+  percentDailyValue,
+  FDA_DAILY_VALUES,
 } from "@/lib/recipe-nutrition";
 
 const friedRiceIngredients = [
@@ -98,5 +100,31 @@ describe("recipe-nutrition", () => {
     expect(est.matchedCount).toBe(0);
     expect(est.totalCount).toBe(0);
     expect(est.total.kcal).toBe(0);
+  });
+
+  it("aggregates micronutrients and supports FDA %DV helpers", () => {
+    expect(FDA_DAILY_VALUES.fat).toBe(78);
+    expect(percentDailyValue(39, "fat")).toBe(50);
+    expect(percentDailyValue(undefined, "sodium")).toBeNull();
+
+    const est = estimateRecipeNutrition(
+      [
+        { name: "Eggs", quantity: 2, unit: "each" },
+        { name: "Butter", quantity: 1, unit: "tbsp" },
+      ],
+      1
+    );
+    expect(est.total.cholesterol).toBeGreaterThan(0);
+    expect(est.total.saturatedFat).toBeGreaterThan(0);
+    expect(est.total.calcium).toBeGreaterThan(0);
+    // Missing from these staples should still leave addedSugars undefined
+    expect(est.total.addedSugars).toBeUndefined();
+  });
+
+  it("includes egg cholesterol in fried-rice style estimate", () => {
+    const est = estimateRecipeNutrition(friedRiceIngredients, 2);
+    expect(est.perServing.cholesterol).toBeGreaterThan(0);
+    expect(est.perServing.sodium).toBeGreaterThan(0);
+    expect(est.total.iron).toBeGreaterThan(0);
   });
 });

@@ -1,7 +1,7 @@
 import { namesMatch, normalizeName } from "./normalize";
 import { parseNutritionJson, type NutritionSnapshot } from "./open-food-facts";
 
-/** Macros per 100g (or scaled from unit defaults via grams helpers). */
+/** Macros / nutrients per 100g (or scaled from unit defaults via grams helpers). */
 export type Macros = {
   kcal: number;
   protein: number;
@@ -10,7 +10,56 @@ export type Macros = {
   fiber?: number;
   /** milligrams */
   sodium?: number;
+  saturatedFat?: number;
+  transFat?: number;
+  /** milligrams */
+  cholesterol?: number;
+  sugars?: number;
+  addedSugars?: number;
+  /** micrograms */
+  vitaminD?: number;
+  /** milligrams */
+  calcium?: number;
+  /** milligrams */
+  iron?: number;
+  /** milligrams */
+  potassium?: number;
 };
+
+/** FDA Daily Values (2000 kcal diet) for %DV calculation. */
+export const FDA_DAILY_VALUES = {
+  fat: 78,
+  saturatedFat: 20,
+  cholesterol: 300,
+  sodium: 2300,
+  carbs: 275,
+  fiber: 28,
+  addedSugars: 50,
+  protein: 50,
+  vitaminD: 20,
+  calcium: 1300,
+  iron: 18,
+  potassium: 4700,
+} as const;
+
+export type FdaDailyValueKey = keyof typeof FDA_DAILY_VALUES;
+
+/** Optional macro keys that may be absent from table entries. */
+export const OPTIONAL_MACRO_KEYS = [
+  "fiber",
+  "sodium",
+  "saturatedFat",
+  "transFat",
+  "cholesterol",
+  "sugars",
+  "addedSugars",
+  "vitaminD",
+  "calcium",
+  "iron",
+  "potassium",
+] as const;
+
+export type OptionalMacroKey = (typeof OPTIONAL_MACRO_KEYS)[number];
 
 export type NutritionTableEntry = Macros & {
   /** Approximate grams when measured by cup (volume → mass heuristic). */
@@ -38,6 +87,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 0.4,
     sodium: 1,
     gPerCup: 185, // cooked-ish / leftover rice volume
+    iron: 0.2,
+    potassium: 35,
+    calcium: 10,
+    sugars: 0.1,
     aliases: ["white rice", "brown rice", "jasmine rice", "cooked rice"],
   },
   "brown rice": {
@@ -47,6 +100,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 24,
     fiber: 1.8,
     gPerCup: 195,
+    iron: 0.4,
+    potassium: 43,
+    calcium: 10,
+    sugars: 0.4,
   },
   pasta: {
     kcal: 131,
@@ -55,6 +112,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 25,
     fiber: 1.8,
     gPerCup: 140, // cooked
+    iron: 1.3,
+    potassium: 44,
+    calcium: 7,
+    sugars: 0.6,
     aliases: ["spaghetti", "noodles", "macaroni", "penne"],
   },
   flour: {
@@ -64,6 +125,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 76,
     fiber: 2.7,
     gPerCup: 120,
+    iron: 4.6,
+    potassium: 107,
+    calcium: 15,
+    sugars: 0.3,
     aliases: ["all purpose flour", "ap flour", "wheat flour"],
   },
   sugar: {
@@ -74,6 +139,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 200,
     gPerTbsp: 12.5,
     gPerTsp: 4,
+    sugars: 100,
+    addedSugars: 100,
+    potassium: 2,
+    calcium: 1,
     aliases: ["white sugar", "granulated sugar"],
   },
   "brown sugar": {
@@ -83,6 +152,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 98,
     gPerCup: 220,
     gPerTbsp: 14,
+    sugars: 97,
+    addedSugars: 97,
+    potassium: 133,
+    calcium: 83,
+    iron: 0.7,
   },
   butter: {
     kcal: 717,
@@ -93,6 +167,13 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 227,
     gPerTbsp: 14,
     gPerTsp: 5,
+    saturatedFat: 51,
+    transFat: 3,
+    cholesterol: 215,
+    sugars: 0.1,
+    vitaminD: 1.5,
+    calcium: 24,
+    potassium: 24,
   },
   oil: {
     kcal: 884,
@@ -102,7 +183,8 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 218,
     gPerTbsp: 14,
     gPerTsp: 4.5,
-    aliases: ["vegetable oil", "cooking oil", "canola oil", "olive oil", "neutral oil"],
+    saturatedFat: 7,
+aliases: ["vegetable oil", "cooking oil", "canola oil", "olive oil", "neutral oil"],
   },
   "olive oil": {
     kcal: 884,
@@ -112,6 +194,9 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 216,
     gPerTbsp: 13.5,
     gPerTsp: 4.5,
+    saturatedFat: 14,
+    iron: 0.6,
+    potassium: 1,
   },
   egg: {
     kcal: 143,
@@ -120,6 +205,13 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 0.7,
     sodium: 142,
     gPerEach: 50,
+    saturatedFat: 3.1,
+    cholesterol: 372,
+    sugars: 0.4,
+    vitaminD: 2,
+    calcium: 56,
+    iron: 1.8,
+    potassium: 138,
     aliases: ["eggs", "large eggs", "chicken eggs"],
   },
   milk: {
@@ -129,6 +221,12 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 4.8,
     sodium: 44,
     gPerCup: 244,
+    saturatedFat: 1.9,
+    cholesterol: 10,
+    sugars: 4.8,
+    vitaminD: 1.2,
+    calcium: 113,
+    potassium: 150,
     aliases: ["whole milk", "2% milk", "skim milk"],
   },
   cheese: {
@@ -139,6 +237,13 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     sodium: 621,
     gPerCup: 113, // shredded
     gPerEach: 28, // ~1 oz slice
+    saturatedFat: 21,
+    cholesterol: 105,
+    sugars: 0.5,
+    vitaminD: 0.6,
+    calcium: 721,
+    iron: 0.7,
+    potassium: 98,
     aliases: ["cheddar", "shredded cheese", "parmesan", "mozzarella"],
   },
   chicken: {
@@ -148,6 +253,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 0,
     sodium: 74,
     gPerCup: 140,
+    saturatedFat: 1,
+    cholesterol: 85,
+    iron: 1,
+    potassium: 256,
+    calcium: 15,
     aliases: ["chicken breast", "chicken thighs", "cooked chicken"],
   },
   beef: {
@@ -156,6 +266,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fat: 15,
     carbs: 0,
     sodium: 72,
+    saturatedFat: 6,
+    cholesterol: 88,
+    iron: 2.6,
+    potassium: 318,
+    calcium: 18,
     aliases: ["ground beef", "beef mince", "steak"],
   },
   pork: {
@@ -163,6 +278,12 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     protein: 27,
     fat: 14,
     carbs: 0,
+    saturatedFat: 5,
+    cholesterol: 80,
+    iron: 0.9,
+    potassium: 423,
+    calcium: 19,
+    sodium: 62,
     aliases: ["pork chop", "ground pork"],
   },
   tuna: {
@@ -172,6 +293,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 0,
     sodium: 247,
     gPerEach: 140, // typical can drained-ish
+    saturatedFat: 0.2,
+    cholesterol: 30,
+    iron: 1.6,
+    potassium: 237,
+    calcium: 14,
     aliases: ["canned tuna", "tuna fish"],
   },
   beans: {
@@ -183,6 +309,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     sodium: 238,
     gPerCup: 170,
     gPerEach: 425, // can
+    sugars: 0.3,
+    iron: 2.1,
+    potassium: 355,
+    calcium: 46,
     aliases: ["black beans", "pinto beans", "kidney beans", "canned beans"],
   },
   "peanut butter": {
@@ -195,6 +325,12 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 258,
     gPerTbsp: 16,
     gPerTsp: 5,
+    saturatedFat: 10,
+    sugars: 9,
+    addedSugars: 6,
+    iron: 1.9,
+    potassium: 649,
+    calcium: 49,
     aliases: ["pb"],
   },
   onion: {
@@ -205,7 +341,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 1.7,
     gPerEach: 110,
     gPerCup: 160,
-    aliases: ["onions", "yellow onion", "white onion", "red onion"],
+    sugars: 4.2,
+    potassium: 146,
+    calcium: 23,
+    iron: 0.2,
+aliases: ["onions", "yellow onion", "white onion", "red onion"],
   },
   garlic: {
     kcal: 149,
@@ -215,6 +355,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.1,
     gPerEach: 3, // clove
     gPerCup: 136,
+    sugars: 1,
+    potassium: 401,
+    calcium: 181,
+    iron: 1.7,
     aliases: ["garlic cloves", "garlic clove", "minced garlic"],
   },
   potato: {
@@ -225,7 +369,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.2,
     gPerEach: 173,
     gPerCup: 150,
-    aliases: ["potatoes", "russet potato"],
+    sugars: 0.8,
+    potassium: 421,
+    calcium: 12,
+    iron: 0.8,
+aliases: ["potatoes", "russet potato"],
   },
   carrot: {
     kcal: 41,
@@ -235,7 +383,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.8,
     gPerEach: 61,
     gPerCup: 128,
-    aliases: ["carrots"],
+    sugars: 4.7,
+    potassium: 320,
+    calcium: 33,
+    iron: 0.3,
+aliases: ["carrots"],
   },
   cabbage: {
     kcal: 25,
@@ -245,6 +397,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.5,
     gPerCup: 90,
     gPerEach: 900, // head — rough
+    sugars: 3.2,
+    potassium: 170,
+    calcium: 40,
+    iron: 0.5,
     aliases: ["green cabbage", "shredded cabbage"],
   },
   tomato: {
@@ -255,7 +411,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 1.2,
     gPerEach: 123,
     gPerCup: 180,
-    aliases: ["tomatoes", "canned tomatoes", "diced tomatoes"],
+    sugars: 2.6,
+    potassium: 237,
+    calcium: 10,
+    iron: 0.3,
+aliases: ["tomatoes", "canned tomatoes", "diced tomatoes"],
   },
   "soy sauce": {
     kcal: 53,
@@ -266,6 +426,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 255,
     gPerTbsp: 16,
     gPerTsp: 5,
+    sugars: 0.4,
+    iron: 1.5,
+    potassium: 212,
+    calcium: 20,
     aliases: ["soy", "tamari"],
   },
   vinegar: {
@@ -286,6 +450,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.7,
     sodium: 491,
     gPerEach: 28, // slice
+    saturatedFat: 0.7,
+    sugars: 5,
+    iron: 3.6,
+    potassium: 115,
+    calcium: 144,
     aliases: ["sandwich bread", "toast"],
   },
   tortilla: {
@@ -294,6 +463,12 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fat: 7,
     carbs: 52,
     gPerEach: 45,
+    saturatedFat: 1.8,
+    sugars: 2,
+    iron: 3.5,
+    potassium: 100,
+    calcium: 130,
+    sodium: 500,
     aliases: ["tortillas", "flour tortilla", "corn tortilla"],
   },
   oats: {
@@ -303,6 +478,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 66,
     fiber: 10.6,
     gPerCup: 80,
+    saturatedFat: 1.2,
+    sugars: 1,
+    iron: 4.7,
+    potassium: 362,
+    calcium: 54,
   },
   yogurt: {
     kcal: 61,
@@ -310,6 +490,13 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fat: 3.3,
     carbs: 4.7,
     gPerCup: 245,
+    saturatedFat: 2.1,
+    cholesterol: 13,
+    sugars: 4.7,
+    calcium: 121,
+    potassium: 155,
+    vitaminD: 0.1,
+    sodium: 46,
   },
   bacon: {
     kcal: 541,
@@ -317,7 +504,13 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fat: 42,
     carbs: 1.4,
     sodium: 1717,
-    gPerEach: 8, // strip
+    gPerEach: 8, // strip,
+    saturatedFat: 14,
+    cholesterol: 110,
+    sugars: 0,
+    iron: 1.2,
+    potassium: 565,
+    calcium: 11,
   },
   tofu: {
     kcal: 76,
@@ -325,6 +518,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fat: 4.8,
     carbs: 1.9,
     gPerCup: 126,
+    saturatedFat: 0.7,
+    iron: 5.4,
+    potassium: 121,
+    calcium: 350,
+    sodium: 7,
   },
   celery: {
     kcal: 16,
@@ -334,6 +532,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 1.6,
     gPerEach: 40, // stalk
     gPerCup: 101,
+    sugars: 1.3,
+    potassium: 260,
+    calcium: 40,
+    iron: 0.2,
+    sodium: 80,
   },
   pepper: {
     // black pepper — tiny amounts
@@ -344,6 +547,9 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 25,
     gPerTsp: 2.3,
     gPerTbsp: 6.9,
+    iron: 9.7,
+    potassium: 1329,
+    calcium: 443,
     aliases: ["black pepper", "ground pepper"],
   },
   salt: {
@@ -364,6 +570,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 27,
     gPerTsp: 1.8,
     gPerTbsp: 5.4,
+    iron: 6,
+    potassium: 1870,
+    calcium: 45,
+    sugars: 7,
     aliases: ["red pepper flakes", "crushed red pepper", "chili"],
   },
   lemon: {
@@ -374,7 +584,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     fiber: 2.8,
     gPerEach: 58,
     gPerCup: 244, // juice
-    aliases: ["lemon juice", "lemons"],
+    sugars: 2.5,
+    potassium: 138,
+    calcium: 26,
+    iron: 0.6,
+aliases: ["lemon juice", "lemons"],
   },
   lime: {
     kcal: 30,
@@ -383,6 +597,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 11,
     gPerEach: 67,
     gPerCup: 242,
+    sugars: 1.7,
+    fiber: 2.8,
+    potassium: 102,
+    calcium: 33,
+    iron: 0.6,
     aliases: ["lime juice", "limes"],
   },
   honey: {
@@ -393,6 +612,11 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     gPerCup: 339,
     gPerTbsp: 21,
     gPerTsp: 7,
+    sugars: 82,
+    addedSugars: 82,
+    potassium: 52,
+    calcium: 6,
+    iron: 0.4,
   },
   cornstarch: {
     kcal: 381,
@@ -401,6 +625,10 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 91,
     gPerCup: 128,
     gPerTbsp: 8,
+    sugars: 0,
+    iron: 0.5,
+    potassium: 3,
+    calcium: 2,
   },
   water: {
     kcal: 0,
@@ -417,6 +645,12 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 0.5,
     sodium: 340,
     gPerCup: 240,
+    saturatedFat: 0.1,
+    cholesterol: 1,
+    sugars: 0.3,
+    potassium: 86,
+    calcium: 4,
+    iron: 0.2,
     aliases: ["stock", "chicken broth", "vegetable broth"],
   },
 };
@@ -493,17 +727,70 @@ function normalizeUnitKey(unit: string): string {
     .replace(/^fl\.?\s*oz$/, "fl oz");
 }
 
-function emptyMacros(): Required<Macros> {
-  return { kcal: 0, protein: 0, fat: 0, carbs: 0, fiber: 0, sodium: 0 };
+function pickMacros(entry: Macros): Macros {
+  const out: Macros = {
+    kcal: entry.kcal,
+    protein: entry.protein,
+    fat: entry.fat,
+    carbs: entry.carbs,
+  };
+  for (const key of OPTIONAL_MACRO_KEYS) {
+    if (entry[key] != null) out[key] = entry[key];
+  }
+  return out;
 }
 
-function addMacros(a: Required<Macros>, b: Macros, scale: number): void {
+type MacroAccum = {
+  kcal: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  sodium: number;
+  saturatedFat: number;
+  transFat: number;
+  cholesterol: number;
+  sugars: number;
+  addedSugars: number;
+  vitaminD: number;
+  calcium: number;
+  iron: number;
+  potassium: number;
+  present: Set<OptionalMacroKey>;
+};
+
+function emptyMacros(): MacroAccum {
+  return {
+    kcal: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    fiber: 0,
+    sodium: 0,
+    saturatedFat: 0,
+    transFat: 0,
+    cholesterol: 0,
+    sugars: 0,
+    addedSugars: 0,
+    vitaminD: 0,
+    calcium: 0,
+    iron: 0,
+    potassium: 0,
+    present: new Set(),
+  };
+}
+
+function addMacros(a: MacroAccum, b: Macros, scale: number): void {
   a.kcal += (b.kcal ?? 0) * scale;
   a.protein += (b.protein ?? 0) * scale;
   a.fat += (b.fat ?? 0) * scale;
   a.carbs += (b.carbs ?? 0) * scale;
-  a.fiber += (b.fiber ?? 0) * scale;
-  a.sodium += (b.sodium ?? 0) * scale;
+  for (const key of OPTIONAL_MACRO_KEYS) {
+    const v = b[key];
+    if (v == null) continue;
+    a[key] += v * scale;
+    a.present.add(key);
+  }
 }
 
 function roundMacro(n: number): number {
@@ -512,16 +799,30 @@ function roundMacro(n: number): number {
   return Math.round(n);
 }
 
-function roundMacros(m: Required<Macros>): Macros {
+function roundMacros(m: MacroAccum, divideBy = 1): Macros {
+  const d = divideBy > 0 ? divideBy : 1;
   const out: Macros = {
-    kcal: roundMacro(m.kcal),
-    protein: roundMacro(m.protein),
-    fat: roundMacro(m.fat),
-    carbs: roundMacro(m.carbs),
+    kcal: roundMacro(m.kcal / d),
+    protein: roundMacro(m.protein / d),
+    fat: roundMacro(m.fat / d),
+    carbs: roundMacro(m.carbs / d),
   };
-  if (m.fiber > 0.4) out.fiber = roundMacro(m.fiber);
-  if (m.sodium > 0.5) out.sodium = roundMacro(m.sodium);
+  for (const key of OPTIONAL_MACRO_KEYS) {
+    if (!m.present.has(key)) continue;
+    out[key] = roundMacro(m[key] / d);
+  }
   return out;
+}
+
+/** Percent Daily Value rounded like FDA labels (nearest whole %). */
+export function percentDailyValue(
+  amount: number | undefined,
+  nutrient: FdaDailyValueKey
+): number | null {
+  if (amount == null || !Number.isFinite(amount)) return null;
+  const dv = FDA_DAILY_VALUES[nutrient];
+  if (!dv) return null;
+  return Math.round((amount / dv) * 100);
 }
 
 function macrosFromSnapshot(snap: NutritionSnapshot): Macros | null {
@@ -712,45 +1013,26 @@ export function estimateRecipeNutrition(
       continue;
     }
 
-    const per100 = pantryMacros ?? {
-      kcal: entryForGrams.kcal,
-      protein: entryForGrams.protein,
-      fat: entryForGrams.fat,
-      carbs: entryForGrams.carbs,
-      fiber: entryForGrams.fiber,
-      sodium: entryForGrams.sodium,
-    };
+    const per100: Macros = pantryMacros ?? pickMacros(entryForGrams);
 
     const scale = grams / 100;
     addMacros(total, per100, scale);
     matchedCount += 1;
+    const lineAccum = emptyMacros();
+    addMacros(lineAccum, per100, scale);
     lines.push({
       name: ing.name,
       matched: true,
       key: found?.key,
       grams: Math.round(grams),
-      macros: roundMacros({
-        kcal: per100.kcal * scale,
-        protein: per100.protein * scale,
-        fat: per100.fat * scale,
-        carbs: per100.carbs * scale,
-        fiber: (per100.fiber ?? 0) * scale,
-        sodium: (per100.sodium ?? 0) * scale,
-      }),
+      macros: roundMacros(lineAccum),
       source: pantryMacros ? "pantry" : "table",
     });
   }
 
   const totalCount = ingredients.length;
   const roundedTotal = roundMacros(total);
-  const perServing = roundMacros({
-    kcal: total.kcal / safeServings,
-    protein: total.protein / safeServings,
-    fat: total.fat / safeServings,
-    carbs: total.carbs / safeServings,
-    fiber: total.fiber / safeServings,
-    sodium: total.sodium / safeServings,
-  });
+  const perServing = roundMacros(total, safeServings);
 
   let coverageLabel: string | null = null;
   if (totalCount === 0) {
