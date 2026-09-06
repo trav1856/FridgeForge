@@ -13,7 +13,6 @@ const links = [
   { href: "/recipes", label: "Recipes" },
   { href: "/suggestions", label: "Cook Now" },
   { href: "/coupons", label: "Coupons" },
-  { href: "/account", label: "Account" },
 ];
 
 export function Nav() {
@@ -39,41 +38,57 @@ export function Nav() {
     };
   }, [pathname]);
 
+  const accountActive = pathname.startsWith("/account");
+
   return (
     <header className="sticky top-0 z-40 border-b border-cream-300/70 bg-cream-50/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="group flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.png"
-            alt="FridgeForge"
-            className="h-9 w-9 rounded-xl shadow-sm"
-          />
-          <div>
-            <div className="font-display text-lg font-bold leading-tight text-sage-900 group-hover:text-ember-700">
-              FridgeForge
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link href="/" className="group flex min-w-0 items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="FridgeForge"
+              className="h-9 w-9 shrink-0 rounded-xl shadow-sm"
+            />
+            <div className="min-w-0">
+              <div className="font-display text-lg font-bold leading-tight text-sage-900 group-hover:text-ember-700">
+                FridgeForge
+              </div>
+              <div className="truncate text-[10px] font-medium uppercase tracking-wider text-sage-500">
+                {planLabel
+                  ? `${planLabel} · signed in`
+                  : "Community Edition · stable"}
+              </div>
             </div>
-            <div className="text-[10px] font-medium uppercase tracking-wider text-sage-500">
-              {planLabel
-                ? `${planLabel} · signed in`
-                : "Community Edition · stable"}
-            </div>
-          </div>
-        </Link>
+          </Link>
 
-        <button
-          type="button"
-          onClick={toggle}
+          <button
+            type="button"
+            onClick={toggle}
+            className={clsx(
+              "shrink-0 rounded-full px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition sm:px-3 sm:text-xs",
+              struggleMode
+                ? "bg-ember-600 text-white shadow-sm"
+                : "bg-sage-100 text-sage-700 hover:bg-sage-200"
+            )}
+            title="Struggle Meal Mode: prioritize cheap staples and budget-friendly suggestions"
+          >
+            {struggleMode ? "Struggle Meal Mode ON" : "Struggle Meal Mode"}
+          </button>
+        </div>
+
+        <Link
+          href="/account"
           className={clsx(
-            "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
-            struggleMode
-              ? "bg-ember-600 text-white shadow-sm"
+            "shrink-0 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+            accountActive
+              ? "bg-sage-800 text-cream-50 shadow-sm"
               : "bg-sage-100 text-sage-700 hover:bg-sage-200"
           )}
-          title="Optimize for inexpensive staples and proud-plate energy"
         >
-          {struggleMode ? "Struggle Meal ON" : "Struggle Meal"}
-        </button>
+          Account
+        </Link>
       </div>
 
       <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
