@@ -12,8 +12,14 @@ export async function POST(req: NextRequest) {
     const { url } = schema.parse(body);
     const result = await scrapeRecipeFromUrl(url);
     if (!result.ok) {
+      const suggestPaste = result.suggestPaste !== false;
       return NextResponse.json(
-        { error: result.error, fallback: true },
+        {
+          error: result.error,
+          code: result.code ?? (suggestPaste ? "SITE_BLOCKED" : "FETCH_FAILED"),
+          suggestPaste: true,
+          fallback: true,
+        },
         { status: 422 }
       );
     }

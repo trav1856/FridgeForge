@@ -1,17 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="Recipe placeholder">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="FridgeForge recipe placeholder">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#3d5a45"/>
-      <stop offset="55%" stop-color="#5c7a62"/>
-      <stop offset="100%" stop-color="#c45c26"/>
+      <stop offset="50%" stop-color="#5c7a62"/>
+      <stop offset="100%" stop-color="#6b8f71"/>
     </linearGradient>
   </defs>
-  <rect width="800" height="600" fill="url(#g)"/>
-  <circle cx="640" cy="120" r="90" fill="#f5f0e8" opacity="0.12"/>
-  <circle cx="120" cy="480" r="140" fill="#f5f0e8" opacity="0.1"/>
-  <g transform="translate(400 290)" fill="#f5f0e8" opacity="0.92">
-    <path d="M-70 20c0-18 12-34 28-42 4-28 28-48 56-42 18-22 52-22 70 2 26-4 48 16 46 42 18 10 28 30 22 50H-70c-4-16 0-32 14-42z" opacity="0.95"/>
-    <ellipse cx="0" cy="55" rx="92" ry="18" opacity="0.35"/>
+  <!-- cream field -->
+  <rect width="800" height="600" fill="#f5f0e8"/>
+  <rect width="800" height="600" fill="url(#bg)" opacity="0.92"/>
+  <circle cx="660" cy="100" r="100" fill="#f5f0e8" opacity="0.1"/>
+  <circle cx="100" cy="500" r="150" fill="#f5f0e8" opacity="0.08"/>
+  <!-- skillet -->
+  <g transform="translate(400 280)" fill="none" stroke="#f5f0e8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+    <ellipse cx="0" cy="10" rx="110" ry="70"/>
+    <path d="M110 10 H190"/>
+    <path d="M-55 -35 Q0 -70 55 -35" stroke-width="8" opacity="0.7"/>
   </g>
-  <text x="400" y="520" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#f5f0e8" opacity="0.85">FridgeForge</text>
+  <text x="400" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="36" fill="#f5f0e8" opacity="0.95">FridgeForge</text>
+  <text x="400" y="470" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" letter-spacing="0.28em" fill="#f5f0e8" opacity="0.55">RECIPE</text>
 </svg>

@@ -153,10 +153,10 @@ Paste a recipe page URL on **Add / import recipe**. The server fetches the HTML 
 `Recipe.imageUrl` stores a remote URL (or a local `/recipe-images/...` path). No paid API key.
 
 1. **Scrape** — JSON-LD `Recipe.image` → `og:image` → `twitter:image` → first large content `<img>`
-2. **Foodish** — `https://foodish-api.com/api/` (free, no key; category hint from the title when possible)
-3. **Branded fallback** — `/recipe-images/placeholder.svg`, or a client-side gradient + title initials if the remote image fails to load
+2. **Foodish** — category API (`/api/images/{category}/`) or a **deterministic CDN URL** (`https://foodish-api.com/images/{category}/{category}{n}.jpg`) when the title maps to a known Foodish folder (pasta, rice, pizza, dessert, …). No Lorem Flickr.
+3. **Branded fallback** — `/recipe-images/placeholder.svg` when no category matches, or when the remote fails client-side (`RecipeImage` `onError`)
 
-Seed recipes use **Lorem Flickr** food photos keyed by title (`https://loremflickr.com/800/600/food,{keyword}?lock={hash}`) so they stay stable across re-seeds. `source.unsplash.com` is deprecated and is not used.
+Seed recipes use deterministic Foodish CDN URLs keyed by title hash (or the SVG placeholder when unmapped) so they stay stable across re-seeds. After changing image helpers, re-run `npx tsx prisma/seed.ts` to refresh stored `imageUrl` values. `source.unsplash.com` is deprecated and is not used.
 
 Override the scrape User-Agent with `SCRAPE_USER_AGENT` in `.env` if a site still rejects the default Chrome UA.
 

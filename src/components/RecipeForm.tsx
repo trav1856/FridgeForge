@@ -13,6 +13,43 @@ const blankIng = (): Ing => ({
   optional: false,
 });
 
+function applyRecipeToForm(
+  r: {
+    title?: string;
+    description?: string;
+    imageUrl?: string | null;
+    cookTimeMinutes?: number | null;
+    ingredients?: { name: string; quantity: number; unit: string }[];
+    steps?: string[];
+  },
+  setters: {
+    setTitle: (v: string) => void;
+    setDescription: (v: string) => void;
+    setImageUrl: (v: string | null) => void;
+    setCookTimeMinutes: (v: string) => void;
+    setIngredients: (v: Ing[]) => void;
+    setStepsText: (v: string) => void;
+  }
+) {
+  setters.setTitle(r.title || "");
+  setters.setDescription(r.description || "");
+  setters.setImageUrl(r.imageUrl || null);
+  setters.setCookTimeMinutes(
+    r.cookTimeMinutes != null && r.cookTimeMinutes > 0
+      ? String(r.cookTimeMinutes)
+      : ""
+  );
+  setters.setIngredients(
+    (r.ingredients || []).map((i) => ({
+      name: i.name,
+      quantity: String(i.quantity ?? 1),
+      unit: i.unit || "each",
+      optional: false,
+    }))
+  );
+  setters.setStepsText((r.steps || []).join("\n"));
+}
+
 export function RecipeForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -30,12 +67,26 @@ export function RecipeForm() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [suggestPaste, setSuggestPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [parsingPaste, setParsingPaste] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const formSetters = {
+    setTitle,
+    setDescription,
+    setImageUrl,
+    setCookTimeMinutes,
+    setIngredients,
+    setStepsText,
+  };
 
   async function tryImport() {
     if (importing || !importUrl.trim()) return;
     setImportMsg(null);
+    setSuggestPaste(false);
     setImporting(true);
     try {
       const res = await fetch("/api/recipes/import", {
@@ -48,39 +99,57 @@ export function RecipeForm() {
         const err =
           typeof data.error === "string"
             ? data.error
-            : "Could not scrape this URL. Paste the recipe manually below.";
+            : "Could not scrape this URL. Paste the recipe below.";
         setImportMsg(err);
+        setSuggestPaste(data.suggestPaste === true || data.code === "SITE_BLOCKED");
+        setShowPaste(true);
         return;
       }
-      const r = data.recipe;
-      setTitle(r.title || "");
-      setDescription(r.description || "");
-      setImageUrl(r.imageUrl || null);
-      setCookTimeMinutes(
-        r.cookTimeMinutes != null && r.cookTimeMinutes > 0
-          ? String(r.cookTimeMinutes)
-          : ""
-      );
-      setIngredients(
-        (r.ingredients || []).map(
-          (i: { name: string; quantity: number; unit: string }) => ({
-            name: i.name,
-            quantity: String(i.quantity ?? 1),
-            unit: i.unit || "each",
-            optional: false,
-          })
-        )
-      );
-      setStepsText((r.steps || []).join("\n"));
+      applyRecipeToForm(data.recipe, formSetters);
+      setSuggestPaste(false);
       setImportMsg(
-        r.imageUrl
+        data.recipe.imageUrl
           ? "Imported with image — review and save."
           : "Imported — review and save."
       );
     } catch {
-      setImportMsg("Import failed. Use the manual form below.");
+      setImportMsg("Import failed. Paste ingredients & steps below.");
+      setSuggestPaste(true);
+      setShowPaste(true);
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function tryPasteImport() {
+    if (parsingPaste || !pasteText.trim()) return;
+    setImportMsg(null);
+    setParsingPaste(true);
+    try {
+      const res = await fetch("/api/recipes/parse-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: pasteText.trim(),
+          sourceUrl: importUrl.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportMsg(
+          typeof data.error === "string"
+            ? data.error
+            : "Could not parse pasted text. Check Ingredients and Directions headers."
+        );
+        return;
+      }
+      applyRecipeToForm(data.recipe, formSetters);
+      setSuggestPaste(false);
+      setImportMsg("Parsed from paste — review and save.");
+    } catch {
+      setImportMsg("Paste import failed. Try again or fill the form manually.");
+    } finally {
+      setParsingPaste(false);
     }
   }
 
@@ -155,8 +224,9 @@ export function RecipeForm() {
           Import from URL
         </h2>
         <p className="text-sm text-sage-600">
-          Best-effort parse for common recipe sites (JSON-LD / common HTML). On
-          failure, paste manually below.
+          Best-effort parse for common recipe sites (JSON-LD / common HTML). Some
+          sites intermittently block automated fetches — use Paste recipe if that
+          happens.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
@@ -182,8 +252,26 @@ export function RecipeForm() {
           </button>
         </div>
         {importMsg && (
-          <p className="text-sm text-ember-800 bg-ember-50 rounded-lg px-3 py-2">
+          <p
+            className={`text-sm rounded-lg px-3 py-2 ${
+              suggestPaste
+                ? "text-ember-800 bg-ember-50"
+                : "text-sage-800 bg-sage-50"
+            }`}
+          >
             {importMsg}
+            {suggestPaste && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="underline font-semibold"
+                  onClick={() => setShowPaste(true)}
+                >
+                  Paste recipe instead
+                </button>
+              </>
+            )}
           </p>
         )}
         {imageUrl && (
@@ -191,6 +279,56 @@ export function RecipeForm() {
             <RecipeImage src={imageUrl} alt={title || "Imported recipe"} />
           </div>
         )}
+
+        <div className="border-t border-sage-100 pt-3 space-y-2">
+          <button
+            type="button"
+            className="btn-ghost text-sm px-0"
+            onClick={() => setShowPaste((v) => !v)}
+          >
+            {showPaste ? "Hide paste import" : "Paste recipe"}
+          </button>
+          {showPaste && (
+            <div className="space-y-2">
+              <p className="text-xs text-sage-600">
+                Open the page in your browser → select ingredients &amp; steps
+                (or copy all) → paste here. Include headers like{" "}
+                <span className="font-mono">Ingredients</span> and{" "}
+                <span className="font-mono">Directions</span> when you can.
+                {importUrl.trim() ? (
+                  <>
+                    {" "}
+                    <a
+                      href={importUrl.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-ember-800"
+                    >
+                      Open URL in browser
+                    </a>
+                  </>
+                ) : null}
+              </p>
+              <textarea
+                className="input min-h-[160px] font-mono text-xs"
+                placeholder={
+                  "Lo Mein Noodles\n\nIngredients\n1 (8 ounce) package spaghetti\n3 tablespoons low-sodium soy sauce\n…\n\nDirections\n1. Bring a large pot of water to a boil…\n2. Whisk sauce…"
+                }
+                value={pasteText}
+                disabled={parsingPaste}
+                onChange={(e) => setPasteText(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={!pasteText.trim() || parsingPaste}
+                onClick={tryPasteImport}
+              >
+                {parsingPaste ? "Parsing…" : "Import paste"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="card space-y-4 p-4 sm:p-5">
