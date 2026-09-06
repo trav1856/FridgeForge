@@ -1,7 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { generateInviteCode } from "../src/lib/household";
-import { deterministicFoodImageUrl } from "../src/lib/recipe-image";
+import {
+  needsMealDbImage,
+  resolveRecipeImageUrl,
+} from "../src/lib/recipe-image";
 import { cloneStapleRecipesToHousehold } from "../src/lib/clone-staples";
 
 const prisma = new PrismaClient();
@@ -11,14 +14,29 @@ function j(arr: string[]) {
 }
 
 async function main() {
-  await prisma.session.deleteMany();
-  await prisma.householdMember.deleteMany();
-  await prisma.recipeIngredient.deleteMany();
-  await prisma.recipe.deleteMany();
-  await prisma.pantryItem.deleteMany();
-  await prisma.coupon.deleteMany();
-  await prisma.household.deleteMany();
-  await prisma.user.deleteMany();
+  const forceReset = process.env.FF_FORCE_RESET === "1";
+
+  if (forceReset) {
+    console.warn(
+      "FF_FORCE_RESET=1 — wiping users/recipes/households/pantry/coupons (intentional only)."
+    );
+    await prisma.session.deleteMany();
+    await prisma.recipeFavorite.deleteMany().catch(() => {});
+    await prisma.recipeShare.deleteMany().catch(() => {});
+    await prisma.shoppingListItem.deleteMany().catch(() => {});
+    await prisma.householdMember.deleteMany();
+    await prisma.recipeIngredient.deleteMany();
+    await prisma.recipe.deleteMany();
+    await prisma.pantryItem.deleteMany();
+    await prisma.coupon.deleteMany();
+    await prisma.customPantryStaple.deleteMany().catch(() => {});
+    await prisma.household.deleteMany();
+    await prisma.user.deleteMany();
+  } else {
+    console.log(
+      "Non-destructive seed: upserting demo staples only when missing (set FF_FORCE_RESET=1 to wipe)."
+    );
+  }
 
   const pantry = [
     { name: "White rice", quantity: 4, unit: "cups", category: "Grains", tags: j(["staple", "struggle"]) },
@@ -39,10 +57,6 @@ async function main() {
     { name: "Flour tortillas", quantity: 10, unit: "each", category: "Grains", tags: j([]) },
     { name: "Cheddar cheese", quantity: 8, unit: "oz", category: "Dairy", tags: j([]) },
   ];
-
-  for (const item of pantry) {
-    await prisma.pantryItem.create({ data: item });
-  }
 
   const recipes = [
     {
@@ -656,24 +670,62 @@ async function main() {
     },
   ];
 
-  for (const r of recipes) {
-    const { ingredients, ...rest } = r;
-    await prisma.recipe.create({
-      data: {
-        ...rest,
-        imageUrl: deterministicFoodImageUrl(rest.title),
-        ingredients: {
-          create: ingredients.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            unit: i.unit,
-            optional: "optional" in i ? Boolean(i.optional) : false,
-          })),
-        },
-      },
+
+  // Ensure demo pantry (null household) by name — never delete user items
+  let pantryCreated = 0;
+  for (const item of pantry) {
+    const existing = await prisma.pantryItem.findFirst({
+      where: { name: item.name, householdId: null },
     });
+    if (!existing) {
+      await prisma.pantryItem.create({ data: item });
+      pantryCreated += 1;
+    }
   }
 
+  let recipesCreated = 0;
+  let recipesImaged = 0;
+  for (const r of recipes) {
+    const { ingredients, ...rest } = r;
+    const existing = await prisma.recipe.findFirst({
+      where: { title: rest.title, householdId: null },
+      include: { ingredients: true },
+    });
+    if (!existing) {
+      const imageUrl = await resolveRecipeImageUrl({
+        title: rest.title,
+        preferDeterministicFallback: true,
+      });
+      await prisma.recipe.create({
+        data: {
+          ...rest,
+          visibility: "public",
+          imageUrl,
+          ingredients: {
+            create: ingredients.map((i) => ({
+              name: i.name,
+              quantity: i.quantity,
+              unit: i.unit,
+              optional: "optional" in i ? Boolean(i.optional) : false,
+            })),
+          },
+        },
+      });
+      recipesCreated += 1;
+    } else if (needsMealDbImage(existing.imageUrl)) {
+      const imageUrl = await resolveRecipeImageUrl({
+        title: rest.title,
+        preferDeterministicFallback: true,
+      });
+      if (imageUrl && imageUrl !== existing.imageUrl) {
+        await prisma.recipe.update({
+          where: { id: existing.id },
+          data: { imageUrl },
+        });
+        recipesImaged += 1;
+      }
+    }
+  }
 
   const coupons = [
     {
@@ -770,37 +822,58 @@ async function main() {
     },
   ];
 
+
+  let couponsCreated = 0;
   for (const c of coupons) {
-    await prisma.coupon.create({ data: c });
+    const existing = await prisma.coupon.findFirst({
+      where: { codeValue: c.codeValue, householdId: null },
+    });
+    if (!existing) {
+      await prisma.coupon.create({ data: c });
+      couponsCreated += 1;
+    }
   }
 
-  // Optional Pro demo user + household (paid-track scaffold). Guest CE data stays null householdId.
+  // Optional Pro demo user + household (upsert — never wipe other users)
   const proHash = await bcrypt.hash("prodemo", 10);
-  const proUser = await prisma.user.create({
-    data: {
+  const proUser = await prisma.user.upsert({
+    where: { email: "pro@fridgeforge.local" },
+    create: {
       email: "pro@fridgeforge.local",
       name: "Pro Demo",
       passwordHash: proHash,
       plan: "pro",
     },
-  });
-  const household = await prisma.household.create({
-    data: {
-      name: "Demo Pro Kitchen",
-      inviteCode: generateInviteCode(),
-      members: {
-        create: { userId: proUser.id, role: "owner" },
-      },
+    update: {
+      plan: "pro",
+      passwordHash: proHash,
     },
   });
 
-  const staplesCloned = await cloneStapleRecipesToHousehold(prisma, household.id);
+  let household = await prisma.household.findFirst({
+    where: {
+      members: { some: { userId: proUser.id, role: "owner" } },
+    },
+  });
+  let staplesCloned = 0;
+  if (!household) {
+    household = await prisma.household.create({
+      data: {
+        name: "Demo Pro Kitchen",
+        inviteCode: generateInviteCode(),
+        members: {
+          create: { userId: proUser.id, role: "owner" },
+        },
+      },
+    });
+    staplesCloned = await cloneStapleRecipesToHousehold(prisma, household.id);
+  }
 
   console.log(
-    `Seeded ${pantry.length} pantry items, ${recipes.length} recipes, and ${coupons.length} coupons (null householdId).`
+    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}), coupons +${couponsCreated}. forceReset=${forceReset}`
   );
   console.log(
-    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (cloned ${staplesCloned} staples)`
+    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (cloned ${staplesCloned} staples this run)`
   );
 }
 

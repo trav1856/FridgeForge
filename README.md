@@ -38,7 +38,7 @@ Not in Community Edition / early paid (documented for later):
 - Bank linking
 - Real manufacturer portal / GS1 coupon standards
 - **Restaurant sales pulse** — restaurants submit daily dish sales → trending plates + prep/grocery planning
-- **Recipe sharing** — private (default), household-only, public free release, or invite-only to selected households
+- **Recipe sharing** — private / household / public + email share scaffold; contacts + Apple Notes sync later
 - **Supplier demand match** — suppliers see which restaurants (and households) need produce (e.g. okra, potatoes) and connect directly
 - Broader trend analytics (consumer + F&B)
 
@@ -70,11 +70,18 @@ Open http://localhost:3000
 
 - bun run dev
 - bun run build
-- bun run db:setup
+- bun run db:setup   # prisma db push + non-destructive seed
 
-- bun run db:seed
+- bun run db:seed    # ensure demo staples only when missing (safe)
+- bun run db:seed:reset  # destructive — intentional wipe only (FF_FORCE_RESET=1)
 - bun run db:push
 - bun run test
+
+### Database seed safety (important)
+
+Never run destructive seed on normal deploys. Use db:seed for safe ensure; db:seed:reset only for intentional local wipes.
+
+Production: migrations + backups. SQLite persists across code pushes.
 
 ## Pantry intake features
 
@@ -153,10 +160,10 @@ Paste a recipe page URL on **Add / import recipe**. The server fetches the HTML 
 `Recipe.imageUrl` stores a remote URL (or a local `/recipe-images/...` path). No paid API key.
 
 1. **Scrape** — JSON-LD `Recipe.image` → `og:image` → `twitter:image` → first large content `<img>`
-2. **Foodish** — category API (`/api/images/{category}/`) or a **deterministic CDN URL** (`https://foodish-api.com/images/{category}/{category}{n}.jpg`) when the title maps to a known Foodish folder (pasta, rice, pizza, dessert, …). No Lorem Flickr.
-3. **Branded fallback** — `/recipe-images/placeholder.svg` when no category matches, or when the remote fails client-side (`RecipeImage` `onError`)
+2. **TheMealDB** (free, no key) — search.php then strMealThumb; keyword from title; cached at seed/import.
+3. **Branded fallback** — placeholder.svg when lookup fails; RecipeImage onError also falls back.
 
-Seed recipes use deterministic Foodish CDN URLs keyed by title hash (or the SVG placeholder when unmapped) so they stay stable across re-seeds. After changing image helpers, re-run `npx tsx prisma/seed.ts` to refresh stored `imageUrl` values. `source.unsplash.com` is deprecated and is not used.
+Foodish CDN is down; not used for new seeds. Never use Lorem Flickr. Safe re-seed refreshes placeholder URLs without deleting recipes.
 
 Override the scrape User-Agent with `SCRAPE_USER_AGENT` in `.env` if a site still rejects the default Chrome UA.
 
@@ -187,7 +194,7 @@ Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works
 
 ### Seed staples vs household starter pack
 
-CE seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Re-seed after pulling.
+CE seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Prefer safe db:seed after pulling.
 
 
 ## Pricing (working)

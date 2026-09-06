@@ -6,16 +6,15 @@ export const RECIPE_PLACEHOLDER_PATH = "/recipe-images/placeholder.svg";
 /**
  * Image strategy (import + seeds):
  * 1. Scraped from page: JSON-LD Recipe.image → og:image → twitter:image → large <img>
- * 2. Foodish — category API fetch, or deterministic CDN URL when category is known
- *    (https://foodish-api.com/images/{category}/{category}{n}.jpg)
+ * 2. TheMealDB search (free, no key) — deterministic keyword from title → strMealThumb
  * 3. Branded SVG at /recipe-images/placeholder.svg
  *
  * We store remote URLs on Recipe.imageUrl (no local download required).
- * Seed recipes use deterministic Foodish CDN URLs keyed by title hash (or the
- * placeholder when no Foodish category matches). Never use Lorem Flickr.
+ * Seed/import cache the TheMealDB thumb at write time. Foodish CDN is down;
+ * never use Lorem Flickr.
  */
 
-/** Known Foodish categories and image counts (1-based filenames). */
+/** @deprecated Foodish CDN is often suspended; kept for tests/legacy only. */
 export const FOODISH_IMAGE_COUNTS: Record<string, number> = {
   biryani: 81,
   burger: 87,
@@ -28,6 +27,53 @@ export const FOODISH_IMAGE_COUNTS: Record<string, number> = {
   rice: 35,
   samosa: 22,
 };
+
+/** Curated title → TheMealDB search keyword for stable seed images. */
+export const MEALDB_TITLE_KEYWORDS: Record<string, string> = {
+  "Garlic Fried Rice with Crispy Egg": "fried rice",
+  "Smoky Beans & Rice Bowl": "bean",
+  "Pantry Tuna Pasta": "pasta",
+  "Crispy Potato Hash with Eggs": "potato",
+  "Peanut-Cabbage Noodle Stir": "noodle",
+  "Cheesy Egg Tortilla Melts": "egg",
+  "Carrot-Onion Tomato Soup": "soup",
+  "Lemon-Garlic Butter Pasta": "pasta",
+  "Classic Apple Pie": "apple pie",
+  "Scrambled Eggs": "egg",
+  "Boiled / Steamed Rice": "rice",
+  "Spaghetti with Simple Tomato Sauce": "spaghetti",
+  "Grilled Cheese": "sandwich",
+  "Simple Chicken Soup": "chicken soup",
+  "Pancakes": "pancake",
+  "Basic Roast Chicken": "roast chicken",
+  "Mashed Potatoes": "potato",
+  "Chocolate Chip Cookies": "cookie",
+  "Veg & Protein Stir-Fry": "stir fry",
+  "Chili / Taco Filling": "chili",
+  "Banana Bread": "banana",
+};
+
+const STOP_WORDS = new Set([
+  "a",
+  "an",
+  "the",
+  "with",
+  "and",
+  "or",
+  "of",
+  "for",
+  "to",
+  "in",
+  "on",
+  "simple",
+  "basic",
+  "classic",
+  "easy",
+  "quick",
+  "best",
+  "homemade",
+  "style",
+]);
 
 function absoluteUrl(src: string, baseUrl: string): string | null {
   try {
@@ -108,7 +154,6 @@ export function extractRecipeImage(
     if (abs) return abs;
   }
 
-  // First reasonably large content image (skip icons / tracking pixels)
   const imgs = $("article img, .recipe img, main img, img").toArray();
   let best: { src: string; score: number } | null = null;
   for (const el of imgs) {
@@ -142,21 +187,20 @@ export function extractRecipeImage(
   return best?.src ?? null;
 }
 
-/**
- * Map recipe title → Foodish category folder name, or null when unknown.
- * Only returns categories that exist on Foodish (see FOODISH_IMAGE_COUNTS).
- * Unmapped dishes (soup, salad, plain bread, fish, etc.) intentionally yield
- * null so callers can use the branded placeholder instead of unrelated photos.
- */
+/** @deprecated Prefer mealDbSearchKeyword / TheMealDB. */
 export function foodishCategoryForTitle(title: string): string | null {
   const t = title.toLowerCase();
-
-  // Dishes with no Foodish folder — prefer brand placeholder over a wrong dish.
   if (/\b(soup|stew|chowder|bisque|salad|coleslaw)\b/.test(t)) return null;
-  if (/\b(fish|salmon|tuna|seafood|shrimp|cod)\b/.test(t) && !/\b(pasta|pizza|burger|rice)\b/.test(t)) {
+  if (
+    /\b(fish|salmon|tuna|seafood|shrimp|cod)\b/.test(t) &&
+    !/\b(pasta|pizza|burger|rice)\b/.test(t)
+  ) {
     return null;
   }
-  if (/\b(bread|loaf|baguette|biscuit)\b/.test(t) && !/\b(banana bread|zucchini bread|pumpkin bread)\b/.test(t)) {
+  if (
+    /\b(bread|loaf|baguette|biscuit)\b/.test(t) &&
+    !/\b(banana bread|zucchini bread|pumpkin bread)\b/.test(t)
+  ) {
     return null;
   }
 
@@ -197,19 +241,74 @@ export function hashTitle(title: string): number {
 }
 
 /**
- * Deterministic Foodish CDN URL for seeds (no API key).
- * Returns RECIPE_PLACEHOLDER_PATH when the title has no Foodish category —
- * better empty brand than random unrelated photos.
+ * Pick a TheMealDB search keyword from a recipe title (deterministic).
  */
-export function deterministicFoodImageUrl(title: string): string {
-  // Foodish CDN (foodish-api.com) is often suspended; never use Lorem Flickr.
-  // Seeds/fallbacks use the branded skillet placeholder — real photos come from
-  // scraped recipe pages when import succeeds.
-  void title;
+export function mealDbSearchKeyword(title: string): string {
+  const curated = MEALDB_TITLE_KEYWORDS[title];
+  if (curated) return curated;
+
+  const cleaned = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s/-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const tokens = cleaned
+    .split(" ")
+    .filter((t) => t.length > 2 && !STOP_WORDS.has(t));
+  if (tokens.length === 0) return cleaned.split(" ")[0] || "chicken";
+
+  const preferred = tokens.find((t) =>
+    /^(pie|pasta|soup|rice|noodle|noodles|chicken|beef|potato|pancake|cookie|chili|taco|stir|fry|salad|curry|egg|eggs|bread|cake|stew|hash)$/.test(
+      t
+    )
+  );
+  if (preferred) return preferred;
+
+  if (tokens.length >= 2) return `${tokens[0]} ${tokens[1]}`;
+  return tokens[0]!;
+}
+
+type MealDbMeal = { strMeal?: string; strMealThumb?: string; idMeal?: string };
+
+/**
+ * Search TheMealDB and return a deterministic strMealThumb for the title.
+ * Free, no API key: https://www.themealdb.com/api.php
+ */
+export async function fetchMealDbImage(title: string): Promise<string | null> {
+  const keyword = mealDbSearchKeyword(title);
+  if (!keyword.trim()) return null;
+
+  const url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(
+    keyword
+  )}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { meals?: MealDbMeal[] | null };
+    const meals = data.meals;
+    if (!meals || meals.length === 0) return null;
+    const idx = hashTitle(title) % meals.length;
+    const thumb = meals[idx]?.strMealThumb?.trim();
+    return thumb || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sync fallback for callers that cannot await — always the branded SVG.
+ * Real photos are resolved async via resolveRecipeImageUrl / fetchMealDbImage
+ * and cached on Recipe.imageUrl at seed/import time.
+ */
+export function deterministicFoodImageUrl(_title: string): string {
   return RECIPE_PLACEHOLDER_PATH;
 }
 
-/** Foodish CDN URL when the host is healthy (optional; may 503). */
+/** @deprecated Foodish CDN often 503s. */
 export function foodishCdnUrl(title: string): string | null {
   const category = foodishCategoryForTitle(title);
   if (!category) return null;
@@ -219,18 +318,12 @@ export function foodishCdnUrl(title: string): string | null {
   return `https://foodish-api.com/images/${category}/${category}${n}.jpg`;
 }
 
-/**
- * Fetch a category food image from Foodish — free, no key.
- * Only calls the category endpoint (no random /api/) so we never get an
- * unrelated dish when the title did not map to a category.
- * https://foodish-api.com/
- */
+/** @deprecated Prefer fetchMealDbImage. */
 export async function fetchFoodishImage(
   title?: string
 ): Promise<string | null> {
   const category = title ? foodishCategoryForTitle(title) : null;
   if (!category) return null;
-
   const url = `https://foodish-api.com/api/images/${category}/`;
   try {
     const res = await fetch(url, {
@@ -248,8 +341,8 @@ export async function fetchFoodishImage(
 
 /**
  * Resolve final image URL:
- * scraped → Foodish category fetch OR deterministic Foodish CDN → placeholder.
- * Seeds pass preferDeterministicFallback: true to skip the live API.
+ * scraped → TheMealDB search (deterministic) → branded placeholder.
+ * Seeds should await this once and store imageUrl.
  */
 export async function resolveRecipeImageUrl(opts: {
   title: string;
@@ -258,15 +351,18 @@ export async function resolveRecipeImageUrl(opts: {
 }): Promise<string> {
   if (opts.scrapedImageUrl?.trim()) return opts.scrapedImageUrl.trim();
 
-  if (opts.preferDeterministicFallback) {
-    return deterministicFoodImageUrl(opts.title);
-  }
+  const mealDb = await fetchMealDbImage(opts.title);
+  if (mealDb) return mealDb;
 
-  const foodish = await fetchFoodishImage(opts.title);
-  if (foodish) return foodish;
-
-  const deterministic = deterministicFoodImageUrl(opts.title);
-  if (deterministic !== RECIPE_PLACEHOLDER_PATH) return deterministic;
-
+  void opts.preferDeterministicFallback;
   return RECIPE_PLACEHOLDER_PATH;
+}
+
+/** True when stored URL is missing or still a junk/placeholder CDN. */
+export function needsMealDbImage(imageUrl: string | null | undefined): boolean {
+  if (!imageUrl || !imageUrl.trim()) return true;
+  if (imageUrl === RECIPE_PLACEHOLDER_PATH) return true;
+  if (imageUrl.includes("foodish-api.com")) return true;
+  if (imageUrl.includes("loremflickr")) return true;
+  return false;
 }

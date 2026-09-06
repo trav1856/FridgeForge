@@ -48,6 +48,7 @@ export async function cloneStapleRecipesToHousehold(
         isStruggleMeal: r.isStruggleMeal,
         techniqueTips: r.techniqueTips,
         flavorBoosters: r.flavorBoosters,
+        visibility: r.visibility || "household",
         householdId,
         ingredients: {
           create: r.ingredients.map((i) => ({

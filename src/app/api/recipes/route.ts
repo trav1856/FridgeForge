@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { resolveHouseholdId } from "@/lib/auth";
+import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
@@ -31,16 +31,57 @@ const createSchema = z.object({
 
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
+  const user = await getCurrentUser();
   const struggle = req.nextUrl.searchParams.get("struggle");
-  const recipes = await prisma.recipe.findMany({
-    where: {
+  const favoritesOnly = req.nextUrl.searchParams.get("favorites") === "1";
+  const scope = req.nextUrl.searchParams.get("scope"); // mine | household | (default all in scope)
+
+  let where: Record<string, unknown> = {
+    ...householdWhere(householdId),
+    ...(struggle === "1" ? { isStruggleMeal: true } : {}),
+  };
+
+  if (scope === "mine" && user) {
+    where = { ownerUserId: user.id };
+  } else if (scope === "household") {
+    where = {
       ...householdWhere(householdId),
-      ...(struggle === "1" ? { isStruggleMeal: true } : {}),
+      ...(householdId != null
+        ? {}
+        : { householdId: null, ownerUserId: null }),
+    };
+  }
+
+  if (favoritesOnly) {
+    if (!user) {
+      return NextResponse.json([]);
+    }
+    where = {
+      favorites: { some: { userId: user.id } },
+    };
+  }
+
+  const recipes = await prisma.recipe.findMany({
+    where,
+    include: {
+      ingredients: true,
+      favorites: user
+        ? { where: { userId: user.id }, select: { id: true } }
+        : false,
     },
-    include: { ingredients: true },
     orderBy: { title: "asc" },
   });
-  return NextResponse.json(recipes.map(serializeRecipe));
+  return NextResponse.json(
+    recipes.map((r) => {
+      const { favorites, ...rest } = r as typeof r & {
+        favorites?: { id: string }[];
+      };
+      return {
+        ...serializeRecipe(rest),
+        favorited: Array.isArray(favorites) ? favorites.length > 0 : false,
+      };
+    })
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -48,6 +89,7 @@ export async function POST(req: NextRequest) {
     const householdId = await resolveHouseholdId();
     const body = await req.json();
     const data = createSchema.parse(body);
+    const user = await getCurrentUser();
     const recipe = await prisma.recipe.create({
       data: {
         title: data.title,
@@ -62,6 +104,8 @@ export async function POST(req: NextRequest) {
         isStruggleMeal: data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
         techniqueTips: stringifyArray(data.techniqueTips),
         flavorBoosters: stringifyArray(data.flavorBoosters),
+        visibility: householdId ? "household" : "private",
+        ownerUserId: user?.id ?? null,
         householdId,
         ingredients: {
           create: data.ingredients.map((i) => ({

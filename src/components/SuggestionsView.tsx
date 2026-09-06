@@ -6,6 +6,10 @@ import { useStruggleMode } from "./StruggleModeProvider";
 import { StruggleBanner } from "./StruggleBanner";
 import { DealsBanner } from "./DealsBanner";
 import { RecipeImage } from "./RecipeImage";
+import { RecipeIcons } from "./RecipeIcons";
+import { FavoriteButton } from "./FavoriteButton";
+import { ShareRecipe } from "./ShareRecipe";
+import { AddToShoppingList } from "./AddToShoppingList";
 import type { DealCouponSummary } from "@/lib/deals";
 import { MOODS, pickSurprise, type MoodId } from "@/lib/moods";
 
@@ -31,6 +35,7 @@ type Suggestion = {
     imageUrl?: string | null;
     techniqueTips: string[];
     flavorBoosters: string[];
+    ingredients?: { name: string }[];
   };
 };
 
@@ -54,6 +59,8 @@ export function SuggestionsView() {
   const [pantryCount, setPantryCount] = useState(0);
   const [maxMinutes, setMaxMinutes] = useState<number | null>(null);
   const [mood, setMood] = useState<MoodId>("any");
+  const [q, setQ] = useState("");
+  const [qDraft, setQDraft] = useState("");
   const [tonightPickId, setTonightPickId] = useState<string | null>(null);
   const [flashPick, setFlashPick] = useState(false);
   const lastSurpriseId = useRef<string | null>(null);
@@ -72,12 +79,15 @@ export function SuggestionsView() {
     if (mood && mood !== "any") {
       params.set("mood", mood);
     }
+    if (q.trim()) {
+      params.set("q", q.trim());
+    }
     const res = await fetch(`/api/suggestions?${params.toString()}`);
     const data = await res.json();
     setSuggestions(data.suggestions || []);
     setPantryCount(data.pantryCount || 0);
     setLoading(false);
-  }, [struggleMode, maxMinutes, mood]);
+  }, [struggleMode, maxMinutes, mood, q]);
 
   useEffect(() => {
     load();
@@ -90,7 +100,6 @@ export function SuggestionsView() {
     setTonightPickId(pick.recipe.id);
     setFlashPick(true);
     window.setTimeout(() => setFlashPick(false), 1200);
-    // Scroll after paint so the highlighted card is mounted
     window.requestAnimationFrame(() => {
       pickCardRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -98,7 +107,6 @@ export function SuggestionsView() {
       });
     });
   }, [suggestions]);
-
 
   const now = suggestions.filter((s) => s.canMakeNow);
   const near = suggestions.filter((s) => !s.canMakeNow && s.nearMiss);
@@ -120,9 +128,46 @@ export function SuggestionsView() {
           {pantryCount === 1 ? "" : "s"} — match quality, affordability
           {struggleMode ? ", and struggle-meal priority" : ""}
           {maxMinutes != null ? ", and cook time" : ""}
-          {mood !== "any" ? ", and mood" : ""}. Near-misses allow 1–2 cheap
+          {mood !== "any" ? ", and mood" : ""}
+          {q.trim() ? ", and craving search" : ""}. Near-misses allow 1–2 cheap
           missing staples.
         </p>
+
+        <div className="mt-4">
+          <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-sage-500">
+            Craving search
+          </label>
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQ(qDraft);
+            }}
+          >
+            <input
+              className="input max-w-sm flex-1"
+              placeholder='e.g. "potato", "noodles", "garlic"'
+              value={qDraft}
+              onChange={(e) => setQDraft(e.target.value)}
+              aria-label="Search by craving keyword"
+            />
+            <button type="submit" className="btn-secondary">
+              Search
+            </button>
+            {q && (
+              <button
+                type="button"
+                className="btn-ghost text-sm"
+                onClick={() => {
+                  setQ("");
+                  setQDraft("");
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
 
         <div className="mt-4">
           <div className="mb-2 text-xs font-bold uppercase tracking-wide text-sage-500">
@@ -190,7 +235,7 @@ export function SuggestionsView() {
           </button>
           <span className="max-w-xs text-xs text-sage-500">
             Picks one random recipe from tonight’s filtered set (pantry + time +
-            mood). Won’t repeat the same pick twice in a row when it can help it.
+            mood + search).
           </span>
         </div>
       </div>
@@ -244,15 +289,17 @@ export function SuggestionsView() {
       ) : suggestions.length === 0 ? (
         <div className="card p-6 text-center">
           <p className="text-sage-700">
-            {mood !== "any"
-              ? `No pantry matches for that mood${
-                  maxMinutes != null
-                    ? ` within ${maxMinutes} minutes`
-                    : ""
-                }. Try another mood or clear it with Any.`
-              : maxMinutes != null
-                ? `No pantry matches that cook in ${maxMinutes} minutes or less. Try a longer window or add quicker recipes.`
-                : "No strong matches yet. Add pantry staples or recipes to get suggestions."}
+            {q.trim()
+              ? `No pantry matches for “${q.trim()}”. Try another craving keyword.`
+              : mood !== "any"
+                ? `No pantry matches for that mood${
+                    maxMinutes != null
+                      ? ` within ${maxMinutes} minutes`
+                      : ""
+                  }. Try another mood or clear it with Any.`
+                : maxMinutes != null
+                  ? `No pantry matches that cook in ${maxMinutes} minutes or less. Try a longer window or add quicker recipes.`
+                  : "No strong matches yet. Add pantry staples or recipes to get suggestions."}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link href="/pantry" className="btn-primary">
@@ -329,7 +376,7 @@ function Section({
               <li
                 key={s.recipe.id}
                 ref={isPick ? pickCardRef : undefined}
-                className={`card overflow-hidden p-0 transition ${
+                className={`card relative overflow-hidden p-0 transition ${
                   isPick
                     ? `ring-2 ring-ember-500 ${
                         flash ? "animate-pulse bg-ember-50/60" : "bg-cream-50"
@@ -337,106 +384,130 @@ function Section({
                     : ""
                 }`}
               >
-                <RecipeImage
-                  src={s.recipe.imageUrl}
-                  alt={s.recipe.title}
-                  className="rounded-none rounded-t-xl"
-                />
-                <div className="p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <div className="mb-1 flex flex-wrap gap-1.5">
-                        {isPick && (
-                          <span className="badge bg-ember-600 text-white">
-                            Tonight’s pick
-                          </span>
-                        )}
-                        <span className="badge bg-sage-800 text-cream-50">
-                          score {Math.round(s.score)}
+                <Link
+                  href={`/recipes/${s.recipe.id}`}
+                  className="block outline-none focus-visible:ring-2 focus-visible:ring-ember-500"
+                  aria-label={`View ${s.recipe.title}`}
+                >
+                  <RecipeImage
+                    src={s.recipe.imageUrl}
+                    alt=""
+                    className="rounded-none rounded-t-xl"
+                  />
+                  <div className="p-4 pb-16">
+                    <div className="mb-1 flex flex-wrap gap-1.5">
+                      {isPick && (
+                        <span className="badge bg-ember-600 text-white">
+                          Tonight’s pick
                         </span>
-                        <span className="badge bg-sage-100 text-sage-800">
-                          {Math.round(s.matchRatio * 100)}% match
+                      )}
+                      <span className="badge bg-sage-800 text-cream-50">
+                        score {Math.round(s.score)}
+                      </span>
+                      <span className="badge bg-sage-100 text-sage-800">
+                        {Math.round(s.matchRatio * 100)}% match
+                      </span>
+                      {s.recipe.cookTimeMinutes != null && (
+                        <span className="badge bg-cream-100 text-sage-800">
+                          {s.recipe.cookTimeMinutes} min
                         </span>
-                        {s.recipe.cookTimeMinutes != null && (
-                          <span className="badge bg-cream-100 text-sage-800">
-                            {s.recipe.cookTimeMinutes} min
-                          </span>
-                        )}
-                        <span
-                          className={`badge ${
-                            s.recipe.costTier === "cheap"
-                              ? "bg-sage-100 text-sage-800"
-                              : "bg-ember-50 text-ember-800"
-                          }`}
-                        >
-                          {s.recipe.costTier}
+                      )}
+                      <span
+                        className={`badge ${
+                          s.recipe.costTier === "cheap"
+                            ? "bg-sage-100 text-sage-800"
+                            : "bg-ember-50 text-ember-800"
+                        }`}
+                      >
+                        {s.recipe.costTier}
+                      </span>
+                      {s.recipe.isStruggleMeal && (
+                        <span className="badge bg-ember-600 text-white">
+                          struggle
                         </span>
-                        {s.recipe.isStruggleMeal && (
-                          <span className="badge bg-ember-600 text-white">
-                            struggle
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-display text-xl font-bold text-sage-900">
-                        <Link
-                          href={`/recipes/${s.recipe.id}`}
-                          className="hover:text-ember-700"
-                        >
-                          {s.recipe.title}
-                        </Link>
-                      </h3>
-                      {s.recipe.description && (
-                        <p className="mt-1 text-sm text-sage-600">
-                          {s.recipe.description}
-                        </p>
                       )}
                     </div>
-                  </div>
-
-                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wide text-sage-500">
-                        You have
-                      </div>
-                      <p className="text-sage-800">
-                        {s.matchedIngredients.join(", ") || "—"}
+                    <RecipeIcons
+                      title={s.recipe.title}
+                      tags={s.recipe.tags}
+                      ingredients={s.recipe.ingredients}
+                      description={s.recipe.description}
+                      flavorBoosters={s.recipe.flavorBoosters}
+                      className="mb-2"
+                    />
+                    <h3 className="font-display text-xl font-bold text-sage-900">
+                      {s.recipe.title}
+                    </h3>
+                    {s.recipe.description && (
+                      <p className="mt-1 text-sm text-sage-600">
+                        {s.recipe.description}
                       </p>
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wide text-sage-500">
-                        Missing
+                    )}
+
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wide text-sage-500">
+                          You have
+                        </div>
+                        <p className="text-sage-800">
+                          {s.matchedIngredients.join(", ") || "—"}
+                        </p>
                       </div>
-                      <p
-                        className={
-                          s.missingCount ? "text-ember-800" : "text-sage-800"
-                        }
-                      >
-                        {s.missingIngredients.join(", ") || "Nothing — cook!"}
-                      </p>
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wide text-sage-500">
+                          Missing
+                        </div>
+                        <p
+                          className={
+                            s.missingCount ? "text-ember-800" : "text-sage-800"
+                          }
+                        >
+                          {s.missingIngredients.join(", ") || "Nothing — cook!"}
+                        </p>
+                      </div>
                     </div>
+
+                    {s.creativeNote && (
+                      <p className="mt-3 rounded-xl bg-cream-100 px-3 py-2 text-sm text-sage-800">
+                        ✨ {s.creativeNote}
+                      </p>
+                    )}
+
+                    <DealsBanner deals={s.deals || []} compact />
+
+                    {s.recipe.flavorBoosters.length > 0 && (
+                      <p className="mt-2 text-xs text-sage-600">
+                        <span className="font-semibold">Flavor boosters:</span>{" "}
+                        {s.recipe.flavorBoosters.join(" · ")}
+                      </p>
+                    )}
+                    {s.recipe.techniqueTips.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-sage-600">
+                        {s.recipe.techniqueTips.slice(0, 2).map((t) => (
+                          <li key={t}>{t}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-
-                  {s.creativeNote && (
-                    <p className="mt-3 rounded-xl bg-cream-100 px-3 py-2 text-sm text-sage-800">
-                      ✨ {s.creativeNote}
-                    </p>
+                </Link>
+                <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center justify-between gap-2">
+                  {s.missingCount > 0 ? (
+                    <AddToShoppingList
+                      items={s.missingIngredients.map((name) => ({ name }))}
+                      recipeId={s.recipe.id}
+                      recipeTitle={s.recipe.title}
+                    />
+                  ) : (
+                    <span />
                   )}
-
-                  <DealsBanner deals={s.deals || []} compact />
-
-                  {s.recipe.flavorBoosters.length > 0 && (
-                    <p className="mt-2 text-xs text-sage-600">
-                      <span className="font-semibold">Flavor boosters:</span>{" "}
-                      {s.recipe.flavorBoosters.join(" · ")}
-                    </p>
-                  )}
-                  {s.recipe.techniqueTips.length > 0 && (
-                    <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-sage-600">
-                      {s.recipe.techniqueTips.slice(0, 2).map((t) => (
-                        <li key={t}>{t}</li>
-                      ))}
-                    </ul>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <FavoriteButton recipeId={s.recipe.id} />
+                    <ShareRecipe
+                      recipeId={s.recipe.id}
+                      title={s.recipe.title}
+                      compact
+                    />
+                  </div>
                 </div>
               </li>
             );

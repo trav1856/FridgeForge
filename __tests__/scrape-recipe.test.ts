@@ -150,7 +150,7 @@ describe("extractRecipeImage", () => {
 });
 
 describe("resolveRecipeImageUrl", () => {
-  it("keeps a scraped URL and skips Foodish", async () => {
+  it("keeps a scraped URL and skips TheMealDB", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const url = await resolveRecipeImageUrl({
@@ -161,28 +161,35 @@ describe("resolveRecipeImageUrl", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("uses Foodish when nothing was scraped", async () => {
+  it("uses TheMealDB when nothing was scraped", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        jsonResponse({ image: "https://foodish-api.com/images/pasta/pasta1.jpg" })
+        jsonResponse({
+          meals: [
+            {
+              strMeal: "Pasta",
+              strMealThumb: "https://www.themealdb.com/images/media/meals/pasta.jpg",
+            },
+          ],
+        })
       )
     );
     const url = await resolveRecipeImageUrl({ title: "Lemon Garlic Pasta" });
-    expect(url).toBe("https://foodish-api.com/images/pasta/pasta1.jpg");
+    expect(url).toBe("https://www.themealdb.com/images/media/meals/pasta.jpg");
   });
 
-  it("falls back to branded placeholder if Foodish fails", async () => {
+  it("falls back to branded placeholder if TheMealDB fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({}, 503)));
     const url = await resolveRecipeImageUrl({ title: "Mystery Stew" });
     expect(url).toBe(RECIPE_PLACEHOLDER_PATH);
   });
 
-  it("uses branded placeholder for seeds (no Lorem Flickr)", () => {
+  it("sync seed helper stays placeholder (no Lorem Flickr); async resolves MealDB", () => {
     const a = deterministicFoodImageUrl("Garlic Fried Rice with Crispy Egg");
     const b = deterministicFoodImageUrl("Lemon-Garlic Butter Pasta");
-    expect(a).toBe(b);
     expect(a).toBe(RECIPE_PLACEHOLDER_PATH);
+    expect(b).toBe(RECIPE_PLACEHOLDER_PATH);
     expect(a.includes("loremflickr")).toBe(false);
   });
 });

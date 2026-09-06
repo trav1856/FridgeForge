@@ -17,6 +17,11 @@ model User {
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
   memberships  HouseholdMember[]
+  favorites    RecipeFavorite[]
+  ownedRecipes Recipe[]          @relation("RecipeOwner")
+  sharesSent   RecipeShare[]     @relation("ShareFrom")
+  sharesReceived RecipeShare[]   @relation("ShareTo")
+  shoppingItems ShoppingListItem[]
 }
 
 model Session {
@@ -41,6 +46,7 @@ model Household {
   recipes    Recipe[]
   coupons    Coupon[]
   customStaples CustomPantryStaple[]
+  shoppingItems ShoppingListItem[]
 }
 
 model HouseholdMember {
@@ -90,13 +96,21 @@ model Recipe {
   isStruggleMeal   Boolean            @default(false)
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
+  /** private | household | public */
+  visibility       String             @default("household")
+  ownerUserId      String?
   householdId      String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   ingredients      RecipeIngredient[]
   household        Household?         @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  owner            User?              @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  favorites        RecipeFavorite[]
+  shares           RecipeShare[]
 
   @@index([householdId])
+  @@index([ownerUserId])
+  @@index([visibility])
 }
 
 model RecipeIngredient {
@@ -107,6 +121,38 @@ model RecipeIngredient {
   unit     String @default("each")
   optional Boolean @default(false)
   recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model RecipeFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+}
+
+model RecipeShare {
+  id          String    @id @default(cuid())
+  recipeId    String
+  fromUserId  String
+  toUserEmail String?
+  toUserId    String?
+  accepted    Boolean   @default(false)
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  fromUser    User      @relation("ShareFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User?     @relation("ShareTo", fields: [toUserId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([toUserEmail])
 }
 
 model Coupon {
@@ -147,4 +193,25 @@ model CustomPantryStaple {
   @@unique([householdId, name, category])
   @@index([householdId])
   @@index([category])
+}
+
+
+model ShoppingListItem {
+  id          String     @id @default(cuid())
+  name        String
+  quantity    Float?
+  unit        String?
+  checked     Boolean    @default(false)
+  recipeId    String?
+  recipeTitle String?
+  householdId String?
+  userId      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([userId])
+  @@index([checked])
 }

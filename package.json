@@ -15,7 +15,8 @@
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:seed:reset": "FF_FORCE_RESET=1 tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

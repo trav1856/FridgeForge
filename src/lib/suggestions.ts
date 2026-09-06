@@ -1,5 +1,5 @@
 import { namesMatch } from "./normalize";
-import { matchesMood, moodBoost, type MoodId } from "./moods";
+import { matchesMood, matchesQuery, moodBoost, type MoodId } from "./moods";
 import type {
   PantrySnapshot,
   RecipeForMatch,
@@ -59,6 +59,8 @@ export type SuggestOptions = {
   includeUnknownTime?: boolean;
   /** Mood filter/boost — pantry match stays primary. */
   mood?: MoodId;
+  /** Free-text craving search (title/tags/ingredients). */
+  q?: string;
 };
 
 function findPantryMatch(
@@ -203,6 +205,7 @@ export function suggestMeals(
     maxMinutes,
     includeUnknownTime = false,
     mood,
+    q,
   } = options;
 
   let pool = recipes;
@@ -217,6 +220,10 @@ export function suggestMeals(
   // Mood is an additional filter — pantry scoring remains primary within the mood pool
   if (mood && mood !== "any") {
     pool = pool.filter((r) => matchesMood(r, mood));
+  }
+
+  if (q && q.trim()) {
+    pool = pool.filter((r) => matchesQuery(r, q));
   }
 
   return pool

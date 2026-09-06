@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
   const includeUnknownTime =
     req.nextUrl.searchParams.get("includeUnknownTime") === "1";
   const mood = parseMoodParam(req.nextUrl.searchParams.get("mood"));
+  const qRaw = req.nextUrl.searchParams.get("q");
+  const q = qRaw?.trim() ? qRaw.trim() : undefined;
 
   const couponWhere =
     householdId === null
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
     maxMinutes,
     includeUnknownTime,
     mood,
+    q,
   }).map((s) => ({
     ...s,
     deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
@@ -57,6 +60,7 @@ export async function GET(req: NextRequest) {
     struggleMode,
     maxMinutes: maxMinutes ?? null,
     mood: mood ?? "any",
+    q: q ?? null,
     pantryCount: pantry.length,
     suggestions,
   });

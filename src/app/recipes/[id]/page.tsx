@@ -2,20 +2,36 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
+import { getCurrentUser } from "@/lib/auth";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIngredients } from "@/components/RecipeIngredients";
+import { RecipeIcons } from "@/components/RecipeIcons";
+import { RecipeDetailActions } from "@/components/RecipeDetailActions";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function RecipeDetailPage({ params }: Props) {
   const { id } = await params;
+  const user = await getCurrentUser();
   const raw = await prisma.recipe.findUnique({
     where: { id },
-    include: { ingredients: true },
+    include: {
+      ingredients: true,
+      favorites: user
+        ? { where: { userId: user.id }, select: { id: true } }
+        : false,
+    },
   });
   if (!raw) notFound();
-  const recipe = serializeRecipe(raw);
+  const favorited =
+    user && Array.isArray((raw as { favorites?: unknown[] }).favorites)
+      ? ((raw as { favorites: unknown[] }).favorites.length > 0)
+      : false;
+  const { favorites: _f, ...rest } = raw as typeof raw & {
+    favorites?: unknown;
+  };
+  const recipe = serializeRecipe(rest);
 
   return (
     <article className="space-y-6">
@@ -30,6 +46,11 @@ export default async function RecipeDetailPage({ params }: Props) {
           {recipe.isStruggleMeal && (
             <span className="badge bg-ember-600 text-white">struggle meal</span>
           )}
+          {recipe.visibility && (
+            <span className="badge bg-cream-200 text-sage-700">
+              {recipe.visibility}
+            </span>
+          )}
           {recipe.tags.map((t) => (
             <span key={t} className="badge bg-cream-200 text-sage-700">
               {t}
@@ -39,6 +60,14 @@ export default async function RecipeDetailPage({ params }: Props) {
         <div className="mt-3 max-w-2xl">
           <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
         </div>
+        <RecipeIcons
+          title={recipe.title}
+          tags={recipe.tags}
+          ingredients={recipe.ingredients}
+          description={recipe.description}
+          flavorBoosters={recipe.flavorBoosters}
+          className="mt-3"
+        />
         <h1 className="mt-3 font-display text-3xl font-bold text-sage-900 sm:text-4xl">
           {recipe.title}
         </h1>
@@ -47,6 +76,7 @@ export default async function RecipeDetailPage({ params }: Props) {
         )}
         <p className="mt-2 text-sm text-sage-500">
           {recipe.servings} servings
+          {recipe.cookTimeMinutes != null ? ` · ${recipe.cookTimeMinutes} min` : ""}
           {recipe.sourceUrl && (
             <>
               {" · "}
@@ -61,9 +91,16 @@ export default async function RecipeDetailPage({ params }: Props) {
             </>
           )}
         </p>
+        <div className="mt-4">
+          <RecipeDetailActions
+            recipeId={recipe.id}
+            title={recipe.title}
+            favorited={favorited}
+          />
+        </div>
       </div>
 
-      <RecipeDeals recipeId={recipe.id} />
+      <RecipeDeals recipeId={recipe.id} recipeTitle={recipe.title} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <RecipeIngredients ingredients={recipe.ingredients} />

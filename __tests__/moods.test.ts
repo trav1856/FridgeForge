@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   matchesMood,
+  matchesQuery,
   moodBoost,
   parseMoodParam,
   pickSurprise,
@@ -252,5 +253,44 @@ describe("pickSurprise", () => {
     ];
     const pick = pickSurprise(pool, "only");
     expect(pick?.recipe.id).toBe("only");
+  });
+});
+
+
+describe("cuisine moods and matchesQuery", () => {
+  const eggIng = [
+    { id: "1", name: "eggs", quantity: 2, unit: "each", optional: false },
+  ];
+
+  it("matches mexican / noodles / potato moods", () => {
+    const taco = recipe({
+      title: "Chili / Taco Filling",
+      tags: ["tacos", "chili"],
+      ingredients: eggIng,
+    });
+    const noodles = recipe({
+      title: "Peanut-Cabbage Noodle Stir",
+      tags: ["pasta"],
+      ingredients: [{ id: "1", name: "spaghetti", quantity: 1, unit: "oz", optional: false }],
+    });
+    const potato = recipe({
+      title: "Mashed Potatoes",
+      tags: ["potato"],
+      ingredients: [{ id: "1", name: "potato", quantity: 1, unit: "lb", optional: false }],
+    });
+    expect(matchesMood(taco, "mexican")).toBe(true);
+    expect(matchesMood(noodles, "noodles")).toBe(true);
+    expect(matchesMood(potato, "potato")).toBe(true);
+  });
+
+  it("matchesQuery filters title tags and ingredients", () => {
+    const r = recipe({
+      title: "Garlic Fried Rice",
+      tags: ["rice"],
+      ingredients: [{ id: "1", name: "garlic", quantity: 1, unit: "cloves", optional: false }],
+    });
+    expect(matchesQuery(r, "potato")).toBe(false);
+    expect(matchesQuery(r, "garlic")).toBe(true);
+    expect(matchesQuery(r, "fried rice")).toBe(true);
   });
 });
