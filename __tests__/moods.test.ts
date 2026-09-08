@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMoodChips,
+  collectAvailableTags,
   matchesMood,
   matchesQuery,
   moodBoost,
   parseMoodParam,
   pickSurprise,
+  recipeHasTag,
 } from "@/lib/moods";
 import { suggestMeals } from "@/lib/suggestions";
 import type { PantrySnapshot, RecipeForMatch } from "@/lib/types";
@@ -44,11 +47,15 @@ const eggIng = [
 ];
 
 describe("parseMoodParam", () => {
-  it("accepts known moods and rejects junk", () => {
+  it("accepts known moods and any non-empty tag slug", () => {
     expect(parseMoodParam("comfort")).toBe("comfort");
     expect(parseMoodParam("quick")).toBe("quick");
-    expect(parseMoodParam("nope")).toBeUndefined();
+    expect(parseMoodParam("simple")).toBe("simple");
+    expect(parseMoodParam("  Simple  ")).toBe("simple");
+    expect(parseMoodParam("")).toBeUndefined();
+    expect(parseMoodParam("   ")).toBeUndefined();
     expect(parseMoodParam(null)).toBeUndefined();
+    expect(parseMoodParam("x".repeat(65))).toBeUndefined();
   });
 });
 
@@ -256,6 +263,87 @@ describe("pickSurprise", () => {
   });
 });
 
+
+
+describe("tag-as-mood filtering", () => {
+  const eggIng = [
+    { id: "1", name: "eggs", quantity: 2, unit: "each", optional: false },
+  ];
+
+  it("recipeHasTag is case-insensitive exact match", () => {
+    const r = recipe({
+      title: "Easy Scramble",
+      tags: ["Simple", "weeknight"],
+      ingredients: eggIng,
+    });
+    expect(recipeHasTag(r, "simple")).toBe(true);
+    expect(recipeHasTag(r, "SIMPLE")).toBe(true);
+    expect(recipeHasTag(r, "week")).toBe(false);
+  });
+
+  it("matchesMood treats unknown mood ids as required tags", () => {
+    const simple = recipe({
+      id: "s",
+      title: "Simple Eggs",
+      tags: ["simple"],
+      ingredients: eggIng,
+    });
+    const fancy = recipe({
+      id: "f",
+      title: "Fancy Toast",
+      tags: ["brunch"],
+      ingredients: eggIng,
+    });
+    expect(matchesMood(simple, "simple")).toBe(true);
+    expect(matchesMood(fancy, "simple")).toBe(false);
+    expect(matchesMood(simple, "brunch")).toBe(false);
+    expect(moodBoost(simple, "simple")).toBeGreaterThan(0);
+    expect(moodBoost(fancy, "simple")).toBe(0);
+  });
+
+  it("suggestMeals filters by dynamic tag mood while keeping pantry rules", () => {
+    const stock = pantry(["eggs", "rice"]);
+    const recipes = [
+      recipe({
+        id: "simple-eggs",
+        title: "Simple Eggs",
+        tags: ["simple"],
+        ingredients: eggIng,
+      }),
+      recipe({
+        id: "rice",
+        title: "Plain Rice",
+        tags: ["side"],
+        ingredients: [
+          { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+        ],
+      }),
+    ];
+    const results = suggestMeals(recipes, stock, { mood: "simple" });
+    expect(results.map((s) => s.recipe.id)).toEqual(["simple-eggs"]);
+  });
+
+  it("collectAvailableTags and buildMoodChips dedupe curated moods", () => {
+    const tags = collectAvailableTags([
+      { tags: ["simple", "Soup"] },
+      { tags: ["SIMPLE", "weeknight"] },
+      { tags: [] },
+    ]);
+    expect(tags.map((t) => t.toLowerCase()).sort()).toEqual([
+      "simple",
+      "soup",
+      "weeknight",
+    ]);
+    const chips = buildMoodChips(tags);
+    const ids = chips.map((c) => c.id);
+    expect(ids).toContain("any");
+    expect(ids).toContain("soup"); // curated
+    expect(ids.filter((id) => id === "soup")).toHaveLength(1); // not duplicated as dynamic
+    expect(ids).toContain("simple");
+    expect(ids).toContain("weeknight");
+    expect(chips.find((c) => c.id === "simple")?.label).toBe("Simple");
+  });
+});
 
 describe("cuisine moods and matchesQuery", () => {
   const eggIng = [

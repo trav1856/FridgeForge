@@ -1,5 +1,5 @@
 import { namesMatch } from "./normalize";
-import { matchesMood, matchesQuery, moodBoost, type MoodId } from "./moods";
+import { matchesMood, matchesQuery, moodBoost, type MoodParam } from "./moods";
 import type {
   PantrySnapshot,
   RecipeForMatch,
@@ -58,7 +58,7 @@ export type SuggestOptions = {
   /** Include recipes with null/undefined cookTimeMinutes when maxMinutes is set. Default false. */
   includeUnknownTime?: boolean;
   /** Mood filter/boost — pantry match stays primary. */
-  mood?: MoodId;
+  mood?: MoodParam;
   /** Free-text craving search (title/tags/ingredients). */
   q?: string;
 };

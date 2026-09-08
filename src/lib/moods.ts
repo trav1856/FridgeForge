@@ -22,8 +22,11 @@ export type MoodId =
   | "soup"
   | "bbq";
 
+/** Curated mood ids plus any recipe-tag slug used as a dynamic mood filter. */
+export type MoodParam = MoodId | string;
+
 export type MoodDef = {
-  id: MoodId;
+  id: string;
   label: string;
   hint: string;
 };
@@ -53,15 +56,78 @@ export const MOODS: MoodDef[] = [
 
 const MOOD_IDS = new Set<string>(MOODS.map((m) => m.id));
 
+const MAX_TAG_MOOD_LEN = 64;
+
 export function isMoodId(value: string | null | undefined): value is MoodId {
   return value != null && MOOD_IDS.has(value);
 }
 
+/**
+ * Accept curated mood ids, or any non-empty tag slug (for dynamic mood chips).
+ * Returns undefined for empty / oversized junk.
+ */
 export function parseMoodParam(
   value: string | null | undefined
-): MoodId | undefined {
-  if (value == null || value === "") return undefined;
-  return isMoodId(value) ? value : undefined;
+): MoodParam | undefined {
+  if (value == null) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (isMoodId(trimmed)) return trimmed;
+  if (trimmed.length > MAX_TAG_MOOD_LEN) return undefined;
+  // Normalize dynamic tag moods to lowercase slugs for stable filtering
+  return trimmed.toLowerCase();
+}
+
+/** Distinct recipe tags (case-insensitive), sorted, first-seen casing preserved. */
+export function collectAvailableTags(
+  recipes: { tags: string[] }[]
+): string[] {
+  const seen = new Map<string, string>();
+  for (const recipe of recipes) {
+    for (const raw of recipe.tags) {
+      const tag = raw.trim();
+      if (!tag) continue;
+      const key = tag.toLowerCase();
+      if (!seen.has(key)) seen.set(key, tag);
+    }
+  }
+  return [...seen.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, display]) => display);
+}
+
+function formatTagLabel(tag: string): string {
+  if (!tag) return tag;
+  // Keep short all-caps (BBQ-style) as-is; otherwise title-case words
+  if (tag === tag.toUpperCase() && tag.length <= 4) return tag;
+  return tag
+    .split(/([\s_-]+)/)
+    .map((part) => {
+      if (/^[\s_-]+$/.test(part)) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join("");
+}
+
+/**
+ * Curated MOODS plus dynamic chips from recipe tags.
+ * Dedupes when a tag slug already matches a curated mood id.
+ */
+export function buildMoodChips(availableTags: string[]): MoodDef[] {
+  const curatedLower = new Set(MOODS.map((m) => m.id.toLowerCase()));
+  const extras: MoodDef[] = [];
+  for (const tag of availableTags) {
+    const slug = tag.trim();
+    if (!slug) continue;
+    const key = slug.toLowerCase();
+    if (curatedLower.has(key)) continue;
+    extras.push({
+      id: key,
+      label: formatTagLabel(slug),
+      hint: `Recipes tagged “${slug}”`,
+    });
+  }
+  return [...MOODS, ...extras];
 }
 
 function haystack(recipe: RecipeForMatch): string {
@@ -83,6 +149,16 @@ function tagMatch(recipe: RecipeForMatch, patterns: RegExp[]): boolean {
   return recipe.tags.some((t) => patterns.some((p) => p.test(t)));
 }
 
+/** Exact tag match (case-insensitive) for dynamic mood chips. */
+export function recipeHasTag(
+  recipe: { tags: string[] },
+  tag: string
+): boolean {
+  const needle = tag.trim().toLowerCase();
+  if (!needle) return false;
+  return recipe.tags.some((t) => t.trim().toLowerCase() === needle);
+}
+
 /** Free-text craving search across title, tags, and ingredient names. */
 export function matchesQuery(
   recipe: RecipeForMatch,
@@ -98,7 +174,7 @@ export function matchesQuery(
 
 export function matchesMood(
   recipe: RecipeForMatch,
-  mood: MoodId | undefined | null
+  mood: MoodParam | undefined | null
 ): boolean {
   if (mood == null || mood === "any") return true;
   const text = haystack(recipe);
@@ -204,13 +280,14 @@ export function matchesMood(
         hasAny(text, ["bbq", "barbecue", "grill", "smoky", "smoke"])
       );
     default:
-      return true;
+      // Dynamic tag mood: must have this exact tag (case-insensitive)
+      return recipeHasTag(recipe, mood);
   }
 }
 
 export function moodBoost(
   recipe: RecipeForMatch,
-  mood: MoodId | undefined | null
+  mood: MoodParam | undefined | null
 ): number {
   if (mood == null || mood === "any") return 0;
   if (!matchesMood(recipe, mood)) return 0;
@@ -223,6 +300,8 @@ export function moodBoost(
   if (mood === "sweet" && recipe.tags.some((t) => /dessert/i.test(t))) boost += 6;
   if (mood === "breakfast" && recipe.tags.some((t) => /breakfast|brunch/i.test(t))) boost += 6;
   if ((mood === "noodles" || mood === "potato" || mood === "soup") && matchesMood(recipe, mood)) boost += 4;
+  // Extra nudge when the mood is a dynamic tag that appears on the recipe
+  if (!isMoodId(mood) && recipeHasTag(recipe, mood)) boost += 4;
   return boost;
 }
 

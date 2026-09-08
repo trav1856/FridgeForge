@@ -11,7 +11,7 @@ import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
 import type { DealCouponSummary } from "@/lib/deals";
-import { MOODS, pickSurprise, type MoodId } from "@/lib/moods";
+import { buildMoodChips, pickSurprise, type MoodDef } from "@/lib/moods";
 
 type Suggestion = {
   score: number;
@@ -58,7 +58,8 @@ export function SuggestionsView() {
   const [loading, setLoading] = useState(true);
   const [pantryCount, setPantryCount] = useState(0);
   const [maxMinutes, setMaxMinutes] = useState<number | null>(null);
-  const [mood, setMood] = useState<MoodId>("any");
+  const [mood, setMood] = useState<string>("any");
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [qDraft, setQDraft] = useState("");
   const [tonightPickId, setTonightPickId] = useState<string | null>(null);
@@ -86,6 +87,9 @@ export function SuggestionsView() {
     const data = await res.json();
     setSuggestions(data.suggestions || []);
     setPantryCount(data.pantryCount || 0);
+    setAvailableTags(
+      Array.isArray(data.availableTags) ? data.availableTags : []
+    );
     setLoading(false);
   }, [struggleMode, maxMinutes, mood, q]);
 
@@ -114,6 +118,7 @@ export function SuggestionsView() {
   const tonightPick = tonightPickId
     ? suggestions.find((s) => s.recipe.id === tonightPickId)
     : null;
+  const moodChips: MoodDef[] = buildMoodChips(availableTags);
 
   return (
     <div className="space-y-6">
@@ -200,7 +205,7 @@ export function SuggestionsView() {
             What are you in the mood for?
           </div>
           <div className="flex flex-wrap gap-2">
-            {MOODS.map((m) => {
+            {moodChips.map((m) => {
               const active = m.id === mood;
               return (
                 <button

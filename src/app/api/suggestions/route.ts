@@ -4,7 +4,7 @@ import { resolveHouseholdId } from "@/lib/auth";
 import { householdWhere } from "@/lib/household";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
-import { parseMoodParam } from "@/lib/moods";
+import { collectAvailableTags, parseMoodParam } from "@/lib/moods";
 import { suggestMeals } from "@/lib/suggestions";
 
 export async function GET(req: NextRequest) {
@@ -56,12 +56,15 @@ export async function GET(req: NextRequest) {
     deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
   }));
 
+  const availableTags = collectAvailableTags(recipeData);
+
   return NextResponse.json({
     struggleMode,
     maxMinutes: maxMinutes ?? null,
     mood: mood ?? "any",
     q: q ?? null,
     pantryCount: pantry.length,
+    availableTags,
     suggestions,
   });
 }
