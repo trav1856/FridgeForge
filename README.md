@@ -47,7 +47,7 @@ Not in Community Edition / early paid (documented for later):
 
 - Next.js App Router + TypeScript + React
 - Tailwind CSS (warm, food-friendly UI)
-- SQLite via Prisma
+- PostgreSQL via Prisma (Endor); see docs/postgres.md
 - Vitest for suggestion + receipt-parse unit tests
 - Cheerio for recipe page parsing
 - **html5-qrcode** — mobile-friendly barcode camera scanner
@@ -59,9 +59,10 @@ Not in Community Edition / early paid (documented for later):
 ```bash
 cd FridgeForge
 cp .env.example .env
-# DATABASE_URL=file:./dev.db
+# Set DATABASE_URL to Postgres (see docs/postgres.md). On Corelia:
+#   cp ops/.env.postgres.local .env
 bun install
-bun run db:setup
+bun run db:setup   # prisma db push + non-destructive seed
 bun run dev
 ```
 
@@ -81,7 +82,7 @@ Open http://localhost:3000
 
 Never run destructive seed on normal deploys. Use db:seed for safe ensure; db:seed:reset only for intentional local wipes.
 
-Production: migrations + backups. SQLite persists across code pushes.
+Production: `prisma migrate deploy` + backups. See docs/postgres.md for Endor Postgres.
 
 ## Pantry intake features
 

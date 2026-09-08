@@ -16,7 +16,8 @@
     "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:seed:reset": "FF_FORCE_RESET=1 tsx prisma/seed.ts"
+    "db:seed:reset": "FF_FORCE_RESET=1 tsx prisma/seed.ts",
+    "db:migrate:sqlite-to-pg": "tsx prisma/migrate-sqlite-to-postgres.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
