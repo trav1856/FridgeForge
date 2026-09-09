@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
-import { recipeRowMatchesScope } from "@/lib/household";
+import { canRequestRecipe, recipeIsReadable } from "@/lib/recipe-request";
 import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
@@ -27,7 +27,16 @@ export default async function RecipeDetailPage({ params }: Props) {
         : false,
     },
   });
-  if (!raw || !recipeRowMatchesScope(raw.householdId, householdId)) notFound();
+  if (!raw || !recipeIsReadable(raw, householdId)) notFound();
+  const showRequest = canRequestRecipe(
+    {
+      id: raw.id,
+      householdId: raw.householdId,
+      ownerUserId: raw.ownerUserId,
+      visibility: raw.visibility,
+    },
+    user ? { userId: user.id, householdId } : null
+  );
   const favorited =
     user && Array.isArray((raw as { favorites?: unknown[] }).favorites)
       ? ((raw as { favorites: unknown[] }).favorites.length > 0)
@@ -108,6 +117,7 @@ export default async function RecipeDetailPage({ params }: Props) {
             recipeId={recipe.id}
             title={recipe.title}
             favorited={favorited}
+            showRequest={showRequest}
           />
         </div>
       </div>

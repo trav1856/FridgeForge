@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveHouseholdId } from "@/lib/auth";
 import { recipeRowMatchesScope } from "@/lib/household";
+import { recipeIsReadable } from "@/lib/recipe-request";
 import { serializeRecipe } from "@/lib/mappers";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -13,7 +14,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     where: { id },
     include: { ingredients: true },
   });
-  if (!recipe || !recipeRowMatchesScope(recipe.householdId, householdId)) {
+  if (!recipe || !recipeIsReadable(recipe, householdId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   return NextResponse.json(serializeRecipe(recipe));

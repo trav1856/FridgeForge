@@ -21,6 +21,8 @@ model User {
   ownedRecipes Recipe[]          @relation("RecipeOwner")
   sharesSent   RecipeShare[]     @relation("ShareFrom")
   sharesReceived RecipeShare[]   @relation("ShareTo")
+  recipeRequestsSent     RecipeRequest[] @relation("RecipeRequestFrom")
+  recipeRequestsReceived RecipeRequest[] @relation("RecipeRequestTo")
   shoppingItems ShoppingListItem[]
 }
 
@@ -47,6 +49,7 @@ model Household {
   coupons    Coupon[]
   customStaples CustomPantryStaple[]
   shoppingItems ShoppingListItem[]
+  recipeRequests RecipeRequest[]
 }
 
 model HouseholdMember {
@@ -107,6 +110,7 @@ model Recipe {
   owner            User?              @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   favorites        RecipeFavorite[]
   shares           RecipeShare[]
+  requests         RecipeRequest[]
 
   @@index([householdId])
   @@index([ownerUserId])
@@ -214,4 +218,26 @@ model ShoppingListItem {
   @@index([householdId])
   @@index([userId])
   @@index([checked])
+}
+
+model RecipeRequest {
+  id          String    @id @default(cuid())
+  recipeId    String
+  fromUserId  String
+  toUserId    String?
+  householdId String?
+  status      String    @default("pending") // pending | accepted | declined
+  message     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  fromUser    User      @relation("RecipeRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User?     @relation("RecipeRequestTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([householdId])
+  @@index([status])
 }

@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
+import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
 
 type Household = {
   id: string;
@@ -277,6 +278,8 @@ export default function AccountPage() {
               Sign out
             </button>
           </div>
+
+          <RecipeRequestsInbox />
 
           <div className="card p-5 space-y-4">
             <h2 className="font-display text-xl font-bold text-sage-900">

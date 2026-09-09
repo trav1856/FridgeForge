@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyMealSlot,
-  isoWeekKey,
-  pickRecipeOfTheWeek,
+  pickFeaturedMeals,
   type MealClassifiable,
-} from "@/lib/recipe-of-the-week";
+} from "@/lib/featured-meals";
 
 const r = (
   id: string,
@@ -28,7 +27,7 @@ describe("classifyMealSlot", () => {
   });
 });
 
-describe("pickRecipeOfTheWeek", () => {
+describe("pickFeaturedMeals", () => {
   const catalog = [
     r("b1", "Pancakes", ["breakfast"]),
     r("b2", "Scrambled Eggs", ["breakfast"]),
@@ -40,7 +39,7 @@ describe("pickRecipeOfTheWeek", () => {
   ];
 
   it("returns three slots: breakfast, lunch, dinner", () => {
-    const picks = pickRecipeOfTheWeek(catalog, "2026-W37");
+    const picks = pickFeaturedMeals(catalog, () => 0);
     expect(picks).toHaveLength(3);
     expect(picks.map((p) => p.slot)).toEqual([
       "breakfast",
@@ -54,19 +53,23 @@ describe("pickRecipeOfTheWeek", () => {
     ]);
   });
 
-  it("is stable for the same ISO week", () => {
-    const a = pickRecipeOfTheWeek(catalog, "2026-W37");
-    const b = pickRecipeOfTheWeek(catalog, "2026-W37");
-    expect(a.map((p) => p.recipe.id)).toEqual(b.map((p) => p.recipe.id));
+  it("uses distinct recipes when the pool allows", () => {
+    const picks = pickFeaturedMeals(catalog, () => 0);
+    const ids = picks.map((p) => p.recipe.id);
+    expect(new Set(ids).size).toBe(3);
   });
 
-  it("can differ across weeks", () => {
-    const a = pickRecipeOfTheWeek(catalog, "2026-W37");
-    const b = pickRecipeOfTheWeek(catalog, "2026-W38");
-    // Not guaranteed different for tiny pools, but ids are always defined
-    expect(a).toHaveLength(3);
-    expect(b).toHaveLength(3);
-    expect(a.every((p) => p.recipe.id)).toBe(true);
+  it("can vary across calls with different rng", () => {
+    const a = pickFeaturedMeals(catalog, () => 0);
+    const b = pickFeaturedMeals(catalog, () => 0.99);
+    // With enough pool diversity, different seeds → different breakfast pick
+    expect(a[0]!.recipe.id).not.toEqual(b[0]!.recipe.id);
+  });
+
+  it("is not week-stable: Math.random-driven calls may differ", () => {
+    // Smoke: function accepts default rng and still returns 3
+    const picks = pickFeaturedMeals(catalog);
+    expect(picks).toHaveLength(3);
   });
 
   it("falls back when a slot pool is empty", () => {
@@ -75,16 +78,10 @@ describe("pickRecipeOfTheWeek", () => {
       r("d1", "Roast Chicken", ["dinner"]),
       r("x1", "Mystery", []),
     ];
-    const picks = pickRecipeOfTheWeek(thin, "2026-W37");
+    const picks = pickFeaturedMeals(thin, () => 0);
     expect(picks).toHaveLength(3);
     expect(new Set(picks.map((p) => p.recipe.id)).size).toBeGreaterThanOrEqual(
       2
-    );
-  });
-
-  it("isoWeekKey looks like YYYY-Www", () => {
-    expect(isoWeekKey(new Date("2026-09-08T12:00:00Z"))).toMatch(
-      /^\d{4}-W\d{2}$/
     );
   });
 });

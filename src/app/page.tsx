@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { StruggleBanner } from "@/components/StruggleBanner";
 import { RecipeOfTheWeek } from "@/components/RecipeOfTheWeek";
+import { PopularThisWeek } from "@/components/PopularThisWeek";
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
@@ -82,6 +85,7 @@ export default function HomePage() {
       </section>
 
       <RecipeOfTheWeek />
+      <PopularThisWeek />
     </div>
   );
 }

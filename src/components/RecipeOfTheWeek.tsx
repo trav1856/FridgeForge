@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db";
 import { parseStringArray } from "@/lib/json";
 import {
   MEAL_SLOT_LABEL,
-  pickRecipeOfTheWeek,
+  pickFeaturedMeals,
   type MealSlot,
-} from "@/lib/recipe-of-the-week";
+} from "@/lib/featured-meals";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIcons } from "@/components/RecipeIcons";
 
@@ -16,10 +17,11 @@ const SLOT_EMOJI: Record<MealSlot, string> = {
 };
 
 /**
- * Homepage "Recipe of the week" — three shared-catalog cards (Breakfast /
- * Lunch / Dinner), stable for the ISO calendar week.
+ * Homepage featured meals — three shared-catalog cards (Breakfast /
+ * Lunch / Dinner), randomized on every request.
  */
 export async function RecipeOfTheWeek() {
+  noStore();
   // Shared / system catalog only (householdId null)
   const rows = await prisma.recipe.findMany({
     where: { householdId: null },
@@ -39,21 +41,21 @@ export async function RecipeOfTheWeek() {
     ingredients: r.ingredients,
   }));
 
-  const picks = pickRecipeOfTheWeek(catalog);
+  const picks = pickFeaturedMeals(catalog);
   if (picks.length === 0) return null;
 
   return (
     <section className="space-y-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-ember-700">
-          This week
+          Featured meals
         </p>
         <h2 className="mt-1 font-display text-2xl font-bold text-sage-900 sm:text-3xl">
-          Recipe of the week
+          Breakfast · Lunch · Dinner
         </h2>
         <p className="mt-1 text-sm text-sage-600">
-          Featured picks from the shared catalog — Breakfast, Lunch, and Dinner.
-          Stable all week; new lineup next Monday.
+          Fresh picks from the shared catalog — reshuffled every time you load
+          the page.
         </p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-3">
