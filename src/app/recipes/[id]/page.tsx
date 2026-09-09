@@ -11,6 +11,7 @@ import { RecipeIngredients } from "@/components/RecipeIngredients";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeDetailActions } from "@/components/RecipeDetailActions";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
+import { RecipeReviews } from "@/components/RecipeReviews";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -171,6 +172,8 @@ export default async function RecipeDetailPage({ params }: Props) {
           )}
         </div>
       )}
+
+      <RecipeReviews recipeId={recipe.id} recipeTitle={recipe.title} />
     </article>
   );
 }

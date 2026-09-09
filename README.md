@@ -86,6 +86,8 @@ Production: `prisma migrate deploy` + backups. See docs/postgres.md for Endor Po
 
 **Shared recipes:** system catalog uses `householdId` null — see docs/shared-recipes.md.
 
+**Admin + ratings:** `/admin` for admins only; recipe stars/comments for any signed-in user — see docs/admin-and-reviews.md. Dev Next.js indicator disabled in `next.config`.
+
 ## Pantry intake features
 
 **Strategy:** barcode-first. The reliable happy path is scan/type a UPC when you get home, look it up on Open Food Facts, confirm, and merge into pantry. Manual entry stays available as a secondary tab. Receipt OCR remains in the codebase but is **experimental** — collapsed under “Advanced: try receipt (experimental)” so it does not compete as a primary peer tab.

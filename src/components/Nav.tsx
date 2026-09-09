@@ -19,6 +19,7 @@ export function Nav() {
   const pathname = usePathname();
   const { struggleMode, toggle } = useStruggleMode();
   const [planLabel, setPlanLabel] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,9 +30,13 @@ export function Nav() {
         if (data?.user?.plan === "pro") setPlanLabel("Pro");
         else if (data?.user) setPlanLabel("Community");
         else setPlanLabel(null);
+        setIsAdminUser(data?.user?.role === "admin");
       })
       .catch(() => {
-        if (!cancelled) setPlanLabel(null);
+        if (!cancelled) {
+          setPlanLabel(null);
+          setIsAdminUser(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -39,6 +44,7 @@ export function Nav() {
   }, [pathname]);
 
   const accountActive = pathname.startsWith("/account");
+  const adminActive = pathname.startsWith("/admin");
 
   return (
     <header className="sticky top-0 z-40 border-b border-cream-300/70 bg-cream-50/90 backdrop-blur-md">
@@ -78,17 +84,32 @@ export function Nav() {
           </button>
         </div>
 
-        <Link
-          href="/account"
-          className={clsx(
-            "shrink-0 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
-            accountActive
-              ? "bg-sage-800 text-cream-50 shadow-sm"
-              : "bg-sage-100 text-sage-700 hover:bg-sage-200"
+        <div className="flex shrink-0 items-center gap-2">
+          {isAdminUser && (
+            <Link
+              href="/admin"
+              className={clsx(
+                "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+                adminActive
+                  ? "bg-ember-600 text-white shadow-sm"
+                  : "bg-ember-50 text-ember-800 hover:bg-ember-100"
+              )}
+            >
+              Admin
+            </Link>
           )}
-        >
-          Account
-        </Link>
+          <Link
+            href="/account"
+            className={clsx(
+              "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+              accountActive
+                ? "bg-sage-800 text-cream-50 shadow-sm"
+                : "bg-sage-100 text-sage-700 hover:bg-sage-200"
+            )}
+          >
+            Account
+          </Link>
+        </div>
       </div>
 
       <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">

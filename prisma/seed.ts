@@ -22,6 +22,7 @@ async function main() {
       "FF_FORCE_RESET=1 — wiping users/recipes/households/pantry/coupons (intentional only)."
     );
     await prisma.session.deleteMany();
+    await prisma.recipeReview.deleteMany().catch(() => {});
     await prisma.recipeFavorite.deleteMany().catch(() => {});
     await prisma.recipeShare.deleteMany().catch(() => {});
     await prisma.shoppingListItem.deleteMany().catch(() => {});
@@ -943,6 +944,13 @@ async function main() {
     });
     // no-op kept for API parity; returns 0
     await cloneStapleRecipesToHousehold(prisma, household.id);
+  }
+
+  // Promote known owner + FF_ADMIN_EMAILS to admin (non-destructive)
+  const { promoteAdminEmails } = await import("../src/lib/admin");
+  const promoted = await promoteAdminEmails();
+  if (promoted > 0) {
+    console.log(`Promoted ${promoted} user(s) to admin via bootstrap emails`);
   }
 
   console.log(

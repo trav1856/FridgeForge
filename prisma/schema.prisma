@@ -13,6 +13,10 @@ model User {
   name         String?
   passwordHash String?
   plan         String            @default("community") // community | pro
+  /** user | admin */
+  role         String            @default("user")
+  /** Soft-disable: blocked from sign-in when true */
+  disabled     Boolean           @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -24,6 +28,7 @@ model User {
   recipeRequestsSent     RecipeRequest[] @relation("RecipeRequestFrom")
   recipeRequestsReceived RecipeRequest[] @relation("RecipeRequestTo")
   shoppingItems ShoppingListItem[]
+  reviews      RecipeReview[]
 }
 
 model Session {
@@ -113,6 +118,7 @@ model Recipe {
   favorites        RecipeFavorite[]
   shares           RecipeShare[]
   requests         RecipeRequest[]
+  reviews          RecipeReview[]
 
   @@index([householdId])
   @@index([ownerUserId])
@@ -243,3 +249,21 @@ model RecipeRequest {
   @@index([householdId])
   @@index([status])
 }
+
+model RecipeReview {
+  id        String   @id @default(cuid())
+  recipeId  String
+  userId    String
+  stars     Int
+  body      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, userId])
+  @@index([recipeId])
+  @@index([userId])
+  @@index([createdAt])
+}
+

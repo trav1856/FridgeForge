@@ -89,7 +89,12 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
     return null;
   }
-  return session.user as AuthUser;
+  const authUser = session.user as AuthUser;
+  if (authUser.disabled) {
+    await prisma.session.deleteMany({ where: { userId: authUser.id } }).catch(() => {});
+    return null;
+  }
+  return authUser;
 }
 
 export async function requireUser(): Promise<AuthUser> {
@@ -126,6 +131,8 @@ export function publicUser(user: AuthUser) {
     email: user.email,
     name: user.name,
     plan: user.plan,
+    role: user.role === "admin" ? "admin" : "user",
+    disabled: Boolean(user.disabled),
     createdAt: user.createdAt.toISOString(),
     households: user.memberships.map((m) => ({
       id: m.household.id,

@@ -27,6 +27,12 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    if (userRow.disabled) {
+      return NextResponse.json(
+        { error: "Account disabled" },
+        { status: 403 }
+      );
+    }
     const ok = await verifyPassword(data.password, userRow.passwordHash);
     if (!ok) {
       return NextResponse.json(
