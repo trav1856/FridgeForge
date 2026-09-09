@@ -374,7 +374,7 @@ function Section({
           <p className="text-sm text-sage-500">{empty}</p>
         ) : null
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {items.map((s) => {
             const isPick = highlightId === s.recipe.id;
             return (
