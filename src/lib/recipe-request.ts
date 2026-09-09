@@ -1,3 +1,4 @@
+import { canViewRecipe } from "./recipe-visibility";
 /**
  * Social-lite recipe request rules (pure helpers for API + UI + tests).
  */
@@ -15,17 +16,28 @@ export type RequestActor = {
 };
 
 /**
- * Readable outside exact household scope when shared catalog or public.
+ * Readable when global catalog / global visibility / same household / shared recipient.
+ * `shares` optional — pass when checking shared visibility for a signed-in user.
  */
 export function recipeIsReadable(
-  recipe: { householdId: string | null; visibility?: string | null },
-  activeHouseholdId: string | null
+  recipe: {
+    householdId: string | null;
+    visibility?: string | null;
+    ownerUserId?: string | null;
+    shares?: {
+      toUserId?: string | null;
+      toUserEmail?: string | null;
+      toHouseholdId?: string | null;
+    }[];
+  },
+  activeHouseholdId: string | null,
+  actor?: { userId?: string | null; userEmail?: string | null } | null
 ): boolean {
-  if (recipe.householdId == null) return true;
-  if (activeHouseholdId != null && recipe.householdId === activeHouseholdId) {
-    return true;
-  }
-  return (recipe.visibility ?? "").toLowerCase() === "public";
+  return canViewRecipe(recipe, {
+    householdId: activeHouseholdId,
+    userId: actor?.userId ?? null,
+    userEmail: actor?.userEmail ?? null,
+  });
 }
 
 /**

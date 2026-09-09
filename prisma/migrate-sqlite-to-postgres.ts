@@ -295,6 +295,7 @@ async function main() {
           fromUserId: String(r.fromUserId),
           toUserEmail: (r.toUserEmail as string) ?? null,
           toUserId: (r.toUserId as string) ?? null,
+          toHouseholdId: (r.toHouseholdId as string) ?? null,
           accepted: asBool(r.accepted),
           acceptedAt: asDate(r.acceptedAt),
           createdAt: asDateRequired(r.createdAt, "RecipeShare.createdAt"),

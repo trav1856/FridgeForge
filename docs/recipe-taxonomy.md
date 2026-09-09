@@ -14,6 +14,9 @@ Controlled vocab lives in `src/lib/recipe-taxonomy.ts`.
 
 ## Origin hierarchy
 
+UI lists origins by **continent/region** (Africa → Asia → Europe → Middle East / Levant → North America → South America / Latin America → Pacific Rim / Oceania / Polynesia), then A–Z within each group — never a flat list that puts one culture first. Nested labels (e.g. Ashkenazi under Jewish) still roll up for filters.
+
+
 Selecting a parent matches that id **or any descendant**. Example: filter `origin=jewish` includes recipes tagged `ashkenazi-jewish`, `sephardi-jewish`, `israeli-jewish`, etc. Selecting `ashkenazi-jewish` is narrow.
 
 Origins are culinary/cultural foodways labels (e.g. Jewish, Muslim-friendly, Levantine, Chinese). Recipes may list several overlapping origins (hummus → Levantine + Arabic + Israeli + Jewish + Muslim-friendly when appropriate). Leave unknown empty rather than guessing.
@@ -35,3 +38,5 @@ Non-destructive seed infers taxonomy for staples via heuristics and fills empty 
 ## Origin story (`originStory`)
 
 Optional short prose on the recipe. Recipe detail shows a **Learn more / Story behind this food** expander when set; empty hides the section. Admin and create form can edit it. Seed backfills brief original blurbs for selected staples (`src/lib/recipe-origin-stories.ts`).
+
+Filter UI: cuisine/course keep **Any cuisine** / **Any course**; food filter clear control is labeled **Food type**. Origins are grouped by continent/region then A–Z.

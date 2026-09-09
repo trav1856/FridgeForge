@@ -36,11 +36,24 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   try {
     const { id: recipeId } = await ctx.params;
     const householdId = await resolveHouseholdId();
-    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
-    if (!recipe || !recipeIsReadable(recipe, householdId)) {
+    const user = await getCurrentUser();
+    const recipe = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      include: {
+        shares: {
+          select: { toUserId: true, toUserEmail: true, toHouseholdId: true },
+        },
+      },
+    });
+    if (
+      !recipe ||
+      !recipeIsReadable(recipe, householdId, {
+        userId: user?.id,
+        userEmail: user?.email,
+      })
+    ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const user = await getCurrentUser();
     const reviews = await prisma.recipeReview.findMany({
       where: { recipeId },
       include: { user: { select: { name: true, email: true } } },
@@ -73,8 +86,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     if (!user) throw new AuthError();
     const { id: recipeId } = await ctx.params;
     const householdId = await resolveHouseholdId();
-    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
-    if (!recipe || !recipeIsReadable(recipe, householdId)) {
+    const recipe = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      include: {
+        shares: {
+          select: { toUserId: true, toUserEmail: true, toHouseholdId: true },
+        },
+      },
+    });
+    if (
+      !recipe ||
+      !recipeIsReadable(recipe, householdId, {
+        userId: user.id,
+        userEmail: user.email,
+      })
+    ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     const body = await req.json();

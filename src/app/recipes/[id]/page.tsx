@@ -28,9 +28,23 @@ export default async function RecipeDetailPage({ params }: Props) {
       favorites: user
         ? { where: { userId: user.id }, select: { id: true } }
         : false,
+      shares: {
+        select: {
+          toUserId: true,
+          toUserEmail: true,
+          toHouseholdId: true,
+        },
+      },
     },
   });
-  if (!raw || !recipeIsReadable(raw, householdId)) notFound();
+  if (
+    !raw ||
+    !recipeIsReadable(raw, householdId, {
+      userId: user?.id,
+      userEmail: user?.email,
+    })
+  )
+    notFound();
   const showRequest = canRequestRecipe(
     {
       id: raw.id,
@@ -44,8 +58,9 @@ export default async function RecipeDetailPage({ params }: Props) {
     user && Array.isArray((raw as { favorites?: unknown[] }).favorites)
       ? ((raw as { favorites: unknown[] }).favorites.length > 0)
       : false;
-  const { favorites: _f, ...rest } = raw as typeof raw & {
+  const { favorites: _f, shares: _shares, ...rest } = raw as typeof raw & {
     favorites?: unknown;
+    shares?: unknown;
   };
   const recipe = serializeRecipe(rest);
 
@@ -88,7 +103,11 @@ export default async function RecipeDetailPage({ params }: Props) {
           ))}
           {recipe.visibility && (
             <span className="badge bg-cream-200 text-sage-700">
-              {recipe.visibility}
+              {recipe.visibility === "public"
+                ? "global"
+                : recipe.visibility === "private"
+                  ? "household"
+                  : recipe.visibility}
             </span>
           )}
           {recipe.tags.map((t) => (

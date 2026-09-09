@@ -14,7 +14,7 @@ export async function GET() {
     ]);
     const admins = await prisma.user.count({ where: { role: "admin" } });
     const publicRecipes = await prisma.recipe.count({
-      where: { visibility: "public" },
+      where: { visibility: { in: ["public", "global"] } },
     });
     return NextResponse.json({
       users,

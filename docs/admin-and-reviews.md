@@ -17,7 +17,7 @@ Bootstrap admins:
 Gated by `user.role === "admin"` (layout redirect + API 403).
 
 - Dashboard — basic counts
-- Recipes — search/filter by cuisine/course/food/origin, edit taxonomy, cycle visibility, struggle flag, delete
+- Recipes — search/filter by cuisine/course/food/origin, edit taxonomy, cycle visibility (Global → Household → Shared), struggle flag, delete
 - Users — set role admin/user, enable/disable
 
 Nav shows **Admin** only when the signed-in user is an admin.

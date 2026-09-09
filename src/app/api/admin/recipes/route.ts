@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { adminErrorResponse, requireAdmin } from "@/lib/admin";
 import { serializeRecipe } from "@/lib/mappers";
 import { stringifyArray } from "@/lib/json";
+import { normalizeVisibility } from "@/lib/recipe-visibility";
 import {
   matchesTaxonomyFilters,
   normalizeCuisine,
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
 const patchSchema = z.object({
   id: z.string().min(1),
-  visibility: z.enum(["private", "household", "public"]).optional(),
+  visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
   title: z.string().min(1).max(200).optional(),
   isStruggleMeal: z.boolean().optional(),
   cuisine: z.string().max(80).optional().nullable(),
@@ -65,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   try {
     await requireAdmin();
     const data = patchSchema.parse(await req.json());
-    const { id, foodCategories, origins, cuisine, course, tags, originStory, ...rest } = data;
+    const { id, foodCategories, origins, cuisine, course, tags, originStory, visibility, ...rest } = data;
     const existing = await prisma.recipe.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -74,6 +75,9 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: {
         ...rest,
+        ...(visibility !== undefined
+          ? { visibility: normalizeVisibility(visibility) }
+          : {}),
         ...(cuisine !== undefined
           ? { cuisine: normalizeCuisine(cuisine) }
           : {}),

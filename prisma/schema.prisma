@@ -55,6 +55,7 @@ model Household {
   customStaples CustomPantryStaple[]
   shoppingItems ShoppingListItem[]
   recipeRequests RecipeRequest[]
+  sharesReceived RecipeShare[]
 }
 
 model HouseholdMember {
@@ -116,7 +117,7 @@ model Recipe {
   isStruggleMeal   Boolean            @default(false)
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
-  /** private | household | public */
+  /** global | household | shared  (legacy aliases: public→global, private→household) */
   visibility       String             @default("household")
   ownerUserId      String?
   householdId      String?
@@ -161,22 +162,26 @@ model RecipeFavorite {
 }
 
 model RecipeShare {
-  id          String    @id @default(cuid())
-  recipeId    String
-  fromUserId  String
-  toUserEmail String?
-  toUserId    String?
-  accepted    Boolean   @default(false)
-  acceptedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  fromUser    User      @relation("ShareFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser      User?     @relation("ShareTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  id            String     @id @default(cuid())
+  recipeId      String
+  fromUserId    String
+  toUserEmail   String?
+  toUserId      String?
+  /** Optional: share with an entire household (all members can view). */
+  toHouseholdId String?
+  accepted      Boolean    @default(false)
+  acceptedAt    DateTime?
+  createdAt     DateTime   @default(now())
+  recipe        Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  fromUser      User       @relation("ShareFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser        User?      @relation("ShareTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  toHousehold   Household? @relation(fields: [toHouseholdId], references: [id], onDelete: SetNull)
 
   @@index([recipeId])
   @@index([fromUserId])
   @@index([toUserId])
   @@index([toUserEmail])
+  @@index([toHouseholdId])
 }
 
 model Coupon {

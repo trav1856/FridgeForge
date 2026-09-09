@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent, type MouseEvent } from "react";
+import { RecipeShareManager } from "./RecipeShareManager";
 
 type Props = {
   recipeId: string;
@@ -153,6 +154,9 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
             </p>
           </form>
           {status && <p className="text-xs text-sage-700">{status}</p>}
+          <div className="border-t border-cream-200 pt-2">
+            <RecipeShareManager recipeId={recipeId} />
+          </div>
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ import {
   CUISINES,
   FOOD_CATEGORIES,
   ORIGIN_OPTIONS,
+  ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
 
 type Recipe = {
@@ -43,12 +44,14 @@ function ChipRow({
   value,
   onChange,
   searchable,
+  clearLabel = "Any",
 }: {
   label: string;
   options: { id: string; label: string; depth?: number }[];
   value: string;
   onChange: (v: string) => void;
   searchable?: boolean;
+  clearLabel?: string;
 }) {
   const [filter, setFilter] = useState("");
   const shown = useMemo(() => {
@@ -86,7 +89,7 @@ function ChipRow({
           }`}
           aria-pressed={!value}
         >
-          Any
+          {clearLabel}
         </button>
         {shown.map((o) => (
           <button
@@ -103,6 +106,95 @@ function ChipRow({
           >
             {o.label}
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OriginFilterChips({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [filter, setFilter] = useState("");
+  const needle = filter.trim().toLowerCase();
+  const regions = useMemo(() => {
+    if (!needle) return ORIGIN_REGIONS;
+    return ORIGIN_REGIONS.map((region) => {
+      const opts = ORIGIN_OPTIONS.filter(
+        (o) =>
+          o.regionId === region.id &&
+          (o.label.toLowerCase().includes(needle) ||
+            o.id.toLowerCase().includes(needle) ||
+            region.label.toLowerCase().includes(needle))
+      );
+      return { region, opts };
+    }).filter((r) => r.opts.length > 0);
+  }, [needle]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+          Origin
+        </span>
+        <input
+          className="input max-w-[12rem] py-1 text-xs"
+          placeholder="Search origins…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            !value
+              ? "bg-sage-800 text-cream-50"
+              : "border border-cream-300 bg-cream-100 text-sage-800"
+          }`}
+          aria-pressed={!value}
+        >
+          Any origin
+        </button>
+      </div>
+      <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+        {(needle
+          ? regions
+          : ORIGIN_REGIONS.map((region) => ({
+              region,
+              opts: ORIGIN_OPTIONS.filter((o) => o.regionId === region.id),
+            }))
+        ).map(({ region, opts }) => (
+          <div key={region.id} className="space-y-1">
+            <p className="text-[11px] font-semibold text-sage-600">
+              {region.label}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {opts.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => onChange(value === o.id ? "" : o.id)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    value === o.id
+                      ? "bg-sage-800 text-cream-50"
+                      : "border border-cream-300 bg-cream-100 text-sage-800"
+                  }`}
+                  style={
+                    o.depth
+                      ? { marginLeft: Math.min(o.depth, 2) * 6 }
+                      : undefined
+                  }
+                  aria-pressed={value === o.id}
+                >
+                  {o.depth ? `${"· ".repeat(o.depth)}${o.label}` : o.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -270,25 +362,25 @@ export function RecipeList() {
           options={cuisineOptions}
           value={cuisineParam}
           onChange={(v) => setParams({ cuisine: v || null })}
+          clearLabel="Any cuisine"
         />
         <ChipRow
           label="Course"
           options={courseOptions}
           value={courseParam}
           onChange={(v) => setParams({ course: v || null })}
+          clearLabel="Any course"
         />
         <ChipRow
-          label="Food"
+          label="Food type"
           options={foodOptions}
           value={foodCategoryParam}
           onChange={(v) => setParams({ foodCategory: v || null })}
+          clearLabel="Food type"
         />
-        <ChipRow
-          label="Origin / ethnicity"
-          options={ORIGIN_OPTIONS}
+        <OriginFilterChips
           value={originParam}
           onChange={(v) => setParams({ origin: v || null })}
-          searchable
         />
       </div>
 

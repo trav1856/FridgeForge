@@ -7,8 +7,14 @@ import {
   CUISINES,
   FOOD_CATEGORIES,
   ORIGIN_OPTIONS,
+  ORIGIN_REGIONS,
   matchesTaxonomyFilters,
 } from "@/lib/recipe-taxonomy";
+import {
+  nextVisibility,
+  visibilityLabel,
+} from "@/lib/recipe-visibility";
+import { RecipeShareManager } from "./RecipeShareManager";
 
 type RecipeRow = {
   id: string;
@@ -117,10 +123,8 @@ export function AdminRecipesPanel({ initial }: Props) {
     }
   }
 
-  function cycleVisibility(v: string): "private" | "household" | "public" {
-    if (v === "private") return "household";
-    if (v === "household") return "public";
-    return "private";
+  function cycleVisibility(v: string) {
+    return nextVisibility(v);
   }
 
   function startEdit(r: RecipeRow) {
@@ -180,7 +184,7 @@ export function AdminRecipesPanel({ initial }: Props) {
             value={foodCategory}
             onChange={(e) => setFoodCategory(e.target.value)}
           >
-            <option value="">Any food</option>
+            <option value="">Food type</option>
             {FOOD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -188,17 +192,23 @@ export function AdminRecipesPanel({ initial }: Props) {
             ))}
           </select>
           <select
-            className="input max-w-[14rem] text-sm"
+            className="input max-w-[16rem] text-sm"
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
           >
             <option value="">Any origin</option>
-            {ORIGIN_OPTIONS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {"—".repeat(o.depth)}
-                {o.depth ? " " : ""}
-                {o.label}
-              </option>
+            {ORIGIN_REGIONS.map((region) => (
+              <optgroup key={region.id} label={region.label}>
+                {ORIGIN_OPTIONS.filter((o) => o.regionId === region.id).map(
+                  (o) => (
+                    <option key={o.id} value={o.id}>
+                      {"—".repeat(o.depth)}
+                      {o.depth ? " " : ""}
+                      {o.label}
+                    </option>
+                  )
+                )}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -241,7 +251,7 @@ export function AdminRecipesPanel({ initial }: Props) {
                 }
                 title="Cycle private → household → public"
               >
-                vis: {r.visibility}
+                {visibilityLabel(r.visibility)}
               </button>
               <button
                 type="button"
@@ -330,25 +340,36 @@ export function AdminRecipesPanel({ initial }: Props) {
                 </div>
                 <div>
                   <span className="text-[11px] text-sage-500">
-                    Origins / ethnicity
+                    Origins (by region)
                   </span>
-                  <div className="mt-1 flex max-h-32 flex-wrap gap-1 overflow-y-auto">
-                    {ORIGIN_OPTIONS.map((o) => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          editOrigins.includes(o.id)
-                            ? "bg-sage-800 text-cream-50"
-                            : "border border-cream-300 bg-cream-50"
-                        }`}
-                        onClick={() =>
-                          setEditOrigins(toggleIn(editOrigins, o.id))
-                        }
-                      >
-                        {o.depth ? "· ".repeat(o.depth) : ""}
-                        {o.label}
-                      </button>
+                  <div className="mt-1 max-h-40 space-y-2 overflow-y-auto">
+                    {ORIGIN_REGIONS.map((region) => (
+                      <div key={region.id}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-sage-500">
+                          {region.label}
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap gap-1">
+                          {ORIGIN_OPTIONS.filter(
+                            (o) => o.regionId === region.id
+                          ).map((o) => (
+                            <button
+                              key={o.id}
+                              type="button"
+                              className={`rounded-full px-2 py-0.5 text-xs ${
+                                editOrigins.includes(o.id)
+                                  ? "bg-sage-800 text-cream-50"
+                                  : "border border-cream-300 bg-cream-50"
+                              }`}
+                              onClick={() =>
+                                setEditOrigins(toggleIn(editOrigins, o.id))
+                              }
+                            >
+                              {o.depth ? "· ".repeat(o.depth) : ""}
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

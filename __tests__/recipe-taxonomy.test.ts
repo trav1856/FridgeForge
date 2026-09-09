@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ORIGIN_OPTIONS,
+  ORIGIN_REGIONS,
   inferRecipeTaxonomy,
   matchesRecipeSearch,
   matchesTaxonomyFilters,
@@ -9,6 +11,17 @@ import {
 } from "@/lib/recipe-taxonomy";
 
 describe("origin hierarchy rollup", () => {
+  it("lists regions continent-first; Jewish is not first overall", () => {
+    expect(ORIGIN_REGIONS[0].label).toBe("Africa");
+    expect(ORIGIN_OPTIONS[0].id).toBe("african");
+    expect(ORIGIN_OPTIONS[0].id).not.toBe("jewish");
+    const me = ORIGIN_REGIONS.find((r) => r.id === "middle-east-levant");
+    expect(me).toBeTruthy();
+    const labels = me!.entries.map((e) => e.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, "en")));
+    expect(labels[0]).not.toBe("Jewish");
+  });
+
   it("Jewish includes Ashkenazi / Sephardi / Israeli-Jewish descendants", () => {
     const ids = originMatchIds("jewish");
     expect(ids.has("jewish")).toBe(true);
@@ -168,7 +181,15 @@ describe("inferRecipeTaxonomy staples", () => {
     expect(t.foodCategories).toContain("grain");
   });
 
-  it("does not treat chili flakes as Mexican cuisine", () => {
+  it("does not treat seasoning chili as Mexican cuisine", () => {
+    const beans = inferRecipeTaxonomy({
+      title: "Smoky Beans & Rice Bowl",
+      tags: ["beans", "rice", "dinner"],
+      description: "Onion and chili do the heavy lifting.",
+      ingredients: [{ name: "Chili flakes" }],
+    });
+    expect(beans.cuisine).not.toBe("Mexican");
+
     const rice = inferRecipeTaxonomy({
       title: "Garlic Fried Rice with Crispy Egg",
       tags: ["rice", "egg"],

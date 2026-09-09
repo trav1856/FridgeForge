@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
-import { householdWhere, recipeScopeWhere } from "@/lib/household";
+import { householdWhere } from "@/lib/household";
+import {
+  normalizeVisibility,
+  recipeListAccessWhere,
+} from "@/lib/recipe-visibility";
 import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
 import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
@@ -39,6 +43,7 @@ const createSchema = z.object({
   isStruggleMeal: z.boolean().optional(),
   techniqueTips: z.array(z.string()).optional(),
   flavorBoosters: z.array(z.string()).optional(),
+  visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
   ingredients: z.array(ingredientSchema).min(1),
 });
 
@@ -56,16 +61,21 @@ export async function GET(req: NextRequest) {
     req.nextUrl.searchParams.get("origin") ||
     req.nextUrl.searchParams.get("ethnicity");
 
-  // Default "All": shared catalog (householdId null) OR active household
+  const accessWhere = recipeListAccessWhere({
+    userId: user?.id ?? null,
+    userEmail: user?.email ?? null,
+    householdId,
+  });
+
+  // Default "All": global catalog + accessible household/shared recipes
   let where: Record<string, unknown> = {
-    ...recipeScopeWhere(householdId),
-    ...(struggle === "1" ? { isStruggleMeal: true } : {}),
+    AND: [accessWhere, ...(struggle === "1" ? [{ isStruggleMeal: true }] : [])],
   };
 
   if (scope === "mine" && user) {
     where = { ownerUserId: user.id };
   } else if (scope === "household") {
-    // Household collection only (not the shared catalog)
+    // Household collection only (not the global catalog)
     where = {
       ...householdWhere(householdId),
       ...(householdId != null
@@ -79,10 +89,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json([]);
     }
     where = {
-      AND: [
-        recipeScopeWhere(householdId),
-        { favorites: { some: { userId: user.id } } },
-      ],
+      AND: [accessWhere, { favorites: { some: { userId: user.id } } }],
     };
   }
 
@@ -163,7 +170,11 @@ export async function POST(req: NextRequest) {
         isStruggleMeal: data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
         techniqueTips: stringifyArray(data.techniqueTips),
         flavorBoosters: stringifyArray(data.flavorBoosters),
-        visibility: householdId ? "household" : "private",
+        visibility: data.visibility
+          ? normalizeVisibility(data.visibility)
+          : householdId
+            ? "household"
+            : "global",
         ownerUserId: user?.id ?? null,
         householdId,
         ingredients: {

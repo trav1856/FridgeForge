@@ -7,7 +7,7 @@ export default async function AdminDashboardPage() {
       prisma.user.count(),
       prisma.user.count({ where: { role: "admin" } }),
       prisma.recipe.count(),
-      prisma.recipe.count({ where: { visibility: "public" } }),
+      prisma.recipe.count({ where: { visibility: { in: ["public", "global"] } } }),
       prisma.recipeReview.count(),
       prisma.household.count(),
       prisma.pantryItem.count(),

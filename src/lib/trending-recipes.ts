@@ -32,7 +32,8 @@ export function isTrendingEligible(recipe: {
   visibility?: string | null;
 }): boolean {
   if (recipe.householdId == null) return true;
-  return (recipe.visibility ?? "").toLowerCase() === "public";
+  const v = (recipe.visibility ?? "").toLowerCase();
+  return v === "public" || v === "global";
 }
 
 /** Fisher–Yates shuffle (injectable rng). */

@@ -40,3 +40,14 @@ Signed-in users can ask “Can I have that recipe?” for a household-owned reci
 ## Recipe taxonomy
 
 Shared and household recipes use structured `cuisine`, `course`, `foodCategories`, and `origins` (see [recipe-taxonomy.md](./recipe-taxonomy.md)). `/recipes` filters and `/api/recipes` query params make lookups shareable.
+
+
+## Visibility: Global / Household / Shared
+
+| Value | Who can view |
+| --- | --- |
+| **global** (legacy `public`) | Anyone — guests and signed-in |
+| **household** (legacy `private`) | Members of the recipe’s household (+ owner) |
+| **shared** | Owner household **plus** people/households on `RecipeShare` |
+
+Shared recipients are listed and managed via `/api/recipes/:id/share` (email and/or `toHouseholdId`). Admin and the share panel show **who it’s shared with**. List/detail APIs use `recipeListAccessWhere` / `canViewRecipe`.

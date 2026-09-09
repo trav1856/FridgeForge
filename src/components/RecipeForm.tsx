@@ -8,6 +8,7 @@ import {
   CUISINES,
   FOOD_CATEGORIES,
   ORIGIN_OPTIONS,
+  ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
@@ -61,6 +62,7 @@ export function RecipeForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [costTier, setCostTier] = useState<"cheap" | "moderate">("cheap");
+  const [visibility, setVisibility] = useState<"global" | "household" | "shared">("household");
   const [tags, setTags] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [course, setCourse] = useState("");
@@ -183,6 +185,7 @@ export function RecipeForm() {
       description: description.trim() || null,
       costTier,
       tags: tagList,
+      visibility,
       cuisine: cuisine || null,
       course: course || null,
       foodCategories,
@@ -383,6 +386,22 @@ export function RecipeForm() {
             </select>
           </div>
           <div>
+            <label className="label">Visibility</label>
+            <select
+              className="input"
+              value={visibility}
+              onChange={(e) =>
+                setVisibility(
+                  e.target.value as "global" | "household" | "shared"
+                )
+              }
+            >
+              <option value="global">Global (anyone)</option>
+              <option value="household">Household only</option>
+              <option value="shared">Shared (specific people)</option>
+            </select>
+          </div>
+          <div>
             <label className="label">Servings</label>
             <input
               className="input"
@@ -483,30 +502,43 @@ export function RecipeForm() {
           </div>
         </div>
         <div>
-          <label className="label">Origin / ethnicity (culinary foodways)</label>
-          <div className="mt-1 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-            {ORIGIN_OPTIONS.map((o) => {
-              const on = origins.includes(o.id);
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    on
-                      ? "bg-sage-800 text-cream-50"
-                      : "border border-cream-300 bg-cream-100 text-sage-800"
-                  }`}
-                  onClick={() =>
-                    setOrigins((prev) =>
-                      on ? prev.filter((x) => x !== o.id) : [...prev, o.id]
-                    )
-                  }
-                >
-                  {o.depth ? "· ".repeat(o.depth) : ""}
-                  {o.label}
-                </button>
-              );
-            })}
+          <label className="label">Origin (by region)</label>
+          <div className="mt-1 max-h-44 space-y-2 overflow-y-auto">
+            {ORIGIN_REGIONS.map((region) => (
+              <div key={region.id}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
+                  {region.label}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {ORIGIN_OPTIONS.filter((o) => o.regionId === region.id).map(
+                    (o) => {
+                      const on = origins.includes(o.id);
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            on
+                              ? "bg-sage-800 text-cream-50"
+                              : "border border-cream-300 bg-cream-100 text-sage-800"
+                          }`}
+                          onClick={() =>
+                            setOrigins((prev) =>
+                              on
+                                ? prev.filter((x) => x !== o.id)
+                                : [...prev, o.id]
+                            )
+                          }
+                        >
+                          {o.depth ? "· ".repeat(o.depth) : ""}
+                          {o.label}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         <div>

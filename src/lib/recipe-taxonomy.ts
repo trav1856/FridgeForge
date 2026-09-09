@@ -52,7 +52,7 @@ export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
 /**
  * Culinary / cultural foodways labels (not religious gatekeeping).
- * Tree: selecting a parent matches that id OR any descendant.
+ * Organized by continent/region for UI; nested children still roll up in filters.
  * Recipes may carry multiple overlapping origins.
  */
 export type OriginNode = {
@@ -61,110 +61,204 @@ export type OriginNode = {
   children?: OriginNode[];
 };
 
-export const ORIGIN_TREE: OriginNode[] = [
+/** Top-level UI regions — display order fixed; entries A–Z within each. */
+export type OriginRegion = {
+  id: string;
+  label: string;
+  entries: OriginNode[];
+};
+
+function sortByLabel(nodes: OriginNode[]): OriginNode[] {
+  return [...nodes]
+    .map((n) =>
+      n.children?.length
+        ? { ...n, children: sortByLabel(n.children) }
+        : { ...n }
+    )
+    .sort((a, b) => a.label.localeCompare(b.label, "en"));
+}
+
+/**
+ * Region → foodways. Nested diaspora labels (e.g. Ashkenazi under Jewish)
+ * stay under their parent; parents are A–Z inside the region.
+ */
+export const ORIGIN_REGIONS: OriginRegion[] = [
   {
-    id: "jewish",
-    label: "Jewish",
-    children: [
-      { id: "ashkenazi-jewish", label: "Ashkenazi Jewish" },
-      { id: "sephardi-jewish", label: "Sephardi Jewish" },
-      { id: "mizrahi-jewish", label: "Mizrahi Jewish" },
-      { id: "israeli-jewish", label: "Israeli Jewish" },
-    ],
+    id: "africa",
+    label: "Africa",
+    entries: sortByLabel([
+      {
+        id: "african",
+        label: "African",
+        children: [
+          { id: "north-african", label: "North African" },
+          { id: "west-african", label: "West African" },
+        ],
+      },
+      { id: "ethiopian", label: "Ethiopian" },
+      { id: "moroccan", label: "Moroccan" },
+    ]),
   },
   {
-    id: "middle-eastern",
-    label: "Middle Eastern",
-    children: [
-      { id: "arabic", label: "Arabic" },
-      { id: "levantine", label: "Levantine" },
-      { id: "israeli", label: "Israeli" },
-      { id: "persian", label: "Persian" },
-      { id: "turkish", label: "Turkish" },
-    ],
+    id: "asia",
+    label: "Asia",
+    entries: sortByLabel([
+      {
+        id: "asian",
+        label: "Asian",
+        children: [
+          { id: "chinese", label: "Chinese" },
+          { id: "filipino", label: "Filipino" },
+          { id: "indian", label: "Indian" },
+          { id: "japanese", label: "Japanese" },
+          { id: "korean", label: "Korean" },
+          { id: "thai", label: "Thai" },
+          { id: "vietnamese", label: "Vietnamese" },
+        ],
+      },
+    ]),
   },
   {
-    id: "muslim-friendly",
-    label: "Muslim-friendly",
-  },
-  {
-    id: "asian",
-    label: "Asian",
-    children: [
-      { id: "chinese", label: "Chinese" },
-      { id: "japanese", label: "Japanese" },
-      { id: "korean", label: "Korean" },
-      { id: "thai", label: "Thai" },
-      { id: "vietnamese", label: "Vietnamese" },
-      { id: "filipino", label: "Filipino" },
-      { id: "indian", label: "Indian" },
-    ],
-  },
-  {
-    id: "european",
-    label: "European",
-    children: [
-      { id: "italian", label: "Italian" },
-      { id: "french", label: "French" },
-      { id: "hungarian", label: "Hungarian" },
-      { id: "greek", label: "Greek" },
-      { id: "spanish", label: "Spanish" },
+    id: "europe",
+    label: "Europe",
+    entries: sortByLabel([
       { id: "british", label: "British" },
-      { id: "german", label: "German" },
       { id: "eastern-european", label: "Eastern European" },
-    ],
+      {
+        id: "european",
+        label: "European",
+        children: [
+          { id: "french", label: "French" },
+          { id: "german", label: "German" },
+          { id: "greek", label: "Greek" },
+          { id: "hungarian", label: "Hungarian" },
+          { id: "italian", label: "Italian" },
+          { id: "spanish", label: "Spanish" },
+        ],
+      },
+      { id: "mediterranean", label: "Mediterranean" },
+    ]),
   },
   {
-    id: "latin-american",
-    label: "Latin American",
-    children: [
-      { id: "mexican", label: "Mexican" },
+    id: "middle-east-levant",
+    label: "Middle East / Levant",
+    entries: sortByLabel([
+      { id: "arabic", label: "Arabic" },
+      { id: "israeli", label: "Israeli" },
+      {
+        id: "jewish",
+        label: "Jewish",
+        children: [
+          { id: "ashkenazi-jewish", label: "Ashkenazi Jewish" },
+          { id: "israeli-jewish", label: "Israeli Jewish" },
+          { id: "mizrahi-jewish", label: "Mizrahi Jewish" },
+          { id: "sephardi-jewish", label: "Sephardi Jewish" },
+        ],
+      },
+      { id: "levantine", label: "Levantine" },
+      {
+        id: "middle-eastern",
+        label: "Middle Eastern",
+        children: [
+          { id: "persian", label: "Persian" },
+          { id: "turkish", label: "Turkish" },
+        ],
+      },
+      { id: "muslim-friendly", label: "Muslim-friendly" },
+    ]),
+  },
+  {
+    id: "north-america",
+    label: "North America",
+    entries: sortByLabel([
+      {
+        id: "american",
+        label: "American",
+        children: [
+          { id: "southern-us", label: "Southern US" },
+          { id: "tex-mex", label: "Tex-Mex" },
+        ],
+      },
+      { id: "canadian", label: "Canadian" },
       { id: "caribbean", label: "Caribbean" },
-      { id: "peruvian", label: "Peruvian" },
+      { id: "mexican", label: "Mexican" },
+    ]),
+  },
+  {
+    id: "south-america-latin",
+    label: "South America / Latin America",
+    entries: sortByLabel([
+      { id: "argentine", label: "Argentine" },
       { id: "brazilian", label: "Brazilian" },
-    ],
+      {
+        id: "latin-american",
+        label: "Latin American",
+        children: [{ id: "peruvian", label: "Peruvian" }],
+      },
+    ]),
   },
   {
-    id: "american",
-    label: "American",
-    children: [
-      { id: "southern-us", label: "Southern US" },
-      { id: "tex-mex", label: "Tex-Mex" },
-    ],
-  },
-  {
-    id: "african",
-    label: "African",
-    children: [
-      { id: "north-african", label: "North African" },
-      { id: "west-african", label: "West African" },
-    ],
-  },
-  {
-    id: "mediterranean",
-    label: "Mediterranean",
+    id: "pacific-oceania",
+    label: "Pacific Rim / Oceania / Polynesia",
+    entries: sortByLabel([
+      { id: "australian", label: "Australian" },
+      { id: "hawaiian", label: "Hawaiian" },
+      { id: "indonesian", label: "Indonesian" },
+      { id: "malaysian", label: "Malaysian" },
+      { id: "polynesian", label: "Polynesian" },
+      {
+        id: "pacific-rim",
+        label: "Pacific Rim",
+        children: [
+          { id: "new-zealand", label: "New Zealand" },
+          { id: "singaporean", label: "Singaporean" },
+        ],
+      },
+    ]),
   },
 ];
 
-/** Flat list for UI chips / selects (id + label + depth). */
-export type OriginOption = { id: string; label: string; depth: number };
+/** Flat hierarchy for filter rollup (region roots omitted; entries + descendants). */
+export const ORIGIN_TREE: OriginNode[] = ORIGIN_REGIONS.flatMap((r) => r.entries);
+
+/** Flat list for searches (id + label + depth + region). */
+export type OriginOption = {
+  id: string;
+  label: string;
+  depth: number;
+  regionId: string;
+  regionLabel: string;
+};
 
 function walkOrigins(
   nodes: OriginNode[],
   depth: number,
+  regionId: string,
+  regionLabel: string,
   out: OriginOption[]
 ): void {
   for (const n of nodes) {
-    out.push({ id: n.id, label: n.label, depth });
-    if (n.children?.length) walkOrigins(n.children, depth + 1, out);
+    out.push({
+      id: n.id,
+      label: n.label,
+      depth,
+      regionId,
+      regionLabel,
+    });
+    if (n.children?.length) {
+      walkOrigins(n.children, depth + 1, regionId, regionLabel, out);
+    }
   }
 }
 
 export const ORIGIN_OPTIONS: OriginOption[] = (() => {
   const out: OriginOption[] = [];
-  walkOrigins(ORIGIN_TREE, 0, out);
+  for (const region of ORIGIN_REGIONS) {
+    walkOrigins(region.entries, 0, region.id, region.label, out);
+  }
   return out;
 })();
+
 
 const ORIGIN_BY_ID = new Map(
   ORIGIN_OPTIONS.map((o) => [o.id, o] as const)
@@ -403,12 +497,12 @@ export function inferRecipeTaxonomy(input: InferInput): {
   let cuisine: Cuisine = "American";
   const origins = new Set<string>();
 
-  // Avoid matching "chili flakes" as Mexican — require dish cues / tags.
+  // Mexican only from strong dish/tag cues — not "chili" as a seasoning word.
   const mexicanCue =
     tags.some((t) => ["tacos", "taco", "chili", "mexican", "tex-mex"].includes(t)) ||
-    /\b(taco|tacos|burrito|enchilada|quesadilla|mexican)\b/.test(text) ||
-    /\bchili\b(?!\s*flakes?)/.test(text) ||
-    /\bsalsa\b/.test(text);
+    /\b(taco|tacos|burrito|enchilada|quesadilla|mexican|tex-mex)\b/.test(text) ||
+    /\bchili\s*\/\s*taco\b/.test(text) ||
+    /^chili\b/i.test(input.title.trim());
 
   if (mexicanCue) {
     cuisine = "Mexican";
