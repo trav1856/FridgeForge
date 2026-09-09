@@ -403,22 +403,20 @@ export function inferRecipeTaxonomy(input: InferInput): {
   let cuisine: Cuisine = "American";
   const origins = new Set<string>();
 
-  if (
-    has(text, [
-      "taco",
-      "chili",
-      "mexican",
-      "salsa",
-      "burrito",
-      "enchilada",
-      "quesadilla",
-    ]) ||
-    tags.some((t) => t === "tacos" || t === "chili")
-  ) {
+  // Avoid matching "chili flakes" as Mexican — require dish cues / tags.
+  const mexicanCue =
+    tags.some((t) => ["tacos", "taco", "chili", "mexican", "tex-mex"].includes(t)) ||
+    /\b(taco|tacos|burrito|enchilada|quesadilla|mexican)\b/.test(text) ||
+    /\bchili\b(?!\s*flakes?)/.test(text) ||
+    /\bsalsa\b/.test(text);
+
+  if (mexicanCue) {
     cuisine = "Mexican";
     origins.add("mexican");
     origins.add("latin-american");
-    if (has(text, ["chili", "taco"])) origins.add("tex-mex");
+    if (/\b(taco|chili|tex-mex)\b/.test(text) || tags.includes("tacos")) {
+      origins.add("tex-mex");
+    }
   } else if (
     has(text, ["pasta", "spaghetti", "parmesan", "italian", "pizza", "risotto"])
   ) {

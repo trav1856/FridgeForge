@@ -107,6 +107,8 @@ model Recipe {
   foodCategories   String             @default("[]")
   /** JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy). */
   origins          String             @default("[]")
+  /** Short cultural/history blurb shown as “Story behind this food” on detail. */
+  originStory      String?
   servings         Int                @default(2)
   cookTimeMinutes  Int?               // null = unknown; excluded when maxMinutes filter is set
   sourceUrl        String?

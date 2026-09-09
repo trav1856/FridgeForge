@@ -8,6 +8,7 @@ import {
 } from "../src/lib/recipe-image";
 import { cloneStapleRecipesToHousehold } from "../src/lib/clone-staples";
 import { inferRecipeTaxonomy } from "../src/lib/recipe-taxonomy";
+import { STAPLE_ORIGIN_STORIES } from "../src/lib/recipe-origin-stories";
 import { parseStringArray } from "../src/lib/json";
 
 const prisma = new PrismaClient();
@@ -745,10 +746,12 @@ async function main() {
         preferDeterministicFallback: true,
       });
       const tax = taxonomyFields({ ...rest, ingredients });
+      const story = STAPLE_ORIGIN_STORIES[rest.title] ?? null;
       await prisma.recipe.create({
         data: {
           ...rest,
           ...tax,
+          originStory: story,
           visibility: "public",
           imageUrl,
           ingredients: {
@@ -770,29 +773,18 @@ async function main() {
         course?: string;
         foodCategories?: string;
         origins?: string;
+        originStory?: string;
       } = {};
       const tax = taxonomyFields({ ...rest, ingredients });
-      if (!existing.cuisine) {
-        data.cuisine = tax.cuisine;
-        recipesTaxonomied += 1;
-      }
-      if (!existing.course) data.course = tax.course;
-      try {
-        const fc = JSON.parse(existing.foodCategories || "[]");
-        if (!Array.isArray(fc) || fc.length === 0) data.foodCategories = tax.foodCategories;
-      } catch {
-        data.foodCategories = tax.foodCategories;
-      }
-      try {
-        const og = JSON.parse((existing as { origins?: string }).origins || "[]");
-        if (!Array.isArray(og) || og.length === 0) {
-          // Only set when heuristic found something; leave empty if unknown
-          const parsed = JSON.parse(tax.origins) as string[];
-          if (parsed.length) data.origins = tax.origins;
-        }
-      } catch {
-        const parsed = JSON.parse(tax.origins) as string[];
-        if (parsed.length) data.origins = tax.origins;
+      // Always refresh taxonomy for seed staples (corrects heuristic mistakes).
+      data.cuisine = tax.cuisine;
+      data.course = tax.course;
+      data.foodCategories = tax.foodCategories;
+      data.origins = tax.origins;
+      recipesTaxonomied += 1;
+      const story = STAPLE_ORIGIN_STORIES[rest.title];
+      if (story && !(existing as { originStory?: string | null }).originStory) {
+        (data as { originStory?: string }).originStory = story;
       }
       const localOverride = LOCAL_RECIPE_IMAGES[rest.title];
       const shouldRefreshImage =
@@ -862,6 +854,17 @@ async function main() {
       await prisma.recipe.update({ where: { id: row.id }, data });
       recipesTaxonomied += 1;
     }
+  }
+
+
+  // Fill missing origin stories for known staples (any householdId).
+  let storiesFilled = 0;
+  for (const [title, story] of Object.entries(STAPLE_ORIGIN_STORIES)) {
+    const updated = await prisma.recipe.updateMany({
+      where: { title, OR: [{ originStory: null }, { originStory: "" }] },
+      data: { originStory: story },
+    });
+    storiesFilled += updated.count;
   }
 
   // Quick-fix worst shared duplicate thumbs when keywords/overrides changed.
@@ -1054,7 +1057,7 @@ async function main() {
   }
 
   console.log(
-    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}), coupons +${couponsCreated}. forceReset=${forceReset}`
+    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}, stories +${storiesFilled}), coupons +${couponsCreated}. forceReset=${forceReset}`
   );
   console.log(
     `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (shared staples via catalog, not cloned)`

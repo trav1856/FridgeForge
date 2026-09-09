@@ -66,6 +66,7 @@ export function RecipeForm() {
   const [course, setCourse] = useState("");
   const [foodCategories, setFoodCategories] = useState<string[]>([]);
   const [origins, setOrigins] = useState<string[]>([]);
+  const [originStory, setOriginStory] = useState("");
   const [servings, setServings] = useState("2");
   const [cookTimeMinutes, setCookTimeMinutes] = useState("");
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
@@ -186,6 +187,7 @@ export function RecipeForm() {
       course: course || null,
       foodCategories,
       origins,
+      originStory: originStory.trim() || null,
       servings: Number(servings) || 2,
       cookTimeMinutes: cookTimeMinutes.trim()
         ? Number(cookTimeMinutes) || null
@@ -506,6 +508,18 @@ export function RecipeForm() {
               );
             })}
           </div>
+        </div>
+        <div>
+          <label className="label">Story behind this food (optional)</label>
+          <textarea
+            className="input min-h-[100px]"
+            value={originStory}
+            onChange={(e) => setOriginStory(e.target.value)}
+            placeholder="Short cultural or history note shown on the recipe page…"
+          />
+          <p className="mt-1 text-xs text-sage-500">
+            Appears under Learn more on the recipe detail page. Leave blank to hide.
+          </p>
         </div>
 
         <div>

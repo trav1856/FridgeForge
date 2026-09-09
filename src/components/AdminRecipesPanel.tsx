@@ -22,6 +22,7 @@ type RecipeRow = {
   course?: string | null;
   foodCategories?: string[];
   origins?: string[];
+  originStory?: string | null;
   tags?: string[];
 };
 
@@ -41,6 +42,7 @@ export function AdminRecipesPanel({ initial }: Props) {
   const [editCourse, setEditCourse] = useState("");
   const [editFoodCats, setEditFoodCats] = useState<string[]>([]);
   const [editOrigins, setEditOrigins] = useState<string[]>([]);
+  const [editOriginStory, setEditOriginStory] = useState("");
 
   const filtered = useMemo(
     () =>
@@ -82,6 +84,7 @@ export function AdminRecipesPanel({ initial }: Props) {
                 course: data.course ?? r.course,
                 foodCategories: data.foodCategories ?? r.foodCategories,
                 origins: data.origins ?? r.origins,
+                originStory: data.originStory ?? r.originStory,
                 tags: data.tags ?? r.tags,
               }
             : r
@@ -126,6 +129,7 @@ export function AdminRecipesPanel({ initial }: Props) {
     setEditCourse(r.course || "");
     setEditFoodCats(r.foodCategories || []);
     setEditOrigins(r.origins || []);
+    setEditOriginStory(r.originStory || "");
   }
 
   function toggleIn(list: string[], id: string): string[] {
@@ -348,6 +352,17 @@ export function AdminRecipesPanel({ initial }: Props) {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <span className="text-[11px] text-sage-500">
+                    Story behind this food
+                  </span>
+                  <textarea
+                    className="input mt-1 min-h-[88px] text-sm"
+                    value={editOriginStory}
+                    onChange={(e) => setEditOriginStory(e.target.value)}
+                    placeholder="Short cultural/history blurb…"
+                  />
+                </div>
                 <button
                   type="button"
                   className="btn-primary text-sm"
@@ -358,6 +373,7 @@ export function AdminRecipesPanel({ initial }: Props) {
                       course: editCourse || null,
                       foodCategories: editFoodCats,
                       origins: editOrigins,
+                      originStory: editOriginStory.trim() || null,
                     })
                   }
                 >

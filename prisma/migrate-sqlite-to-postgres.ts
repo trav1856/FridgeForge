@@ -231,6 +231,7 @@ async function main() {
           course: (r.course as string) ?? null,
           foodCategories: String(r.foodCategories ?? "[]"),
           origins: String(r.origins ?? "[]"),
+          originStory: (r.originStory as string) ?? null,
           servings: Number(r.servings ?? 2),
           cookTimeMinutes:
             r.cookTimeMinutes == null ? null : Number(r.cookTimeMinutes),

@@ -168,6 +168,21 @@ describe("inferRecipeTaxonomy staples", () => {
     expect(t.foodCategories).toContain("grain");
   });
 
+  it("does not treat chili flakes as Mexican cuisine", () => {
+    const rice = inferRecipeTaxonomy({
+      title: "Garlic Fried Rice with Crispy Egg",
+      tags: ["rice", "egg"],
+      ingredients: [{ name: "Soy sauce" }, { name: "Chili flakes" }],
+    });
+    expect(rice.cuisine).toBe("Asian");
+    const pasta = inferRecipeTaxonomy({
+      title: "Spaghetti with Simple Tomato Sauce",
+      tags: ["pasta"],
+      ingredients: [{ name: "Spaghetti" }, { name: "Chili flakes" }],
+    });
+    expect(pasta.cuisine).toBe("Italian");
+  });
+
   it("maps Chili/Taco to Mexican multi-origin", () => {
     const t = inferRecipeTaxonomy({
       title: "Chili / Taco Filling",

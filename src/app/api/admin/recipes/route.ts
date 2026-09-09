@@ -57,6 +57,7 @@ const patchSchema = z.object({
   course: z.string().max(40).optional().nullable(),
   foodCategories: z.array(z.string()).optional(),
   origins: z.array(z.string()).optional(),
+  originStory: z.string().max(4000).optional().nullable(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -64,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   try {
     await requireAdmin();
     const data = patchSchema.parse(await req.json());
-    const { id, foodCategories, origins, cuisine, course, tags, ...rest } = data;
+    const { id, foodCategories, origins, cuisine, course, tags, originStory, ...rest } = data;
     const existing = await prisma.recipe.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -84,6 +85,9 @@ export async function PATCH(req: NextRequest) {
           ? { origins: stringifyArray(normalizeOrigins(origins)) }
           : {}),
         ...(tags !== undefined ? { tags: stringifyArray(tags) } : {}),
+        ...(originStory !== undefined
+          ? { originStory: originStory?.trim() || null }
+          : {}),
       },
       include: { ingredients: true },
     });

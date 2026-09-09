@@ -31,3 +31,7 @@ Origins are culinary/cultural foodways labels (e.g. Jewish, Muslim-friendly, Lev
 ## Seed / backfill
 
 Non-destructive seed infers taxonomy for staples via heuristics and fills empty fields only. No `FF_FORCE_RESET` on production.
+
+## Origin story (`originStory`)
+
+Optional short prose on the recipe. Recipe detail shows a **Learn more / Story behind this food** expander when set; empty hides the section. Admin and create form can edit it. Seed backfills brief original blurbs for selected staples (`src/lib/recipe-origin-stories.ts`).
