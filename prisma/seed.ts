@@ -7,6 +7,8 @@ import {
   resolveRecipeImageUrl,
 } from "../src/lib/recipe-image";
 import { cloneStapleRecipesToHousehold } from "../src/lib/clone-staples";
+import { inferRecipeTaxonomy } from "../src/lib/recipe-taxonomy";
+import { parseStringArray } from "../src/lib/json";
 
 const prisma = new PrismaClient();
 
@@ -707,8 +709,30 @@ async function main() {
     }
   }
 
+
+  function taxonomyFields(r: {
+    title: string;
+    tags: string;
+    description?: string | null;
+    ingredients: { name: string }[];
+  }) {
+    const inferred = inferRecipeTaxonomy({
+      title: r.title,
+      tags: parseStringArray(r.tags),
+      description: r.description,
+      ingredients: r.ingredients,
+    });
+    return {
+      cuisine: inferred.cuisine,
+      course: inferred.course,
+      foodCategories: j(inferred.foodCategories),
+      origins: j(inferred.origins),
+    };
+  }
+
   let recipesCreated = 0;
   let recipesImaged = 0;
+  let recipesTaxonomied = 0;
   for (const r of recipes) {
     const { ingredients, ...rest } = r;
     const existing = await prisma.recipe.findFirst({
@@ -720,9 +744,11 @@ async function main() {
         title: rest.title,
         preferDeterministicFallback: true,
       });
+      const tax = taxonomyFields({ ...rest, ingredients });
       await prisma.recipe.create({
         data: {
           ...rest,
+          ...tax,
           visibility: "public",
           imageUrl,
           ingredients: {
@@ -737,7 +763,37 @@ async function main() {
       });
       recipesCreated += 1;
     } else {
-      const data: { imageUrl?: string; tags?: string } = {};
+      const data: {
+        imageUrl?: string;
+        tags?: string;
+        cuisine?: string;
+        course?: string;
+        foodCategories?: string;
+        origins?: string;
+      } = {};
+      const tax = taxonomyFields({ ...rest, ingredients });
+      if (!existing.cuisine) {
+        data.cuisine = tax.cuisine;
+        recipesTaxonomied += 1;
+      }
+      if (!existing.course) data.course = tax.course;
+      try {
+        const fc = JSON.parse(existing.foodCategories || "[]");
+        if (!Array.isArray(fc) || fc.length === 0) data.foodCategories = tax.foodCategories;
+      } catch {
+        data.foodCategories = tax.foodCategories;
+      }
+      try {
+        const og = JSON.parse((existing as { origins?: string }).origins || "[]");
+        if (!Array.isArray(og) || og.length === 0) {
+          // Only set when heuristic found something; leave empty if unknown
+          const parsed = JSON.parse(tax.origins) as string[];
+          if (parsed.length) data.origins = tax.origins;
+        }
+      } catch {
+        const parsed = JSON.parse(tax.origins) as string[];
+        if (parsed.length) data.origins = tax.origins;
+      }
       const localOverride = LOCAL_RECIPE_IMAGES[rest.title];
       const shouldRefreshImage =
         needsMealDbImage(existing.imageUrl) ||
@@ -763,6 +819,50 @@ async function main() {
     }
   }
 
+
+
+  // Backfill taxonomy on any recipe still missing cuisine/course (shared + household).
+  const missingTax = await prisma.recipe.findMany({
+    where: { OR: [{ cuisine: null }, { course: null }] },
+    include: { ingredients: true },
+    take: 500,
+  });
+  for (const row of missingTax) {
+    const tax = taxonomyFields({
+      title: row.title,
+      tags: row.tags,
+      description: row.description,
+      ingredients: row.ingredients,
+    });
+    const data: {
+      cuisine?: string;
+      course?: string;
+      foodCategories?: string;
+      origins?: string;
+    } = {};
+    if (!row.cuisine) data.cuisine = tax.cuisine;
+    if (!row.course) data.course = tax.course;
+    try {
+      const fc = JSON.parse(row.foodCategories || "[]");
+      if (!Array.isArray(fc) || fc.length === 0) data.foodCategories = tax.foodCategories;
+    } catch {
+      data.foodCategories = tax.foodCategories;
+    }
+    try {
+      const og = JSON.parse((row as { origins?: string }).origins || "[]");
+      if (!Array.isArray(og) || og.length === 0) {
+        const parsed = JSON.parse(tax.origins) as string[];
+        if (parsed.length) data.origins = tax.origins;
+      }
+    } catch {
+      const parsed = JSON.parse(tax.origins) as string[];
+      if (parsed.length) data.origins = tax.origins;
+    }
+    if (Object.keys(data).length) {
+      await prisma.recipe.update({ where: { id: row.id }, data });
+      recipesTaxonomied += 1;
+    }
+  }
 
   // Quick-fix worst shared duplicate thumbs when keywords/overrides changed.
   for (const title of [
@@ -954,7 +1054,7 @@ async function main() {
   }
 
   console.log(
-    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}), coupons +${couponsCreated}. forceReset=${forceReset}`
+    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}), coupons +${couponsCreated}. forceReset=${forceReset}`
   );
   console.log(
     `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (shared staples via catalog, not cloned)`

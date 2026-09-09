@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useStruggleMode } from "./StruggleModeProvider";
 import { RecipeImage } from "./RecipeImage";
 import { RecipeIcons } from "./RecipeIcons";
 import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
+import {
+  COURSES,
+  CUISINES,
+  FOOD_CATEGORIES,
+  ORIGIN_OPTIONS,
+} from "@/lib/recipe-taxonomy";
 
 type Recipe = {
   id: string;
@@ -14,6 +21,10 @@ type Recipe = {
   description: string | null;
   costTier: string;
   tags: string[];
+  cuisine?: string | null;
+  course?: string | null;
+  foodCategories?: string[];
+  origins?: string[];
   servings: number;
   isStruggleMeal: boolean;
   ingredients: { name: string }[];
@@ -26,12 +37,121 @@ type Recipe = {
 
 type Scope = "all" | "mine" | "household" | "favorites";
 
+function ChipRow({
+  label,
+  options,
+  value,
+  onChange,
+  searchable,
+}: {
+  label: string;
+  options: { id: string; label: string; depth?: number }[];
+  value: string;
+  onChange: (v: string) => void;
+  searchable?: boolean;
+}) {
+  const [filter, setFilter] = useState("");
+  const shown = useMemo(() => {
+    if (!searchable || !filter.trim()) return options;
+    const n = filter.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(n) || o.id.toLowerCase().includes(n)
+    );
+  }, [options, filter, searchable]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+          {label}
+        </span>
+        {searchable && (
+          <input
+            className="input max-w-[10rem] py-1 text-xs"
+            placeholder={`Search ${label.toLowerCase()}…`}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            !value
+              ? "bg-sage-800 text-cream-50"
+              : "border border-cream-300 bg-cream-100 text-sage-800"
+          }`}
+          aria-pressed={!value}
+        >
+          Any
+        </button>
+        {shown.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(value === o.id ? "" : o.id)}
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              value === o.id
+                ? "bg-sage-800 text-cream-50"
+                : "border border-cream-300 bg-cream-100 text-sage-800"
+            }`}
+            style={o.depth ? { marginLeft: Math.min(o.depth, 2) * 4 } : undefined}
+            aria-pressed={value === o.id}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RecipeList() {
   const { struggleMode } = useStruggleMode();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const qParam = searchParams.get("q") || "";
+  const cuisineParam = searchParams.get("cuisine") || "";
+  const courseParam = searchParams.get("course") || "";
+  const foodCategoryParam = searchParams.get("foodCategory") || "";
+  const originParam =
+    searchParams.get("origin") || searchParams.get("ethnicity") || "";
+  const scopeParam = (searchParams.get("scope") as Scope) || "all";
+  const favoritesParam = searchParams.get("favorites") === "1";
+
+  const scope: Scope = favoritesParam
+    ? "favorites"
+    : scopeParam === "mine" || scopeParam === "household"
+      ? scopeParam
+      : "all";
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
-  const [scope, setScope] = useState<Scope>("all");
+  const [qDraft, setQDraft] = useState(qParam);
+
+  useEffect(() => {
+    setQDraft(qParam);
+  }, [qParam]);
+
+  const setParams = useCallback(
+    (patch: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [k, v] of Object.entries(patch)) {
+        if (v == null || v === "") next.delete(k);
+        else next.set(k, v);
+      }
+      // Prefer origin over ethnicity
+      if (patch.origin !== undefined) next.delete("ethnicity");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,11 +159,23 @@ export function RecipeList() {
     if (scope === "favorites") params.set("favorites", "1");
     if (scope === "mine") params.set("scope", "mine");
     if (scope === "household") params.set("scope", "household");
+    if (qParam.trim()) params.set("q", qParam.trim());
+    if (cuisineParam) params.set("cuisine", cuisineParam);
+    if (courseParam) params.set("course", courseParam);
+    if (foodCategoryParam) params.set("foodCategory", foodCategoryParam);
+    if (originParam) params.set("origin", originParam);
     const res = await fetch(`/api/recipes?${params.toString()}`);
     const data = await res.json();
     setRecipes(Array.isArray(data) ? data : []);
     setLoading(false);
-  }, [scope]);
+  }, [
+    scope,
+    qParam,
+    cuisineParam,
+    courseParam,
+    foodCategoryParam,
+    originParam,
+  ]);
 
   useEffect(() => {
     load();
@@ -63,15 +195,6 @@ export function RecipeList() {
       return bs - as;
     });
   }
-  if (q.trim()) {
-    const needle = q.toLowerCase();
-    list = list.filter(
-      (r) =>
-        r.title.toLowerCase().includes(needle) ||
-        r.tags.some((t) => t.toLowerCase().includes(needle)) ||
-        r.ingredients.some((i) => i.name.toLowerCase().includes(needle))
-    );
-  }
 
   const scopes: { id: Scope; label: string }[] = [
     { id: "all", label: "All" },
@@ -80,15 +203,36 @@ export function RecipeList() {
     { id: "household", label: "Household collection" },
   ];
 
+  const cuisineOptions = CUISINES.map((c) => ({ id: c, label: c }));
+  const courseOptions = COURSES.map((c) => ({
+    id: c,
+    label: c.charAt(0).toUpperCase() + c.slice(1),
+  }));
+  const foodOptions = FOOD_CATEGORIES.map((c) => ({
+    id: c,
+    label: c.charAt(0).toUpperCase() + c.slice(1),
+  }));
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          className="input max-w-xs"
-          placeholder="Search recipes…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <form
+          className="flex max-w-md flex-1 gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setParams({ q: qDraft.trim() || null });
+          }}
+        >
+          <input
+            className="input max-w-xs flex-1"
+            placeholder="Search recipes…"
+            value={qDraft}
+            onChange={(e) => setQDraft(e.target.value)}
+          />
+          <button type="submit" className="btn-secondary text-sm">
+            Search
+          </button>
+        </form>
         <Link href="/recipes/new" className="btn-primary">
           Add / import recipe
         </Link>
@@ -99,17 +243,53 @@ export function RecipeList() {
           <button
             key={s.id}
             type="button"
-            onClick={() => setScope(s.id)}
+            onClick={() => {
+              if (s.id === "favorites") {
+                setParams({ favorites: "1", scope: null });
+              } else if (s.id === "all") {
+                setParams({ scope: null, favorites: null });
+              } else {
+                setParams({ scope: s.id, favorites: null });
+              }
+            }}
             className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
               scope === s.id
                 ? "bg-sage-800 text-cream-50"
-                : "bg-cream-100 text-sage-800 border border-cream-300"
+                : "border border-cream-300 bg-cream-100 text-sage-800"
             }`}
             aria-pressed={scope === s.id}
           >
             {s.label}
           </button>
         ))}
+      </div>
+
+      <div className="card space-y-3 p-3 sm:p-4">
+        <ChipRow
+          label="Cuisine"
+          options={cuisineOptions}
+          value={cuisineParam}
+          onChange={(v) => setParams({ cuisine: v || null })}
+        />
+        <ChipRow
+          label="Course"
+          options={courseOptions}
+          value={courseParam}
+          onChange={(v) => setParams({ course: v || null })}
+        />
+        <ChipRow
+          label="Food"
+          options={foodOptions}
+          value={foodCategoryParam}
+          onChange={(v) => setParams({ foodCategory: v || null })}
+        />
+        <ChipRow
+          label="Origin / ethnicity"
+          options={ORIGIN_OPTIONS}
+          value={originParam}
+          onChange={(v) => setParams({ origin: v || null })}
+          searchable
+        />
       </div>
 
       {loading ? (
@@ -146,9 +326,19 @@ export function RecipeList() {
                         struggle meal
                       </span>
                     )}
+                    {r.cuisine && (
+                      <span className="badge bg-sage-200 text-sage-900">
+                        {r.cuisine}
+                      </span>
+                    )}
+                    {r.course && (
+                      <span className="badge bg-cream-300 text-sage-800">
+                        {r.course}
+                      </span>
+                    )}
                     {r.tags
                       .filter((t) => t !== "struggle")
-                      .slice(0, 3)
+                      .slice(0, 2)
                       .map((t) => (
                         <span key={t} className="badge bg-cream-200 text-sage-700">
                           {t}

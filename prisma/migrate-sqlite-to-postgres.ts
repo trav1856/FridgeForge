@@ -227,6 +227,10 @@ async function main() {
           steps: String(r.steps),
           costTier: String(r.costTier ?? "cheap"),
           tags: String(r.tags ?? "[]"),
+          cuisine: (r.cuisine as string) ?? null,
+          course: (r.course as string) ?? null,
+          foodCategories: String(r.foodCategories ?? "[]"),
+          origins: String(r.origins ?? "[]"),
           servings: Number(r.servings ?? 2),
           cookTimeMinutes:
             r.cookTimeMinutes == null ? null : Number(r.cookTimeMinutes),

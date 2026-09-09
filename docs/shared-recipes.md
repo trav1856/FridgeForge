@@ -36,3 +36,7 @@ Below the B/L/D trio, a trending strip prefers recipes with favorites in the las
 ## Recipe requests (social-lite)
 
 Signed-in users can ask “Can I have that recipe?” for a household-owned recipe that is not already in their scope (shared catalog is already everyone’s — no CTA). The owner sees pending requests on **Account** and can Accept (copies recipe + ingredients into the requester’s household) or Decline. Public-visibility household recipes are readable outside the owner household so the request CTA can appear on the detail page.
+
+## Recipe taxonomy
+
+Shared and household recipes use structured `cuisine`, `course`, `foodCategories`, and `origins` (see [recipe-taxonomy.md](./recipe-taxonomy.md)). `/recipes` filters and `/api/recipes` query params make lookups shareable.

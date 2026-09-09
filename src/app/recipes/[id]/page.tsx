@@ -68,6 +68,22 @@ export default async function RecipeDetailPage({ params }: Props) {
           {recipe.isStruggleMeal && (
             <span className="badge bg-ember-600 text-white">struggle meal</span>
           )}
+          {recipe.cuisine && (
+            <span className="badge bg-sage-200 text-sage-900">{recipe.cuisine}</span>
+          )}
+          {recipe.course && (
+            <span className="badge bg-cream-300 text-sage-800">{recipe.course}</span>
+          )}
+          {(recipe.foodCategories || []).slice(0, 4).map((c: string) => (
+            <span key={`fc-${c}`} className="badge bg-cream-200 text-sage-700">
+              {c}
+            </span>
+          ))}
+          {(recipe.origins || []).slice(0, 4).map((o: string) => (
+            <span key={`or-${o}`} className="badge bg-ember-50 text-ember-800">
+              {o}
+            </span>
+          ))}
           {recipe.visibility && (
             <span className="badge bg-cream-200 text-sage-700">
               {recipe.visibility}

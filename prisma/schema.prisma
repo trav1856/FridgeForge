@@ -99,6 +99,14 @@ model Recipe {
   steps            String             // JSON array of step strings
   costTier         String             @default("cheap") // cheap | moderate
   tags             String             @default("[]") // JSON array
+  /** Controlled cuisine label from recipe-taxonomy (e.g. Mexican, Italian). */
+  cuisine          String?
+  /** Controlled course: breakfast | lunch | dinner | main | side | starter | dessert | snack | drink */
+  course           String?
+  /** JSON array of food category labels (dairy, meat, vegetable, …). */
+  foodCategories   String             @default("[]")
+  /** JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy). */
+  origins          String             @default("[]")
   servings         Int                @default(2)
   cookTimeMinutes  Int?               // null = unknown; excluded when maxMinutes filter is set
   sourceUrl        String?
@@ -123,6 +131,8 @@ model Recipe {
   @@index([householdId])
   @@index([ownerUserId])
   @@index([visibility])
+  @@index([cuisine])
+  @@index([course])
 }
 
 model RecipeIngredient {

@@ -24,6 +24,10 @@ export type RecipeInput = {
   steps: string[];
   costTier?: CostTier;
   tags?: string[];
+  cuisine?: string | null;
+  course?: string | null;
+  foodCategories?: string[];
+  origins?: string[];
   servings?: number;
   cookTimeMinutes?: number | null;
   sourceUrl?: string | null;
@@ -52,6 +56,10 @@ export type RecipeForMatch = {
   steps: string[];
   costTier: CostTier;
   tags: string[];
+  cuisine?: string | null;
+  course?: string | null;
+  foodCategories?: string[];
+  origins?: string[];
   servings: number;
   cookTimeMinutes?: number | null;
   imageUrl?: string | null;

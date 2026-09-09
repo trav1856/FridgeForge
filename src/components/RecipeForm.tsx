@@ -3,6 +3,12 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
+import {
+  COURSES,
+  CUISINES,
+  FOOD_CATEGORIES,
+  ORIGIN_OPTIONS,
+} from "@/lib/recipe-taxonomy";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
 
@@ -56,6 +62,10 @@ export function RecipeForm() {
   const [description, setDescription] = useState("");
   const [costTier, setCostTier] = useState<"cheap" | "moderate">("cheap");
   const [tags, setTags] = useState("");
+  const [cuisine, setCuisine] = useState("");
+  const [course, setCourse] = useState("");
+  const [foodCategories, setFoodCategories] = useState<string[]>([]);
+  const [origins, setOrigins] = useState<string[]>([]);
   const [servings, setServings] = useState("2");
   const [cookTimeMinutes, setCookTimeMinutes] = useState("");
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
@@ -172,6 +182,10 @@ export function RecipeForm() {
       description: description.trim() || null,
       costTier,
       tags: tagList,
+      cuisine: cuisine || null,
+      course: course || null,
+      foodCategories,
+      origins,
       servings: Number(servings) || 2,
       cookTimeMinutes: cookTimeMinutes.trim()
         ? Number(cookTimeMinutes) || null
@@ -406,6 +420,92 @@ export function RecipeForm() {
             onChange={(e) => setTags(e.target.value)}
             placeholder="one-pot, spicy, breakfast"
           />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">Cuisine</label>
+            <select
+              className="input"
+              value={cuisine}
+              onChange={(e) => setCuisine(e.target.value)}
+            >
+              <option value="">—</option>
+              {CUISINES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Course</label>
+            <select
+              className="input"
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+            >
+              <option value="">—</option>
+              {COURSES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="label">Food categories</label>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {FOOD_CATEGORIES.map((c) => {
+              const on = foodCategories.includes(c);
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    on
+                      ? "bg-sage-800 text-cream-50"
+                      : "border border-cream-300 bg-cream-100 text-sage-800"
+                  }`}
+                  onClick={() =>
+                    setFoodCategories((prev) =>
+                      on ? prev.filter((x) => x !== c) : [...prev, c]
+                    )
+                  }
+                >
+                  {c}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <label className="label">Origin / ethnicity (culinary foodways)</label>
+          <div className="mt-1 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
+            {ORIGIN_OPTIONS.map((o) => {
+              const on = origins.includes(o.id);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    on
+                      ? "bg-sage-800 text-cream-50"
+                      : "border border-cream-300 bg-cream-100 text-sage-800"
+                  }`}
+                  onClick={() =>
+                    setOrigins((prev) =>
+                      on ? prev.filter((x) => x !== o.id) : [...prev, o.id]
+                    )
+                  }
+                >
+                  {o.depth ? "· ".repeat(o.depth) : ""}
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>
