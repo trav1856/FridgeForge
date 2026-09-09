@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 type Deduction = {
   name: string;
@@ -10,8 +10,15 @@ type Deduction = {
   lowStock?: boolean;
 };
 
+type UndoWithin24h = {
+  sessionId: string;
+  cookedAt: string;
+};
+
 type Props = {
   recipeId: string;
+  /** Rendered in the same flex-wrap row as cook / cancel / making-different. */
+  shoppingSlot?: ReactNode;
 };
 
 function tallyLabel(n: number): string {
@@ -21,10 +28,13 @@ function tallyLabel(n: number): string {
     : `You’ve cooked this ${n} times`;
 }
 
-export function CookRecipeToggle({ recipeId }: Props) {
+export function CookRecipeToggle({ recipeId, shoppingSlot }: Props) {
   // Cancel is only available for this page visit after cooking (not restored from server).
   const [canCancel, setCanCancel] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [undoWithin24h, setUndoWithin24h] = useState<UndoWithin24h | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -49,6 +59,16 @@ export function CookRecipeToggle({ recipeId }: Props) {
             ? data.cookCount
             : 0
         );
+        setUndoWithin24h(
+          data.undoWithin24h &&
+            typeof data.undoWithin24h.sessionId === "string" &&
+            typeof data.undoWithin24h.cookedAt === "string"
+            ? {
+                sessionId: data.undoWithin24h.sessionId,
+                cookedAt: data.undoWithin24h.cookedAt,
+              }
+            : null
+        );
         setLowStock([]);
       }
     } catch {
@@ -70,9 +90,12 @@ export function CookRecipeToggle({ recipeId }: Props) {
       const url = `/api/recipes/${recipeId}/cook?finalize=1`;
       try {
         if (navigator.sendBeacon) {
-          const blob = new Blob([JSON.stringify({ finalize: true, sessionId: id })], {
-            type: "application/json",
-          });
+          const blob = new Blob(
+            [JSON.stringify({ finalize: true, sessionId: id })],
+            {
+              type: "application/json",
+            }
+          );
           navigator.sendBeacon(url, blob);
         } else {
           void fetch(url, {
@@ -115,8 +138,17 @@ export function CookRecipeToggle({ recipeId }: Props) {
         return;
       }
       setCanCancel(true);
-      setSessionId(data.session?.id ?? null);
+      const sid =
+        typeof data.session?.id === "string" ? data.session.id : null;
+      setSessionId(sid);
       if (typeof data.cookCount === "number") setCookCount(data.cookCount);
+      // Latest cook is now this visit — Cancel covers it; keep 24h undo for after leave.
+      if (sid) {
+        setUndoWithin24h({
+          sessionId: sid,
+          cookedAt: new Date().toISOString(),
+        });
+      }
       const deducted: Deduction[] = Array.isArray(data.deducted)
         ? data.deducted
         : [];
@@ -163,6 +195,16 @@ export function CookRecipeToggle({ recipeId }: Props) {
       setSessionId(null);
       setLowStock([]);
       if (typeof data.cookCount === "number") setCookCount(data.cookCount);
+      setUndoWithin24h(
+        data.undoWithin24h &&
+          typeof data.undoWithin24h.sessionId === "string" &&
+          typeof data.undoWithin24h.cookedAt === "string"
+          ? {
+              sessionId: data.undoWithin24h.sessionId,
+              cookedAt: data.undoWithin24h.cookedAt,
+            }
+          : null
+      );
       const n = data.summary?.restoredCount ?? 0;
       setToast(
         n > 0
@@ -176,28 +218,109 @@ export function CookRecipeToggle({ recipeId }: Props) {
     }
   }
 
-  const label = busy
-    ? "Updating…"
-    : canCancel
-      ? "Cancel cooking"
-      : "I’m cooking this";
+  async function makingDifferent() {
+    if (busy || !undoWithin24h) return;
+    const ok = window.confirm(
+      "Restore pantry amounts from your most recent cook of this recipe? (Cook count stays the same.)"
+    );
+    if (!ok) return;
+    setBusy(true);
+    setToast(null);
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/cook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          makingDifferent: true,
+          sessionId: undoWithin24h.sessionId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(
+          typeof data.error === "string" ? data.error : "Could not restore"
+        );
+        return;
+      }
+      if (sessionId && sessionId === undoWithin24h.sessionId) {
+        setCanCancel(false);
+        setSessionId(null);
+        setLowStock([]);
+      }
+      if (typeof data.cookCount === "number") setCookCount(data.cookCount);
+      setUndoWithin24h(
+        data.undoWithin24h &&
+          typeof data.undoWithin24h.sessionId === "string" &&
+          typeof data.undoWithin24h.cookedAt === "string"
+          ? {
+              sessionId: data.undoWithin24h.sessionId,
+              cookedAt: data.undoWithin24h.cookedAt,
+            }
+          : null
+      );
+      const n = data.summary?.restoredCount ?? 0;
+      setToast(
+        data.alreadyUndone
+          ? "Already restored."
+          : n > 0
+            ? `Restored ${n} pantry item${n === 1 ? "" : "s"} — making something different.`
+            : "Pantry restored."
+      );
+    } catch {
+      setToast("Could not restore pantry");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const showMakingDifferent =
+    !!undoWithin24h &&
+    (!canCancel || undoWithin24h.sessionId !== sessionId);
 
   const tally = tallyLabel(cookCount);
 
   return (
     <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        className={canCancel ? "btn-secondary text-sm" : "btn-primary text-sm"}
-        disabled={loading || busy}
-        onClick={() => {
-          if (loading || busy) return;
-          if (canCancel) void cancelCook();
-          else void startCook();
-        }}
-      >
-        {label}
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="btn-primary text-sm"
+          disabled={loading || busy}
+          onClick={() => {
+            if (loading || busy) return;
+            void startCook();
+          }}
+        >
+          {busy && !canCancel ? "Updating…" : "I’m cooking this"}
+        </button>
+        {shoppingSlot}
+        {canCancel && (
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            disabled={loading || busy}
+            onClick={() => {
+              if (loading || busy) return;
+              void cancelCook();
+            }}
+          >
+            Cancel cooking
+          </button>
+        )}
+        {showMakingDifferent && (
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            disabled={loading || busy}
+            onClick={() => {
+              if (loading || busy) return;
+              void makingDifferent();
+            }}
+          >
+            I’m making something different
+          </button>
+        )}
+      </div>
       {tally && (
         <p className="text-xs font-medium text-sage-600" data-testid="cook-tally">
           {tally}

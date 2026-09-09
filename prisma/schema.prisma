@@ -304,6 +304,8 @@ model RecipeCookSession {
   deductionsJson String     @default("[]")
   /** JSON string array of low-stock nudge messages at cook time */
   lowStockJson   String     @default("[]")
+  /** Set when pantry restore undoes this cook (cancel or making different). */
+  undoneAt       DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   recipe         Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
@@ -336,4 +338,5 @@ model RecipeCookStat {
   @@index([userId])
   @@index([householdId])
 }
+
 

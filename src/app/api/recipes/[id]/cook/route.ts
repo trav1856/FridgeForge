@@ -10,6 +10,7 @@ import {
   type PantryDeduction,
 } from "@/lib/pantry-deduct";
 import { cookScopeKey } from "@/lib/cook-stat";
+import { pickUndoWithin24h } from "@/lib/cook-undo";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -22,30 +23,48 @@ function parseDeductions(json: string): PantryDeduction[] {
   }
 }
 
-async function findActiveSession(
+function sessionScopeWhere(
   recipeId: string,
   userId: string | null,
   householdId: string | null
 ) {
   if (householdId) {
-    return prisma.recipeCookSession.findFirst({
-      where: { recipeId, householdId, active: true },
-      orderBy: { createdAt: "desc" },
-    });
+    return { recipeId, householdId };
   }
   if (userId) {
-    return prisma.recipeCookSession.findFirst({
-      where: { recipeId, userId, householdId: null, active: true },
-      orderBy: { createdAt: "desc" },
-    });
+    return { recipeId, userId, householdId: null as string | null };
   }
-  // Guest (no user, no household): match null-null active sessions for this recipe
+  return { recipeId, userId: null as string | null, householdId: null as string | null };
+}
+
+async function findActiveSession(
+  recipeId: string,
+  userId: string | null,
+  householdId: string | null
+) {
   return prisma.recipeCookSession.findFirst({
-    where: { recipeId, userId: null, householdId: null, active: true },
+    where: { ...sessionScopeWhere(recipeId, userId, householdId), active: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
+async function findUndoCandidateSessions(
+  recipeId: string,
+  userId: string | null,
+  householdId: string | null
+) {
+  // Look back a bit past 24h so pickUndoWithin24h can filter precisely.
+  const since = new Date(Date.now() - 26 * 60 * 60 * 1000);
+  return prisma.recipeCookSession.findMany({
+    where: {
+      ...sessionScopeWhere(recipeId, userId, householdId),
+      undoneAt: null,
+      createdAt: { gte: since },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
 
 async function getCookCount(
   recipeId: string,
@@ -95,6 +114,38 @@ function sessionPayload(session: {
   };
 }
 
+async function restoreSessionDeductions(
+  session: { id: string; deductionsJson: string; undoneAt: Date | null; active: boolean },
+  householdId: string | null
+): Promise<{ restoredCount: number; alreadyUndone: boolean }> {
+  if (session.undoneAt != null) {
+    return { restoredCount: 0, alreadyUndone: true };
+  }
+
+  const deductions = parseDeductions(session.deductionsJson);
+  const restores = planPantryRestore(deductions);
+
+  for (const r of restores) {
+    const item = await prisma.pantryItem.findUnique({
+      where: { id: r.pantryItemId },
+    });
+    if (!item) continue;
+    if (householdId != null && item.householdId !== householdId) continue;
+    if (householdId == null && item.householdId != null) continue;
+    await prisma.pantryItem.update({
+      where: { id: r.pantryItemId },
+      data: { quantity: r.quantity },
+    });
+  }
+
+  await prisma.recipeCookSession.update({
+    where: { id: session.id },
+    data: { active: false, undoneAt: new Date() },
+  });
+
+  return { restoredCount: restores.length, alreadyUndone: false };
+}
+
 /** GET — cook tally; finalize any leftover active session (commit, no restore). */
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id: recipeId } = await ctx.params;
@@ -117,12 +168,28 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       data: { active: false },
     });
   }
-  return NextResponse.json({ active: false, session: null, cookCount });
+
+  const candidates = await findUndoCandidateSessions(
+    recipeId,
+    user?.id ?? null,
+    householdId
+  );
+  const undoWithin24h = pickUndoWithin24h(candidates);
+
+  return NextResponse.json({
+    active: false,
+    session: null,
+    cookCount,
+    // Informational only — client keeps visit-scoped Cancel, not this flag.
+    canCancelVisit: false,
+    undoWithin24h,
+  });
 }
 
 /**
  * POST — start cooking: confirm deduct, apply pantry updates, persist session.
- * Body optional: { confirm?: true }
+ * Body optional: { confirm?: true } | { finalize?: true, sessionId? } |
+ * { makingDifferent?: true, sessionId? }
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
   try {
@@ -130,13 +197,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const user = await getCurrentUser();
     const householdId = await resolveHouseholdId();
 
-    // pagehide beacon / keepalive: commit cook without restoring pantry
-    let body: { finalize?: boolean; sessionId?: string } = {};
+    let body: {
+      finalize?: boolean;
+      sessionId?: string;
+      makingDifferent?: boolean;
+    } = {};
     try {
       body = (await req.json()) as typeof body;
     } catch {
       body = {};
     }
+
+    // pagehide beacon / keepalive: commit cook without restoring pantry
     if (body.finalize) {
       const session = body.sessionId
         ? await prisma.recipeCookSession.findUnique({ where: { id: body.sessionId } })
@@ -148,6 +220,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         });
       }
       return NextResponse.json({ active: false, finalized: true });
+    }
+
+    // “I’m making something different” — restore latest (or given) cook within 24h.
+    if (body.makingDifferent) {
+      return undoMakingDifferent(recipeId, user?.id ?? null, householdId, body.sessionId);
     }
 
     const recipe = await prisma.recipe.findUnique({
@@ -255,14 +332,107 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 }
 
+async function undoMakingDifferent(
+  recipeId: string,
+  userId: string | null,
+  householdId: string | null,
+  sessionId?: string
+) {
+  let session = sessionId
+    ? await prisma.recipeCookSession.findUnique({ where: { id: sessionId } })
+    : null;
+
+  if (session) {
+    const inScope =
+      session.recipeId === recipeId &&
+      (householdId
+        ? session.householdId === householdId
+        : userId
+          ? session.userId === userId && session.householdId == null
+          : session.userId == null && session.householdId == null);
+    if (!inScope) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    if (session.undoneAt != null) {
+      const cookCount = await getCookCount(recipeId, householdId, userId);
+      return NextResponse.json({
+        active: false,
+        alreadyUndone: true,
+        cookCount,
+        undoWithin24h: null,
+        summary: { restoredCount: 0 },
+      });
+    }
+    const age = Date.now() - session.createdAt.getTime();
+    if (age > 24 * 60 * 60 * 1000) {
+      return NextResponse.json(
+        { error: "Cook is older than 24 hours" },
+        { status: 400 }
+      );
+    }
+  } else {
+    const candidates = await findUndoCandidateSessions(
+      recipeId,
+      userId,
+      householdId
+    );
+    const picked = pickUndoWithin24h(candidates);
+    if (!picked) {
+      return NextResponse.json(
+        { error: "No recent cook to undo" },
+        { status: 404 }
+      );
+    }
+    session = candidates.find((s) => s.id === picked.sessionId) ?? null;
+    if (!session) {
+      return NextResponse.json(
+        { error: "No recent cook to undo" },
+        { status: 404 }
+      );
+    }
+  }
+
+  const result = await restoreSessionDeductions(session, householdId);
+  const cookCount = await getCookCount(recipeId, householdId, userId);
+  const remaining = await findUndoCandidateSessions(
+    recipeId,
+    userId,
+    householdId
+  );
+  const undoWithin24h = pickUndoWithin24h(remaining);
+
+  return NextResponse.json({
+    active: false,
+    makingDifferent: true,
+    alreadyUndone: result.alreadyUndone,
+    cookCount,
+    undoWithin24h,
+    summary: { restoredCount: result.restoredCount },
+  });
+}
+
 /**
- * DELETE — cancel / uncheck cook: restore exact pre-deduct amounts and clear session.
+ * DELETE — cancel visit cook, or ?different=1 to undo a cook within 24h.
  */
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
     const { id: recipeId } = await ctx.params;
     const user = await getCurrentUser();
     const householdId = await resolveHouseholdId();
+    const different =
+      req.nextUrl.searchParams.get("different") === "1" ||
+      req.nextUrl.searchParams.get("makingDifferent") === "1";
+
+    if (different) {
+      const sessionId =
+        req.nextUrl.searchParams.get("sessionId") ?? undefined;
+      return undoMakingDifferent(
+        recipeId,
+        user?.id ?? null,
+        householdId,
+        sessionId
+      );
+    }
 
     const session = await findActiveSession(
       recipeId,
@@ -273,27 +443,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ active: false, restored: [] });
     }
 
-    const deductions = parseDeductions(session.deductionsJson);
-    const restores = planPantryRestore(deductions);
-
-    for (const r of restores) {
-      const item = await prisma.pantryItem.findUnique({
-        where: { id: r.pantryItemId },
-      });
-      if (!item) continue;
-      // Only restore if still in this household scope
-      if (householdId != null && item.householdId !== householdId) continue;
-      if (householdId == null && item.householdId != null) continue;
-      await prisma.pantryItem.update({
-        where: { id: r.pantryItemId },
-        data: { quantity: r.quantity },
-      });
-    }
-
-    await prisma.recipeCookSession.update({
-      where: { id: session.id },
-      data: { active: false },
-    });
+    const result = await restoreSessionDeductions(session, householdId);
 
     const cookCount = await getCookCount(
       recipeId,
@@ -301,12 +451,20 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       user?.id ?? null
     );
 
+    const remaining = await findUndoCandidateSessions(
+      recipeId,
+      user?.id ?? null,
+      householdId
+    );
+    const undoWithin24h = pickUndoWithin24h(remaining);
+
     return NextResponse.json({
       active: false,
-      restored: restores,
+      restored: result.alreadyUndone ? [] : planPantryRestore(parseDeductions(session.deductionsJson)),
       cookCount,
+      undoWithin24h,
       summary: {
-        restoredCount: restores.length,
+        restoredCount: result.restoredCount,
       },
     });
   } catch (err) {

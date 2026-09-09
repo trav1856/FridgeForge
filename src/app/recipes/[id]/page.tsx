@@ -220,6 +220,7 @@ export default async function RecipeDetailPage({ params }: Props) {
             recipeId={recipe.id}
             title={recipe.title}
             favorited={favorited}
+            ingredientNames={recipe.ingredients.map((i) => i.name)}
             showRequest={showRequest}
           />
         </div>
