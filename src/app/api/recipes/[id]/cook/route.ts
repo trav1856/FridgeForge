@@ -95,7 +95,7 @@ function sessionPayload(session: {
   };
 }
 
-/** GET — active cook session for this recipe (if any). */
+/** GET — cook tally; finalize any leftover active session (commit, no restore). */
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id: recipeId } = await ctx.params;
   const user = await getCurrentUser();
@@ -110,25 +110,45 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     user?.id ?? null,
     householdId
   );
-  if (!session) {
-    return NextResponse.json({ active: false, session: null, cookCount });
+  // Leaving the recipe page commits the cook: keep pantry deductions, clear Cancel.
+  if (session) {
+    await prisma.recipeCookSession.update({
+      where: { id: session.id },
+      data: { active: false },
+    });
   }
-  return NextResponse.json({
-    active: true,
-    session: sessionPayload(session),
-    cookCount,
-  });
+  return NextResponse.json({ active: false, session: null, cookCount });
 }
 
 /**
  * POST — start cooking: confirm deduct, apply pantry updates, persist session.
  * Body optional: { confirm?: true }
  */
-export async function POST(_req: NextRequest, ctx: Ctx) {
+export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     const { id: recipeId } = await ctx.params;
     const user = await getCurrentUser();
     const householdId = await resolveHouseholdId();
+
+    // pagehide beacon / keepalive: commit cook without restoring pantry
+    let body: { finalize?: boolean; sessionId?: string } = {};
+    try {
+      body = (await req.json()) as typeof body;
+    } catch {
+      body = {};
+    }
+    if (body.finalize) {
+      const session = body.sessionId
+        ? await prisma.recipeCookSession.findUnique({ where: { id: body.sessionId } })
+        : await findActiveSession(recipeId, user?.id ?? null, householdId);
+      if (session?.active) {
+        await prisma.recipeCookSession.update({
+          where: { id: session.id },
+          data: { active: false },
+        });
+      }
+      return NextResponse.json({ active: false, finalized: true });
+    }
 
     const recipe = await prisma.recipe.findUnique({
       where: { id: recipeId },
@@ -158,17 +178,11 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
       user?.id ?? null,
       householdId
     );
+    // Stale active session from a previous visit: commit it, then allow a new cook.
     if (existing) {
-      const cookCount = await getCookCount(
-        recipeId,
-        householdId,
-        user?.id ?? null
-      );
-      return NextResponse.json({
-        alreadyActive: true,
-        active: true,
-        session: sessionPayload(existing),
-        cookCount,
+      await prisma.recipeCookSession.update({
+        where: { id: existing.id },
+        data: { active: false },
       });
     }
 

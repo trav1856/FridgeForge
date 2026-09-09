@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Deduction = {
   name: string;
@@ -22,29 +22,34 @@ function tallyLabel(n: number): string {
 }
 
 export function CookRecipeToggle({ recipeId }: Props) {
-  const [active, setActive] = useState(false);
+  // Cancel is only available for this page visit after cooking (not restored from server).
+  const [canCancel, setCanCancel] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [lowStock, setLowStock] = useState<string[]>([]);
   const [cookCount, setCookCount] = useState(0);
+  const sessionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/recipes/${recipeId}/cook`);
       const data = await res.json();
       if (res.ok) {
-        setActive(Boolean(data.active));
+        // Server finalizes any prior active cook on GET — never show Cancel from history.
+        setCanCancel(false);
+        setSessionId(null);
         setCookCount(
           typeof data.cookCount === "number" && data.cookCount > 0
             ? data.cookCount
             : 0
         );
-        setLowStock(
-          Array.isArray(data.session?.lowStockMessages)
-            ? data.session.lowStockMessages
-            : []
-        );
+        setLowStock([]);
       }
     } catch {
       /* ignore */
@@ -57,10 +62,41 @@ export function CookRecipeToggle({ recipeId }: Props) {
     void load();
   }, [load]);
 
+  // Leaving the page commits the cook (pantry stays deducted; Cancel goes away next visit).
+  useEffect(() => {
+    function finalize() {
+      const id = sessionIdRef.current;
+      if (!id) return;
+      const url = `/api/recipes/${recipeId}/cook?finalize=1`;
+      try {
+        if (navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify({ finalize: true, sessionId: id })], {
+            type: "application/json",
+          });
+          navigator.sendBeacon(url, blob);
+        } else {
+          void fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ finalize: true, sessionId: id }),
+            keepalive: true,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener("pagehide", finalize);
+    return () => {
+      window.removeEventListener("pagehide", finalize);
+      finalize();
+    };
+  }, [recipeId]);
+
   async function startCook() {
     if (busy) return;
     const ok = window.confirm(
-      "Deduct ingredients from pantry? You can undo by tapping Cancel cooking."
+      "Deduct ingredients from pantry? You can undo with Cancel cooking while you stay on this page."
     );
     if (!ok) return;
     setBusy(true);
@@ -78,7 +114,8 @@ export function CookRecipeToggle({ recipeId }: Props) {
         );
         return;
       }
-      setActive(true);
+      setCanCancel(true);
+      setSessionId(data.session?.id ?? null);
       if (typeof data.cookCount === "number") setCookCount(data.cookCount);
       const deducted: Deduction[] = Array.isArray(data.deducted)
         ? data.deducted
@@ -122,7 +159,8 @@ export function CookRecipeToggle({ recipeId }: Props) {
         );
         return;
       }
-      setActive(false);
+      setCanCancel(false);
+      setSessionId(null);
       setLowStock([]);
       if (typeof data.cookCount === "number") setCookCount(data.cookCount);
       const n = data.summary?.restoredCount ?? 0;
@@ -140,7 +178,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
 
   const label = busy
     ? "Updating…"
-    : active
+    : canCancel
       ? "Cancel cooking"
       : "I’m cooking this";
 
@@ -150,11 +188,11 @@ export function CookRecipeToggle({ recipeId }: Props) {
     <div className="flex flex-col gap-1">
       <button
         type="button"
-        className={active ? "btn-secondary text-sm" : "btn-primary text-sm"}
+        className={canCancel ? "btn-secondary text-sm" : "btn-primary text-sm"}
         disabled={loading || busy}
         onClick={() => {
           if (loading || busy) return;
-          if (active) void cancelCook();
+          if (canCancel) void cancelCook();
           else void startCook();
         }}
       >
@@ -165,7 +203,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
           {tally}
         </p>
       )}
-      {lowStock.length > 0 && active && (
+      {lowStock.length > 0 && canCancel && (
         <ul className="text-xs text-ember-800">
           {lowStock.map((m) => (
             <li key={m}>{m}</li>
