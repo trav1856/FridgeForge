@@ -5,6 +5,7 @@ import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { householdWhere, recipeScopeWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
+import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 
 const ingredientSchema = z.object({
   name: z.string().min(1),
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const recipes = await prisma.recipe.findMany({
+  const recipesRaw = await prisma.recipe.findMany({
     where,
     include: {
       ingredients: true,
@@ -76,6 +77,7 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { title: "asc" },
   });
+  const recipes = dedupeRecipesByTitle(recipesRaw, householdId);
   return NextResponse.json(
     recipes.map((r) => {
       const { favorites, ...rest } = r as typeof r & {

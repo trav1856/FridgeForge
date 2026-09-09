@@ -6,6 +6,7 @@ import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { collectAvailableTags, parseMoodParam } from "@/lib/moods";
 import { suggestMeals } from "@/lib/suggestions";
+import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   const pantry = pantryItems.map(toPantrySnapshot);
-  const recipeData = recipes.map(toRecipeForMatch);
+  const recipeData = dedupeRecipesByTitle(recipes, householdId).map(toRecipeForMatch);
   const suggestions = suggestMeals(recipeData, pantry, {
     struggleMode,
     maxMissing: Number.isFinite(maxMissing) ? maxMissing : 2,
