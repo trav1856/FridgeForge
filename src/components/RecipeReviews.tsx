@@ -157,17 +157,21 @@ export function RecipeReviews({ recipeId, recipeTitle }: Props) {
             href={tw}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost text-xs"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-sage-700 hover:bg-cream-200"
+            aria-label="Share on X"
+            title="X"
           >
-            Share on X
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.727-8.913L1.254 2.25H8.08l4.259 5.699L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
           </a>
           <a
             href={fb}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost text-xs"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-sage-700 hover:bg-cream-200"
+            aria-label="Share on Facebook"
+            title="Facebook"
           >
-            Share on Facebook
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current"><path d="M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.02 3.66 9.18 8.44 9.93v-7.03H7.9v-2.9h2.4V9.84c0-2.37 1.41-3.68 3.56-3.68 1.03 0 2.12.18 2.12.18v2.34h-1.2c-1.18 0-1.55.73-1.55 1.48v1.78h2.64l-.42 2.9h-2.22v7.03c4.78-.75 8.44-4.91 8.44-9.93z"/></svg>
           </a>
         </div>
       </div>
