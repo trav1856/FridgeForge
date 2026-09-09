@@ -15,6 +15,16 @@ FridgeForge has two recipe classes:
 
 Coupons already used the same shared-or-household OR pattern; recipes now mirror it.
 
+## Staples: shared catalog only (no household clones)
+
+New households **do not** receive copies of shared staple/classic recipes.
+`cloneStapleRecipesToHousehold` is a documented no-op; the shared catalog
+(`householdId null`) is the single source and is already visible through
+`recipeScopeWhere`. List endpoints still run `dedupeRecipesByTitle` as a
+safety net for any leftover title collisions.
+
+One-time cleanup of historical clones: `npx tsx prisma/dedupe-household-staple-clones.ts`.
+
 ## Featured meals (Breakfast / Lunch / Dinner)
 
 Homepage section below **Flavor on a Budget** picks Breakfast / Lunch / Dinner from the shared catalog (`householdId: null`). Picks are **random on every page load** (not ISO-week stable). Classification uses tags (`breakfast` / `lunch` / `dinner`, plus a few aliases) then title heuristics; empty slots fall back to other shared recipes so the trio stays filled when the catalog allows.

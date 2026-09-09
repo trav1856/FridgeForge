@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Copy global staple/classic recipes into the new household starter pack
+    // Shared staple/classic catalog is visible via recipeScopeWhere — no per-household clones.
     let staplesCloned = 0;
     try {
       staplesCloned = await cloneStapleRecipesToHousehold(prisma, household.id);
     } catch (cloneErr) {
-      console.error("households POST staple clone", cloneErr);
+      console.error("households POST staple clone noop", cloneErr);
     }
 
     return NextResponse.json(

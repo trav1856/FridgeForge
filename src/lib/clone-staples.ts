@@ -18,50 +18,16 @@ export function isStapleOrClassicTagJson(tagsJson: string | null | undefined): b
 }
 
 /**
- * Clone global (householdId null) recipes tagged staple or classic
- * into a newly created household, including ingredients.
+ * Historically copied shared staple/classic recipes into each new household.
+ * That duplicated titles under recipeScopeWhere (shared OR household).
+ *
+ * No longer clones: the shared catalog (householdId null) is visible to every
+ * household via recipeScopeWhere. Kept as a documented no-op so call sites
+ * (households POST, seed) stay stable and return 0.
  */
 export async function cloneStapleRecipesToHousehold(
-  prisma: PrismaClient,
-  householdId: string
+  _prisma: PrismaClient,
+  _householdId: string
 ): Promise<number> {
-  const globals = await prisma.recipe.findMany({
-    where: { householdId: null },
-    include: { ingredients: true },
-  });
-
-  const staples = globals.filter((r) => isStapleOrClassicTagJson(r.tags));
-  let cloned = 0;
-
-  for (const r of staples) {
-    await prisma.recipe.create({
-      data: {
-        title: r.title,
-        description: r.description,
-        steps: r.steps,
-        costTier: r.costTier,
-        tags: r.tags,
-        servings: r.servings,
-        cookTimeMinutes: r.cookTimeMinutes,
-        sourceUrl: r.sourceUrl,
-        imageUrl: r.imageUrl,
-        isStruggleMeal: r.isStruggleMeal,
-        techniqueTips: r.techniqueTips,
-        flavorBoosters: r.flavorBoosters,
-        visibility: r.visibility || "household",
-        householdId,
-        ingredients: {
-          create: r.ingredients.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            unit: i.unit,
-            optional: i.optional,
-          })),
-        },
-      },
-    });
-    cloned += 1;
-  }
-
-  return cloned;
+  return 0;
 }

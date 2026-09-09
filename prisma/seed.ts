@@ -287,7 +287,7 @@ async function main() {
         { name: "White vinegar", quantity: 1, unit: "tsp", optional: true },
       ],
     },
-    // --- Classic staple starter pack (cloned into new households) ---
+    // --- Classic staple starter pack (shared catalog, householdId null) ---
     {
       title: "Classic Apple Pie",
       description:
@@ -885,7 +885,8 @@ async function main() {
       members: { some: { userId: proUser.id, role: "owner" } },
     },
   });
-  let staplesCloned = 0;
+  // Shared null-household staples are created above; do not clone into demo households
+  // (shared catalog is visible via recipeScopeWhere).
   if (!household) {
     household = await prisma.household.create({
       data: {
@@ -896,14 +897,15 @@ async function main() {
         },
       },
     });
-    staplesCloned = await cloneStapleRecipesToHousehold(prisma, household.id);
+    // no-op kept for API parity; returns 0
+    await cloneStapleRecipesToHousehold(prisma, household.id);
   }
 
   console.log(
     `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}), coupons +${couponsCreated}. forceReset=${forceReset}`
   );
   console.log(
-    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (cloned ${staplesCloned} staples this run)`
+    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (shared staples via catalog, not cloned)`
   );
 }
 
