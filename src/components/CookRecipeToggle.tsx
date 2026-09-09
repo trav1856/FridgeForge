@@ -14,12 +14,20 @@ type Props = {
   recipeId: string;
 };
 
+function tallyLabel(n: number): string {
+  if (n <= 0) return "";
+  return n === 1
+    ? "You’ve cooked this 1 time"
+    : `You’ve cooked this ${n} times`;
+}
+
 export function CookRecipeToggle({ recipeId }: Props) {
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [lowStock, setLowStock] = useState<string[]>([]);
+  const [cookCount, setCookCount] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -27,6 +35,11 @@ export function CookRecipeToggle({ recipeId }: Props) {
       const data = await res.json();
       if (res.ok) {
         setActive(Boolean(data.active));
+        setCookCount(
+          typeof data.cookCount === "number" && data.cookCount > 0
+            ? data.cookCount
+            : 0
+        );
         setLowStock(
           Array.isArray(data.session?.lowStockMessages)
             ? data.session.lowStockMessages
@@ -66,6 +79,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
         return;
       }
       setActive(true);
+      if (typeof data.cookCount === "number") setCookCount(data.cookCount);
       const deducted: Deduction[] = Array.isArray(data.deducted)
         ? data.deducted
         : [];
@@ -110,6 +124,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
       }
       setActive(false);
       setLowStock([]);
+      if (typeof data.cookCount === "number") setCookCount(data.cookCount);
       const n = data.summary?.restoredCount ?? 0;
       setToast(
         n > 0
@@ -129,6 +144,8 @@ export function CookRecipeToggle({ recipeId }: Props) {
       ? "Cancel cooking"
       : "I’m cooking this";
 
+  const tally = tallyLabel(cookCount);
+
   return (
     <div className="flex flex-col gap-1">
       <button
@@ -143,6 +160,11 @@ export function CookRecipeToggle({ recipeId }: Props) {
       >
         {label}
       </button>
+      {tally && (
+        <p className="text-xs font-medium text-sage-600" data-testid="cook-tally">
+          {tally}
+        </p>
+      )}
       {lowStock.length > 0 && active && (
         <ul className="text-xs text-ember-800">
           {lowStock.map((m) => (

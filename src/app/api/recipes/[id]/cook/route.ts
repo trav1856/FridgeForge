@@ -9,6 +9,7 @@ import {
   planPantryRestore,
   type PantryDeduction,
 } from "@/lib/pantry-deduct";
+import { cookScopeKey } from "@/lib/cook-stat";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -45,6 +46,39 @@ async function findActiveSession(
   });
 }
 
+
+async function getCookCount(
+  recipeId: string,
+  householdId: string | null,
+  userId: string | null
+): Promise<number> {
+  const scopeKey = cookScopeKey(householdId, userId);
+  const row = await prisma.recipeCookStat.findUnique({
+    where: { recipeId_scopeKey: { recipeId, scopeKey } },
+  });
+  return row?.cookCount ?? 0;
+}
+
+async function incrementCookCount(
+  recipeId: string,
+  householdId: string | null,
+  userId: string | null
+): Promise<number> {
+  const scopeKey = cookScopeKey(householdId, userId);
+  const row = await prisma.recipeCookStat.upsert({
+    where: { recipeId_scopeKey: { recipeId, scopeKey } },
+    create: {
+      recipeId,
+      scopeKey,
+      householdId,
+      userId,
+      cookCount: 1,
+    },
+    update: { cookCount: { increment: 1 } },
+  });
+  return row.cookCount;
+}
+
 function sessionPayload(session: {
   id: string;
   active: boolean;
@@ -66,17 +100,23 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id: recipeId } = await ctx.params;
   const user = await getCurrentUser();
   const householdId = await resolveHouseholdId();
+  const cookCount = await getCookCount(
+    recipeId,
+    householdId,
+    user?.id ?? null
+  );
   const session = await findActiveSession(
     recipeId,
     user?.id ?? null,
     householdId
   );
   if (!session) {
-    return NextResponse.json({ active: false, session: null });
+    return NextResponse.json({ active: false, session: null, cookCount });
   }
   return NextResponse.json({
     active: true,
     session: sessionPayload(session),
+    cookCount,
   });
 }
 
@@ -119,10 +159,16 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
       householdId
     );
     if (existing) {
+      const cookCount = await getCookCount(
+        recipeId,
+        householdId,
+        user?.id ?? null
+      );
       return NextResponse.json({
         alreadyActive: true,
         active: true,
         session: sessionPayload(existing),
+        cookCount,
       });
     }
 
@@ -164,6 +210,12 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
       },
     });
 
+    const cookCount = await incrementCookCount(
+      recipeId,
+      householdId,
+      user?.id ?? null
+    );
+
     return NextResponse.json(
       {
         active: true,
@@ -171,6 +223,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
         deducted: plan.deductions,
         skipped: plan.skipped,
         lowStockMessages: plan.lowStockMessages,
+        cookCount,
         summary: {
           deductedCount: plan.deductions.length,
           lowStockCount: plan.lowStockMessages.length,
@@ -228,9 +281,16 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       data: { active: false },
     });
 
+    const cookCount = await getCookCount(
+      recipeId,
+      householdId,
+      user?.id ?? null
+    );
+
     return NextResponse.json({
       active: false,
       restored: restores,
+      cookCount,
       summary: {
         restoredCount: restores.length,
       },

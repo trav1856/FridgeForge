@@ -13,6 +13,9 @@ import { RecipeDetailActions } from "@/components/RecipeDetailActions";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
+import { RecipeVariants } from "@/components/RecipeVariants";
+import { dishKeyForTitle } from "@/lib/dish-key";
+import { recipeListAccessWhere } from "@/lib/recipe-visibility";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -76,6 +79,59 @@ export default async function RecipeDetailPage({ params }: Props) {
   const hasPlaybook =
     recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0;
 
+  const dishKey =
+    (raw as { dishKey?: string | null }).dishKey ||
+    dishKeyForTitle(recipe.title);
+
+  let variants: { id: string; title: string; imageUrl: string | null }[] = [];
+  if (dishKey) {
+    const access = recipeListAccessWhere({
+      userId: user?.id,
+      userEmail: user?.email,
+      householdId,
+    });
+    const rows = await prisma.recipe.findMany({
+      where: {
+        AND: [
+          access,
+          { id: { not: recipe.id } },
+          {
+            OR: [
+              { dishKey },
+              // Fallback: same cuisine+course with title containing significant token
+              ...(recipe.cuisine && recipe.course
+                ? [
+                    {
+                      cuisine: recipe.cuisine,
+                      course: recipe.course,
+                      title: {
+                        contains: dishKey.split("-").slice(0, 2).join(" "),
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ],
+      },
+      select: { id: true, title: true, imageUrl: true, dishKey: true },
+      take: 24,
+      orderBy: { title: "asc" },
+    });
+    // Prefer exact dishKey matches; de-dupe; cap ~12
+    const exact = rows.filter((r) => r.dishKey === dishKey);
+    const rest = rows.filter((r) => r.dishKey !== dishKey);
+    const seen = new Set<string>();
+    variants = [];
+    for (const r of [...exact, ...rest]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      variants.push({ id: r.id, title: r.title, imageUrl: r.imageUrl });
+      if (variants.length >= 12) break;
+    }
+  }
+
   return (
     <article className="space-y-6">
       <div>
@@ -120,8 +176,13 @@ export default async function RecipeDetailPage({ params }: Props) {
             </span>
           ))}
         </div>
-        <div className="mt-3 max-w-2xl">
-          <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+        <div className="mt-3 flex max-w-4xl flex-col gap-4 md:flex-row md:items-start">
+          <div className="min-w-0 flex-1 max-w-2xl">
+            <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+          </div>
+          <div className="md:w-44 md:shrink-0 lg:w-52">
+            <RecipeVariants variants={variants} />
+          </div>
         </div>
         <RecipeIcons
           title={recipe.title}

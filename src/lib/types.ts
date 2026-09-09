@@ -29,6 +29,7 @@ export type RecipeInput = {
   foodCategories?: string[];
   origins?: string[];
   originStory?: string | null;
+  dishKey?: string | null;
   servings?: number;
   cookTimeMinutes?: number | null;
   sourceUrl?: string | null;
@@ -62,6 +63,7 @@ export type RecipeForMatch = {
   foodCategories?: string[];
   origins?: string[];
   originStory?: string | null;
+  dishKey?: string | null;
   servings: number;
   cookTimeMinutes?: number | null;
   imageUrl?: string | null;

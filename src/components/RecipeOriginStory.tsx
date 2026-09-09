@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  extractYoutubeEmbeds,
+  renderOriginStoryHtml,
+} from "@/lib/origin-story-content";
 
 type Props = {
   title: string;
@@ -11,6 +15,14 @@ type Props = {
 export function RecipeOriginStory({ title, originStory }: Props) {
   const story = (originStory || "").trim();
   const [open, setOpen] = useState(false);
+  const html = useMemo(
+    () => (story ? renderOriginStoryHtml(story) : ""),
+    [story]
+  );
+  const embeds = useMemo(
+    () => (story ? extractYoutubeEmbeds(story) : []),
+    [story]
+  );
   if (!story) return null;
 
   return (
@@ -41,11 +53,32 @@ export function RecipeOriginStory({ title, originStory }: Props) {
       </button>
       {open && (
         <div className="border-t border-cream-200 px-4 py-4 text-sm leading-relaxed text-sage-800 sm:px-5">
-          {story.split(/\n\n+/).map((para, i) => (
-            <p key={i} className={i ? "mt-3" : undefined}>
-              {para.trim()}
-            </p>
-          ))}
+          <div
+            className="origin-story-body [&_a]:text-ember-700 [&_a]:underline [&_a]:hover:text-ember-800 [&_p+p]:mt-3"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+          {embeds.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {embeds.map((yt) => (
+                <div
+                  key={yt.id}
+                  className="overflow-hidden rounded-xl border border-cream-200 bg-cream-50"
+                >
+                  <div className="relative aspect-video w-full">
+                    <iframe
+                      src={yt.embedUrl}
+                      title="YouTube video"
+                      className="absolute inset-0 h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>

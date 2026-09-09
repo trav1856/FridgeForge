@@ -9,6 +9,7 @@ import {
 import { cloneStapleRecipesToHousehold } from "../src/lib/clone-staples";
 import { inferRecipeTaxonomy } from "../src/lib/recipe-taxonomy";
 import { STAPLE_ORIGIN_STORIES } from "../src/lib/recipe-origin-stories";
+import { dishKeyForTitle } from "../src/lib/dish-key";
 import { parseStringArray } from "../src/lib/json";
 
 const prisma = new PrismaClient();
@@ -434,6 +435,34 @@ async function main() {
       ],
     },
     {
+      title: "Tomato Basil Grilled Cheese",
+      description:
+        "Same molten comfort as classic grilled cheese, with ripe tomato and fresh basil tucked inside.",
+      costTier: "cheap",
+      tags: j(["staple", "classic", "sandwich", "quick", "lunch", "variant"]),
+      servings: 1,
+      cookTimeMinutes: 12,
+      isStruggleMeal: false,
+      techniqueTips: j([
+        "Pat tomato slices dry so the bread stays crisp.",
+        "Medium-low heat — cheese melts while basil wilts gently.",
+      ]),
+      flavorBoosters: j(["fresh basil", "ripe tomato", "sharp cheddar"]),
+      steps: j([
+        "Butter one side of each bread slice.",
+        "Layer cheese, tomato, and basil between unbuttered sides; buttered sides face out.",
+        "Cook in a skillet over medium-low until golden; flip and finish until cheese melts.",
+        "Rest 30 seconds, slice, serve.",
+      ]),
+      ingredients: [
+        { name: "Bread", quantity: 2, unit: "each" },
+        { name: "Cheddar cheese", quantity: 2, unit: "oz" },
+        { name: "Butter", quantity: 1, unit: "tbsp" },
+        { name: "Tomato", quantity: 2, unit: "each", optional: true },
+        { name: "Fresh basil", quantity: 4, unit: "each", optional: true },
+      ],
+    },
+    {
       title: "Simple Chicken Soup",
       description: "Chicken, aromatics, broth — restorative bowl you can make from almost nothing.",
       costTier: "cheap",
@@ -752,6 +781,7 @@ async function main() {
           ...rest,
           ...tax,
           originStory: story,
+          dishKey: dishKeyForTitle(rest.title),
           visibility: "public",
           imageUrl,
           ingredients: {
@@ -774,6 +804,7 @@ async function main() {
         foodCategories?: string;
         origins?: string;
         originStory?: string;
+        dishKey?: string;
       } = {};
       const tax = taxonomyFields({ ...rest, ingredients });
       // Always refresh taxonomy for seed staples (corrects heuristic mistakes).
@@ -781,10 +812,12 @@ async function main() {
       data.course = tax.course;
       data.foodCategories = tax.foodCategories;
       data.origins = tax.origins;
+      data.dishKey = dishKeyForTitle(rest.title);
       recipesTaxonomied += 1;
       const story = STAPLE_ORIGIN_STORIES[rest.title];
-      if (story && !(existing as { originStory?: string | null }).originStory) {
-        (data as { originStory?: string }).originStory = story;
+      // Refresh catalog staple stories (links / embeds) when defined.
+      if (story) {
+        data.originStory = story;
       }
       const localOverride = LOCAL_RECIPE_IMAGES[rest.title];
       const shouldRefreshImage =
@@ -812,6 +845,20 @@ async function main() {
   }
 
 
+
+  // Backfill dishKey on catalog/shared recipes missing one.
+  const missingDishKey = await prisma.recipe.findMany({
+    where: { OR: [{ dishKey: null }, { dishKey: "" }] },
+    select: { id: true, title: true },
+  });
+  let dishKeyed = 0;
+  for (const r of missingDishKey) {
+    const key = dishKeyForTitle(r.title);
+    if (!key) continue;
+    await prisma.recipe.update({ where: { id: r.id }, data: { dishKey: key } });
+    dishKeyed += 1;
+  }
+  if (dishKeyed) console.log(`Backfilled dishKey on ${dishKeyed} recipes`);
 
   // Backfill taxonomy on any recipe still missing cuisine/course (shared + household).
   const missingTax = await prisma.recipe.findMany({

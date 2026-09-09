@@ -30,6 +30,7 @@ model User {
   shoppingItems ShoppingListItem[]
   reviews      RecipeReview[]
   cookSessions RecipeCookSession[]
+  cookStats    RecipeCookStat[]
 }
 
 model Session {
@@ -58,6 +59,7 @@ model Household {
   recipeRequests RecipeRequest[]
   sharesReceived RecipeShare[]
   cookSessions RecipeCookSession[]
+  cookStats    RecipeCookStat[]
 }
 
 model HouseholdMember {
@@ -112,6 +114,8 @@ model Recipe {
   origins          String             @default("[]")
   /** Short cultural/history blurb shown as “Story behind this food” on detail. */
   originStory      String?
+  /** Normalized dish family slug for variants (e.g. grilled-cheese). */
+  dishKey          String?
   servings         Int                @default(2)
   cookTimeMinutes  Int?               // null = unknown; excluded when maxMinutes filter is set
   sourceUrl        String?
@@ -133,12 +137,14 @@ model Recipe {
   requests         RecipeRequest[]
   reviews          RecipeReview[]
   cookSessions     RecipeCookSession[]
+  cookStats        RecipeCookStat[]
 
   @@index([householdId])
   @@index([ownerUserId])
   @@index([visibility])
   @@index([cuisine])
   @@index([course])
+  @@index([dishKey])
 }
 
 model RecipeIngredient {
@@ -309,5 +315,25 @@ model RecipeCookSession {
   @@index([householdId])
   @@index([recipeId, householdId, active])
   @@index([recipeId, userId, active])
+}
+
+model RecipeCookStat {
+  id          String     @id @default(cuid())
+  recipeId    String
+  /** household:<id> | user:<id> | guest — unique with recipeId */
+  scopeKey    String
+  userId      String?
+  householdId String?
+  cookCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  recipe      Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  @@unique([recipeId, scopeKey])
+  @@index([recipeId])
+  @@index([userId])
+  @@index([householdId])
 }
 

@@ -11,7 +11,7 @@ export const STAPLE_ORIGIN_STORIES: Record<string, string> = {
     "Roasting a whole bird over dry heat is one of cooking’s oldest comforts, from hearth spits to modern ovens. The “simple salt-and-pepper bird” became a weeknight classic because it needs little more than heat and patience, then feeds leftovers into soups, sandwiches, and salads. Crisp skin and rested juices are the quiet technique that makes it feel restaurant-worthy at home.",
 
   "Grilled Cheese":
-    "Toasted bread with melted cheese shows up in many foodways — from Welsh rarebit to American diner sandwiches. The modern grilled cheese took off with sliced bread and affordable processed or cheddar-style cheeses in the early 20th century, then stuck around as thrifty comfort food: buttered exterior, gentle heat, and cheese that stretches before the crust burns.",
+    "Toasted bread with melted cheese shows up in many foodways — from Welsh rarebit to American diner sandwiches. The modern grilled cheese took off with sliced bread and affordable processed or cheddar-style cheeses in the early 20th century, then stuck around as thrifty comfort food: buttered exterior, gentle heat, and cheese that stretches before the crust burns.\n\nWatch a quick technique demo: https://www.youtube.com/watch?v=M5lSk8yrk4U\nMore history: [Smithsonian on grilled cheese](https://www.smithsonianmag.com/).",
 
   "Chocolate Chip Cookies":
     "Chocolate chip cookies are a modern American bake-sale icon, popularized in the 1930s when bakers began folding chopped sweet chocolate into drop-cookie dough instead of melting it into a bar. The chewy-edge / soft-center ideal is a home-kitchen craft: cream butter and sugar well, don’t overbake, and let the cookies finish setting on the sheet.",
