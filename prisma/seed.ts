@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { generateInviteCode } from "../src/lib/household";
 import {
+  LOCAL_RECIPE_IMAGES,
   needsMealDbImage,
   resolveRecipeImageUrl,
 } from "../src/lib/recipe-image";
@@ -736,7 +737,11 @@ async function main() {
       recipesCreated += 1;
     } else {
       const data: { imageUrl?: string; tags?: string } = {};
-      if (needsMealDbImage(existing.imageUrl)) {
+      const localOverride = LOCAL_RECIPE_IMAGES[rest.title];
+      const shouldRefreshImage =
+        needsMealDbImage(existing.imageUrl) ||
+        (Boolean(localOverride) && existing.imageUrl !== localOverride);
+      if (shouldRefreshImage) {
         const imageUrl = await resolveRecipeImageUrl({
           title: rest.title,
           preferDeterministicFallback: true,
@@ -754,6 +759,45 @@ async function main() {
           data,
         });
       }
+    }
+  }
+
+
+  // Quick-fix worst shared duplicate thumbs when keywords/overrides changed.
+  for (const title of [
+    "Veg & Protein Stir-Fry",
+    "Cheesy Egg Tortilla Melts",
+    "Lemon-Garlic Butter Pasta",
+    "Pantry Tuna Pasta",
+  ] as const) {
+    const rows = await prisma.recipe.findMany({ where: { title } });
+    for (const row of rows) {
+      const next = await resolveRecipeImageUrl({
+        title,
+        preferDeterministicFallback: true,
+      });
+      if (next && next !== row.imageUrl) {
+        await prisma.recipe.update({
+          where: { id: row.id },
+          data: { imageUrl: next },
+        });
+        recipesImaged += 1;
+      }
+    }
+  }
+
+  // Fix household copies / any leftover wrong chocolate-chip (or local override) images.
+  for (const [title, localPath] of Object.entries(LOCAL_RECIPE_IMAGES)) {
+    const updated = await prisma.recipe.updateMany({
+      where: {
+        title,
+        NOT: { imageUrl: localPath },
+      },
+      data: { imageUrl: localPath },
+    });
+    if (updated.count > 0) {
+      recipesImaged += updated.count;
+      console.log(`Updated ${updated.count} "${title}" image(s) → ${localPath}`);
     }
   }
 

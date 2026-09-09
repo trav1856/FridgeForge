@@ -14,6 +14,8 @@ export type BarcodeLookupResult = {
   suggestedUnit?: string;
   imageUrl?: string | null;
   rawCategories?: string | null;
+  /** True when OFF signals a clear non-food product (battery, electronics, chemicals…). */
+  isLikelyNonFood?: boolean;
 };
 
 /** Compact nutrition snapshot stored as PantryItem.nutritionJson */
@@ -118,6 +120,51 @@ export function formatNutritionBlurb(
   return `${parts.join(" · ")} /100g`;
 }
 
+
+/**
+ * Heuristic: OFF categories / tags / name clearly indicate non-food
+ * (car battery, electronics, household chemicals). Missing nutriments alone
+ * is NOT enough — spices and candy may lack macros.
+ */
+export function isLikelyNonFoodProduct(opts: {
+  name?: string | null;
+  categories?: string | null;
+  categoriesTags?: string[] | null;
+}): boolean {
+  const tags = (opts.categoriesTags || []).map((x) => x.toLowerCase());
+  const blob = [opts.name || "", opts.categories || "", ...tags]
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    tags.some((t) =>
+      /non-food|open-products-facts|open-beauty-facts|electronics|automotive|batteries|home-maintenance|cleaning|detergents|pesticides/.test(
+        t
+      )
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(en:non-food|non-food products?|open products facts|open beauty facts)\b/.test(
+      blob
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(car battery|lead.?acid battery|lithium battery|motor oil|engine oil|antifreeze|windshield washer|brake fluid|gasoline|diesel fuel|paint thinner|drain cleaner|toilet cleaner|bleach|laundry detergent|dishwasher detergent|pesticide|insecticide|herbicide|smartphone|usb cable|hdmi cable|light bulb|led bulb|aa batteries|aaa batteries)\b/.test(
+      blob
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function lookupOpenFoodFacts(
   barcode: string
 ): Promise<BarcodeLookupResult> {
@@ -155,6 +202,12 @@ export async function lookupOpenFoodFacts(
     return { found: false, barcode: cleaned };
   }
 
+  const nonFood = isLikelyNonFoodProduct({
+    name,
+    categories: p.categories || null,
+    categoriesTags: p.categories_tags || [],
+  });
+
   return {
     found: true,
     barcode: cleaned,
@@ -168,6 +221,7 @@ export async function lookupOpenFoodFacts(
     suggestedUnit: suggestUnitFromOff(p.quantity),
     imageUrl: p.image_front_small_url || p.image_url || null,
     rawCategories: p.categories || null,
+    isLikelyNonFood: nonFood,
   };
 }
 

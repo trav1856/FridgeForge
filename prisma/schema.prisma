@@ -76,6 +76,8 @@ model PantryItem {
   expirationDate DateTime?
   /** Optional OFF/macros snapshot JSON: calories/protein/fat/carbs per 100g */
   nutritionJson  String?
+  /** Product thumb from Open Food Facts (or null → UI category/name icon). */
+  imageUrl       String?
   householdId    String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt

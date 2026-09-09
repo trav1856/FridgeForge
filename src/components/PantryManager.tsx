@@ -5,6 +5,7 @@ import { BarcodeIntake } from "./BarcodeIntake";
 import { ManualPantryIntake } from "./ManualPantryIntake";
 import { ReceiptIntake } from "./ReceiptIntake";
 import { formatNutritionBlurb } from "@/lib/open-food-facts";
+import { pantryIconFor } from "@/lib/pantry-icons";
 
 type PantryItem = {
   id: string;
@@ -16,6 +17,7 @@ type PantryItem = {
   barcode?: string | null;
   expirationDate: string | null;
   nutritionJson?: string | null;
+  imageUrl?: string | null;
 };
 
 type IntakeTab = "barcode" | "manual";
@@ -212,12 +214,33 @@ export function PantryManager() {
                 {cat}
               </h3>
               <ul className="space-y-2">
-                {list.map((item) => (
+                {list.map((item) => {
+                  const fallback = pantryIconFor({
+                    name: item.name,
+                    category: item.category,
+                  });
+                  return (
                   <li
                     key={item.id}
                     className="card flex items-center justify-between gap-3 px-4 py-3"
                   >
-                    <div>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sage-100 text-xl"
+                        aria-hidden
+                      >
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span title={fallback.label}>{fallback.emoji}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
                       <div className="font-semibold text-sage-900">
                         {item.name}
                       </div>
@@ -252,6 +275,7 @@ export function PantryManager() {
                         </p>
                       )}
                     </div>
+                    </div>
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
@@ -269,7 +293,8 @@ export function PantryManager() {
                       </button>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </section>
           ))}

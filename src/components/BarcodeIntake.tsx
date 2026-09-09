@@ -12,6 +12,7 @@ type LookupResult = {
   suggestedCategory?: string;
   suggestedUnit?: string;
   imageUrl?: string | null;
+  isLikelyNonFood?: boolean;
 };
 
 type ConfirmForm = {
@@ -20,6 +21,16 @@ type ConfirmForm = {
   unit: string;
   category: string;
   barcode: string;
+  imageUrl?: string | null;
+};
+
+type NonFoodPending = {
+  name: string;
+  quantity: string;
+  unit: string;
+  category: string;
+  barcode: string;
+  imageUrl?: string | null;
 };
 
 const emptyConfirm: ConfirmForm = {
@@ -28,6 +39,7 @@ const emptyConfirm: ConfirmForm = {
   unit: "each",
   category: "Other",
   barcode: "",
+  imageUrl: null,
 };
 
 type Props = { onAdded: () => void };
@@ -40,6 +52,9 @@ export function BarcodeIntake({ onAdded }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmForm | null>(null);
+  const [nonFoodPending, setNonFoodPending] = useState<NonFoodPending | null>(
+    null
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrRef = useRef<{
@@ -105,6 +120,45 @@ export function BarcodeIntake({ onAdded }: Props) {
     }
   }
 
+  async function addToPantry(payload: {
+    name: string;
+    quantity: number;
+    unit: string;
+    category: string | null;
+    barcode: string | null;
+    imageUrl?: string | null;
+  }) {
+    const res = await fetch("/api/pantry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: payload.name.trim(),
+        quantity: payload.quantity || 1,
+        unit: payload.unit.trim() || "each",
+        category: payload.category || null,
+        barcode: payload.barcode || null,
+        imageUrl: payload.imageUrl || null,
+        merge: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not add item");
+    const label = data.item?.name || payload.name;
+    setStatus(
+      data.merged
+        ? `Merged into “${label}” in your pantry`
+        : `Added “${label}” to your pantry`
+    );
+    setConfirm(null);
+    setNotFound(false);
+    setNonFoodPending(null);
+    setManualCode("");
+    setImageUrl(null);
+    lastScanned.current = "";
+    onAdded();
+    return data;
+  }
+
   async function lookup(code: string) {
     const cleaned = code.replace(/\D/g, "") || code.trim();
     if (!cleaned) {
@@ -115,6 +169,7 @@ export function BarcodeIntake({ onAdded }: Props) {
     setError(null);
     setNotFound(false);
     setConfirm(null);
+    setNonFoodPending(null);
     setImageUrl(null);
     setStatus(`Looking up ${cleaned}…`);
     try {
@@ -122,34 +177,59 @@ export function BarcodeIntake({ onAdded }: Props) {
         `/api/barcode/lookup?barcode=${encodeURIComponent(cleaned)}`
       );
       const data = (await res.json()) as LookupResult & { error?: string };
-      if (!res.ok) throw new Error(data.error || "Lookup failed");
+
+      // Network/OFF failure: still create an unknown item (user intent).
+      if (!res.ok && res.status !== 502) {
+        throw new Error(data.error || "Lookup failed");
+      }
 
       if (data.found && data.name) {
-        setConfirm({
+        setImageUrl(data.imageUrl || null);
+        const draft = {
           name: data.name,
           quantity: "1",
           unit: data.suggestedUnit || "each",
           category: data.suggestedCategory || "Other",
           barcode: data.barcode || cleaned,
-        });
-        setImageUrl(data.imageUrl || null);
+          imageUrl: data.imageUrl || null,
+        };
+
+        if (data.isLikelyNonFood) {
+          setNonFoodPending(draft);
+          setStatus(
+            `This looks like a non-food item (“${data.name}”). Confirm to add it.`
+          );
+          return;
+        }
+
         setStatus(
           data.brand
-            ? `Found via Open Food Facts · ${data.brand}`
-            : "Found via Open Food Facts"
+            ? `Found via Open Food Facts · ${data.brand} — adding…`
+            : "Found via Open Food Facts — adding…"
         );
-        setNotFound(false);
-      } else {
-        setNotFound(true);
-        setConfirm({
-          ...emptyConfirm,
-          barcode: data.barcode || cleaned,
-          name: "",
+        await addToPantry({
+          name: draft.name,
+          quantity: 1,
+          unit: draft.unit,
+          category: draft.category,
+          barcode: draft.barcode,
+          imageUrl: draft.imageUrl,
         });
-        setStatus(
-          "No product match — add it manually and we’ll remember the barcode."
-        );
+        return;
       }
+
+      // Unknown / unmatched barcode — still create, no non-food scare.
+      const unknownName = `Unknown product (UPC ${cleaned})`;
+      setNotFound(true);
+      setStatus(`No product match — adding “${unknownName}”…`);
+      await addToPantry({
+        name: unknownName,
+        quantity: 1,
+        unit: "each",
+        category: "Other",
+        barcode: data.barcode || cleaned,
+        imageUrl: null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed");
       setStatus(null);
@@ -172,36 +252,46 @@ export function BarcodeIntake({ onAdded }: Props) {
     setError(null);
     setLookingUp(true);
     try {
-      const res = await fetch("/api/pantry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: confirm.name.trim(),
-          quantity: Number(confirm.quantity) || 1,
-          unit: confirm.unit.trim() || "each",
-          category: confirm.category || null,
-          barcode: confirm.barcode || null,
-          merge: true,
-        }),
+      await addToPantry({
+        name: confirm.name.trim(),
+        quantity: Number(confirm.quantity) || 1,
+        unit: confirm.unit.trim() || "each",
+        category: confirm.category || null,
+        barcode: confirm.barcode || null,
+        imageUrl: confirm.imageUrl || imageUrl,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not add item");
-      setStatus(
-        data.merged
-          ? `Merged into existing “${data.item.name}”`
-          : `Added “${data.item.name}” to pantry`
-      );
-      setConfirm(null);
-      setNotFound(false);
-      setManualCode("");
-      setImageUrl(null);
-      lastScanned.current = "";
-      onAdded();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add item");
     } finally {
       setLookingUp(false);
     }
+  }
+
+  async function acceptNonFood() {
+    if (!nonFoodPending) return;
+    setLookingUp(true);
+    setError(null);
+    try {
+      await addToPantry({
+        name: nonFoodPending.name,
+        quantity: Number(nonFoodPending.quantity) || 1,
+        unit: nonFoodPending.unit,
+        category: nonFoodPending.category,
+        barcode: nonFoodPending.barcode,
+        imageUrl: nonFoodPending.imageUrl,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add item");
+    } finally {
+      setLookingUp(false);
+    }
+  }
+
+  function declineNonFood() {
+    setNonFoodPending(null);
+    setStatus("Cancelled — nothing added to pantry.");
+    setImageUrl(null);
+    lastScanned.current = "";
   }
 
   return (
@@ -211,9 +301,8 @@ export function BarcodeIntake({ onAdded }: Props) {
           Scan barcode
         </h2>
         <p className="mt-1 text-sm text-sage-600">
-          Scan the barcode when you get home — camera or type the UPC/EAN. We
-          look it up on Open Food Facts, you confirm, and it lands in your
-          pantry.
+          Scan the barcode when you get home — camera or type the UPC/EAN. Food
+          products land in your pantry right away; non-food items ask first.
         </p>
       </div>
 
@@ -278,13 +367,58 @@ export function BarcodeIntake({ onAdded }: Props) {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {confirm && (
+      {nonFoodPending && (
+        <div
+          role="alertdialog"
+          aria-labelledby="nonfood-title"
+          className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4"
+        >
+          <h3
+            id="nonfood-title"
+            className="text-sm font-bold text-amber-950"
+          >
+            Non-food product
+          </h3>
+          {nonFoodPending.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={nonFoodPending.imageUrl}
+              alt=""
+              className="h-16 w-16 rounded-lg object-cover"
+            />
+          )}
+          <p className="text-sm text-amber-950">
+            This is a {nonFoodPending.name}. Are you sure you want this in your
+            pantry?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={lookingUp}
+              onClick={() => void acceptNonFood()}
+            >
+              {lookingUp ? "Saving…" : "Yes, add it"}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={lookingUp}
+              onClick={declineNonFood}
+            >
+              No, cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirm && !nonFoodPending && (
         <form
           onSubmit={onConfirmSubmit}
           className="space-y-3 rounded-xl border border-cream-300 bg-cream-50/80 p-3"
         >
           <h3 className="text-sm font-bold uppercase tracking-wide text-sage-600">
-            {notFound ? "Add manually" : "Confirm & add"}
+            {notFound ? "Added — edit name if needed" : "Confirm & add"}
           </h3>
           {imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -357,7 +491,7 @@ export function BarcodeIntake({ onAdded }: Props) {
             </div>
           </div>
           <button type="submit" className="btn-primary" disabled={lookingUp}>
-            {lookingUp ? "Saving…" : "Add to pantry"}
+            {lookingUp ? "Saving…" : "Save changes to pantry"}
           </button>
         </form>
       )}

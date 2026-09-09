@@ -5,7 +5,7 @@ import { resolveHouseholdId } from "@/lib/auth";
 import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
-import { upsertPantryItem } from "@/lib/pantry-upsert";
+import { claimOrphanBarcodePantry, upsertPantryItem } from "@/lib/pantry-upsert";
 import { upsertCustomStaple } from "@/lib/custom-staples";
 import { findCatalogItem } from "@/lib/pantry-catalog";
 import { inferMeasureKind } from "@/lib/units";
@@ -23,11 +23,20 @@ const createSchema = z.object({
   barcode: z.string().max(32).optional().nullable(),
   expirationDate: z.string().optional().nullable(),
   nutritionJson: z.string().max(4000).optional().nullable(),
+  imageUrl: z.string().max(2000).optional().nullable(),
   merge: z.boolean().optional().default(true),
 });
 
 export async function GET() {
   const householdId = await resolveHouseholdId();
+  // Scanned products written while guest (null HH) should follow the signed-in user.
+  if (householdId) {
+    try {
+      await claimOrphanBarcodePantry(householdId);
+    } catch (e) {
+      console.warn("claim orphan barcode pantry skipped", e);
+    }
+  }
   const items = await prisma.pantryItem.findMany({
     where: householdWhere(householdId),
     orderBy: [{ category: "asc" }, { name: "asc" }],
@@ -86,6 +95,7 @@ export async function POST(req: NextRequest) {
           ? new Date(data.expirationDate)
           : null,
         nutritionJson,
+        imageUrl: data.imageUrl ?? null,
         householdId,
       },
     });

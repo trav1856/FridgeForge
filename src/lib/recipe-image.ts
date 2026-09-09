@@ -32,12 +32,12 @@ export const FOODISH_IMAGE_COUNTS: Record<string, number> = {
 export const MEALDB_TITLE_KEYWORDS: Record<string, string> = {
   "Garlic Fried Rice with Crispy Egg": "fried rice",
   "Smoky Beans & Rice Bowl": "bean",
-  "Pantry Tuna Pasta": "pasta",
+  "Pantry Tuna Pasta": "tuna",
   "Crispy Potato Hash with Eggs": "potato",
   "Peanut-Cabbage Noodle Stir": "noodle",
-  "Cheesy Egg Tortilla Melts": "egg",
+  "Cheesy Egg Tortilla Melts": "Egg Foo Young",
   "Carrot-Onion Tomato Soup": "soup",
-  "Lemon-Garlic Butter Pasta": "pasta",
+  "Lemon-Garlic Butter Pasta": "carbonara",
   "Classic Apple Pie": "apple pie",
   "Scrambled Eggs": "egg",
   "Boiled / Steamed Rice": "rice",
@@ -48,10 +48,23 @@ export const MEALDB_TITLE_KEYWORDS: Record<string, string> = {
   "Basic Roast Chicken": "roast chicken",
   "Mashed Potatoes": "potato",
   "Chocolate Chip Cookies": "cookie",
-  "Veg & Protein Stir-Fry": "stir fry",
+  "Veg & Protein Stir-Fry": "Thai beef stir-fry",
   "Chili / Taco Filling": "chili",
   "Banana Bread": "banana",
 };
+
+/**
+ * Local / curated image paths that beat TheMealDB when the API returns a wrong dish
+ * (e.g. "cookie" → Peanut Butter Cookies thumb for Chocolate Chip Cookies).
+ */
+export const LOCAL_RECIPE_IMAGES: Record<string, string> = {
+  "Chocolate Chip Cookies": "/recipe-images/chocolate-chip-cookies.jpg",
+};
+
+/** Known wrong TheMealDB thumbs we should never keep (Peanut Butter Cookies image). */
+export const KNOWN_WRONG_MEALDB_URLS = [
+  "https://www.themealdb.com/images/media/meals/1544384070.jpg",
+];
 
 const STOP_WORDS = new Set([
   "a",
@@ -351,11 +364,14 @@ export async function resolveRecipeImageUrl(opts: {
 }): Promise<string> {
   if (opts.scrapedImageUrl?.trim()) return opts.scrapedImageUrl.trim();
 
+  const local = LOCAL_RECIPE_IMAGES[opts.title];
+  if (local) return local;
+
   const mealDb = await fetchMealDbImage(opts.title);
-  if (mealDb) return mealDb;
+  if (mealDb && !KNOWN_WRONG_MEALDB_URLS.includes(mealDb)) return mealDb;
 
   void opts.preferDeterministicFallback;
-  return RECIPE_PLACEHOLDER_PATH;
+  return local || RECIPE_PLACEHOLDER_PATH;
 }
 
 /** True when stored URL is missing or still a junk/placeholder CDN. */
@@ -364,5 +380,6 @@ export function needsMealDbImage(imageUrl: string | null | undefined): boolean {
   if (imageUrl === RECIPE_PLACEHOLDER_PATH) return true;
   if (imageUrl.includes("foodish-api.com")) return true;
   if (imageUrl.includes("loremflickr")) return true;
+  if (KNOWN_WRONG_MEALDB_URLS.some((u) => imageUrl.includes("1544384070"))) return true;
   return false;
 }
