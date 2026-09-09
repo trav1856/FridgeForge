@@ -34,11 +34,15 @@ async function findActiveSession(
   }
   if (userId) {
     return prisma.recipeCookSession.findFirst({
-      where: { recipeId, userId, active: true },
+      where: { recipeId, userId, householdId: null, active: true },
       orderBy: { createdAt: "desc" },
     });
   }
-  return null;
+  // Guest (no user, no household): match null-null active sessions for this recipe
+  return prisma.recipeCookSession.findFirst({
+    where: { recipeId, userId: null, householdId: null, active: true },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 function sessionPayload(session: {
@@ -176,8 +180,9 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     );
   } catch (err) {
     console.error("cook start failed", err);
+    const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Failed to start cook session" },
+      { error: "Failed to start cook session", detail: message },
       { status: 500 }
     );
   }

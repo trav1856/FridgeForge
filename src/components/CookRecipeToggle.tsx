@@ -47,7 +47,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
   async function startCook() {
     if (busy) return;
     const ok = window.confirm(
-      "Deduct ingredients from pantry? You can undo by unchecking this."
+      "Deduct ingredients from pantry? You can undo by tapping Cancel cooking."
     );
     if (!ok) return;
     setBusy(true);
@@ -58,7 +58,11 @@ export function CookRecipeToggle({ recipeId }: Props) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setToast(typeof data.error === "string" ? data.error : "Could not cook");
+        setToast(
+          typeof data.error === "string"
+            ? data.error
+            : "Failed to start cook session"
+        );
         return;
       }
       setActive(true);
@@ -77,9 +81,7 @@ export function CookRecipeToggle({ recipeId }: Props) {
         parts.length > 0
           ? `Deducted: ${parts.join("; ")}`
           : "No matching pantry items to deduct.";
-      setToast(
-        lows.length > 0 ? `${summary}. ${lows.join(" · ")}` : summary
-      );
+      setToast(lows.length > 0 ? `${summary}. ${lows.join(" · ")}` : summary);
     } catch {
       setToast("Could not deduct from pantry");
     } finally {
@@ -121,24 +123,26 @@ export function CookRecipeToggle({ recipeId }: Props) {
     }
   }
 
-  function onToggle() {
-    if (loading || busy) return;
-    if (active) void cancelCook();
-    else void startCook();
-  }
+  const label = busy
+    ? "Updating…"
+    : active
+      ? "Cancel cooking"
+      : "I’m cooking this";
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-sage-800">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-sage-300 text-ember-600 focus:ring-ember-500"
-          checked={active}
-          disabled={loading || busy}
-          onChange={onToggle}
-        />
-        <span>{busy ? "Updating…" : active ? "Cooking this" : "I’m cooking this"}</span>
-      </label>
+      <button
+        type="button"
+        className={active ? "btn-secondary text-sm" : "btn-primary text-sm"}
+        disabled={loading || busy}
+        onClick={() => {
+          if (loading || busy) return;
+          if (active) void cancelCook();
+          else void startCook();
+        }}
+      >
+        {label}
+      </button>
       {lowStock.length > 0 && active && (
         <ul className="text-xs text-ember-800">
           {lowStock.map((m) => (
