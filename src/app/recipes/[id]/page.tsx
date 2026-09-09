@@ -10,6 +10,7 @@ import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIngredients } from "@/components/RecipeIngredients";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeDetailActions } from "@/components/RecipeDetailActions";
+import { ShareRecipe } from "@/components/ShareRecipe";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
@@ -192,6 +193,16 @@ export default async function RecipeDetailPage({ params }: Props) {
 
       <RecipeOriginStory title={recipe.title} originStory={recipe.originStory} />
       <RecipeReviews recipeId={recipe.id} recipeTitle={recipe.title} />
+
+      <section className="card p-5">
+        <h2 className="font-display text-lg font-bold text-sage-900">Share this recipe</h2>
+        <p className="mt-1 text-sm text-sage-600">
+          Copy a link or send it to a friend after you&apos;ve checked out the dish.
+        </p>
+        <div className="mt-3">
+          <ShareRecipe recipeId={recipe.id} title={recipe.title} />
+        </div>
+      </section>
     </article>
   );
 }

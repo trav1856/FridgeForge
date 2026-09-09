@@ -30,10 +30,10 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
         await navigator.share({ title, text, url });
         return;
       } catch {
-        // fall through
+        // fall through to panel
       }
     }
-    setOpen(true);
+    setOpen((v) => !v);
   }
 
   async function copyLink(e: MouseEvent) {
@@ -93,7 +93,7 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
       >
         {compact ? "↗" : "Share"}
       </button>
-      {(open || !compact) && (
+      {open && (
         <div
           className={
             compact
