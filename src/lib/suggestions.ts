@@ -226,6 +226,10 @@ export function suggestMeals(
     pool = pool.filter((r) => matchesQuery(r, q));
   }
 
+  // Return all scored recipes sorted by score — Cook Now should still list
+  // weaker matches with missingIngredients shown on each card. Soft-cap only
+  // if the pool is huge; do not require canMakeNow / nearMiss / matchRatio.
+  const SOFT_CAP = 100;
   return pool
     .map((r) =>
       scoreRecipe(r, pantry, {
@@ -235,8 +239,8 @@ export function suggestMeals(
         mood,
       })
     )
-    .filter((s) => s.canMakeNow || s.nearMiss || s.matchRatio >= 0.5)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, SOFT_CAP);
 }
 
 export { CHEAP_STAPLES, CREATIVE_PAIRINGS };

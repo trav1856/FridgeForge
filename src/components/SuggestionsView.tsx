@@ -134,8 +134,9 @@ export function SuggestionsView() {
           {struggleMode ? ", and struggle-meal priority" : ""}
           {maxMinutes != null ? ", and cook time" : ""}
           {mood !== "any" ? ", and mood" : ""}
-          {q.trim() ? ", and craving search" : ""}. Near-misses allow 1–2 cheap
-          missing staples.
+          {q.trim() ? ", and craving search" : ""}. Sorted by pantry match —
+          recipes you can make now first, then near-misses and ones that need
+          more ingredients (still listed with what's missing).
         </p>
 
         <div className="mt-4">
@@ -304,7 +305,7 @@ export function SuggestionsView() {
                   }. Try another mood or clear it with Any.`
                 : maxMinutes != null
                   ? `No pantry matches that cook in ${maxMinutes} minutes or less. Try a longer window or add quicker recipes.`
-                  : "No strong matches yet. Add pantry staples or recipes to get suggestions."}
+                  : "No recipes in scope yet. Add pantry staples or recipes to get suggestions."}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link href="/pantry" className="btn-primary">
@@ -333,16 +334,18 @@ export function SuggestionsView() {
             flash={flashPick}
             pickCardRef={pickCardRef}
           />
-          {partial.length > 0 && (
-            <Section
-              title="Partial matches"
-              items={partial}
-              empty=""
-              highlightId={tonightPickId}
-              flash={flashPick}
-              pickCardRef={pickCardRef}
-            />
-          )}
+          <Section
+            title="Need more ingredients"
+            items={partial}
+            empty={
+              now.length === 0 && near.length === 0
+                ? "No other recipes in scope."
+                : "No weaker matches — you're covered above."
+            }
+            highlightId={tonightPickId}
+            flash={flashPick}
+            pickCardRef={pickCardRef}
+          />
         </>
       )}
     </div>

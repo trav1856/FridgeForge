@@ -104,7 +104,7 @@ describe("scoreRecipe", () => {
 });
 
 describe("suggestMeals", () => {
-  it("returns sorted suggestions and filters weak matches", () => {
+  it("returns sorted suggestions including weak matches with missing ingredients", () => {
     const recipes = [
       recipe({
         id: "a",
@@ -128,13 +128,47 @@ describe("suggestMeals", () => {
         ],
       }),
     ];
-    const results = suggestMeals(recipes, pantry(["rice", "black beans"]), {
-      struggleMode: true,
-    });
+    // No struggleMode: struggle pool would hide non-cheap recipes; this asserts
+    // Cook Now keeps weak pantry matches instead of dropping matchRatio < 0.5.
+    const results = suggestMeals(recipes, pantry(["rice", "black beans"]));
     expect(results[0]?.recipe.title).toBe("Rice Bowl");
-    expect(results.some((r) => r.recipe.title === "Needs Everything")).toBe(
-      false
+    const weak = results.find((r) => r.recipe.title === "Needs Everything");
+    expect(weak).toBeTruthy();
+    expect(weak!.canMakeNow).toBe(false);
+    expect(weak!.nearMiss).toBe(false);
+    expect(weak!.matchRatio).toBeLessThan(0.5);
+    expect(weak!.missingIngredients.length).toBeGreaterThan(2);
+    expect(weak!.missingIngredients).toEqual(
+      expect.arrayContaining(["salmon", "asparagus", "cream", "wine"])
     );
+  });
+
+  it("still lists recipes missing many non-staple ingredients", () => {
+    const fancy = recipe({
+      id: "fancy",
+      title: "Fancy Roast",
+      costTier: "pricey",
+      ingredients: [
+        { id: "1", name: "beef tenderloin", quantity: 1, unit: "lb", optional: false },
+        { id: "2", name: "shallots", quantity: 2, unit: "each", optional: false },
+        { id: "3", name: "red wine", quantity: 1, unit: "cup", optional: false },
+        { id: "4", name: "thyme", quantity: 1, unit: "tsp", optional: false },
+        { id: "5", name: "butter", quantity: 2, unit: "tbsp", optional: false },
+      ],
+    });
+    const results = suggestMeals([fancy], pantry(["butter"]));
+    expect(results).toHaveLength(1);
+    expect(results[0]!.recipe.title).toBe("Fancy Roast");
+    expect(results[0]!.missingCount).toBe(4);
+    expect(results[0]!.missingIngredients).toEqual(
+      expect.arrayContaining([
+        "beef tenderloin",
+        "shallots",
+        "red wine",
+        "thyme",
+      ])
+    );
+    expect(results[0]!.matchedIngredients).toContain("butter");
   });
 });
 
