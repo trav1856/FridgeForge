@@ -1,6 +1,7 @@
 "use client";
 
 import { FavoriteButton } from "./FavoriteButton";
+import { ShareRecipe } from "./ShareRecipe";
 import { RequestRecipe } from "./RequestRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
 
@@ -22,6 +23,7 @@ export function RecipeDetailActions({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <FavoriteButton recipeId={recipeId} initialFavorited={favorited} />
+      <ShareRecipe recipeId={recipeId} title={title} compact />
       {showRequest && <RequestRecipe recipeId={recipeId} />}
       {missingNames.length > 0 && (
         <AddToShoppingList
