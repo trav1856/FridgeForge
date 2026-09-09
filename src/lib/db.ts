@@ -10,15 +10,26 @@ function createPrisma() {
   });
 }
 
+function clientIsCurrent(client: PrismaClient): boolean {
+  const c = client as {
+    recipeCookSession?: unknown;
+    recipeCookStat?: unknown;
+  };
+  return (
+    typeof c.recipeCookSession !== "undefined" &&
+    typeof c.recipeCookStat !== "undefined"
+  );
+}
+
 function getPrisma(): PrismaClient {
   const existing = globalForPrisma.prisma;
-  // After `prisma generate`, a cached client can miss new models (e.g. recipeCookSession).
-  if (
-    existing &&
-    typeof (existing as { recipeCookSession?: unknown }).recipeCookSession !==
-      "undefined"
-  ) {
+  if (existing && clientIsCurrent(existing)) {
     return existing;
+  }
+  try {
+    existing?.$disconnect().catch(() => {});
+  } catch {
+    /* ignore */
   }
   const client = createPrisma();
   if (process.env.NODE_ENV !== "production") {
