@@ -29,6 +29,7 @@ model User {
   recipeRequestsReceived RecipeRequest[] @relation("RecipeRequestTo")
   shoppingItems ShoppingListItem[]
   reviews      RecipeReview[]
+  cookSessions RecipeCookSession[]
 }
 
 model Session {
@@ -56,6 +57,7 @@ model Household {
   shoppingItems ShoppingListItem[]
   recipeRequests RecipeRequest[]
   sharesReceived RecipeShare[]
+  cookSessions RecipeCookSession[]
 }
 
 model HouseholdMember {
@@ -130,6 +132,7 @@ model Recipe {
   shares           RecipeShare[]
   requests         RecipeRequest[]
   reviews          RecipeReview[]
+  cookSessions     RecipeCookSession[]
 
   @@index([householdId])
   @@index([ownerUserId])
@@ -282,5 +285,29 @@ model RecipeReview {
   @@index([recipeId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model RecipeCookSession {
+  id             String     @id @default(cuid())
+  recipeId       String
+  userId         String?
+  householdId    String?
+  /** When true, pantry deductions from this cook are still applied. */
+  active         Boolean    @default(true)
+  /** JSON: [{ pantryItemId, name, unit, deductedQty, quantityBefore, quantityAfter }] */
+  deductionsJson String     @default("[]")
+  /** JSON string array of low-stock nudge messages at cook time */
+  lowStockJson   String     @default("[]")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  recipe         Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  household      Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId])
+  @@index([userId])
+  @@index([householdId])
+  @@index([recipeId, householdId, active])
+  @@index([recipeId, userId, active])
 }
 

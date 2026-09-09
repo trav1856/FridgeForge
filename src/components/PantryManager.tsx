@@ -30,6 +30,7 @@ type EditForm = {
   tags: string;
   barcode: string;
   expirationDate: string;
+  imageUrl?: string | null;
 };
 
 export function PantryManager() {
@@ -83,6 +84,13 @@ export function PantryManager() {
       expirationDate: item.expirationDate
         ? item.expirationDate.slice(0, 10)
         : "",
+      imageUrl: item.imageUrl ?? null,
+    });
+    // Bring the edit form into view after tab switch
+    requestAnimationFrame(() => {
+      document
+        .getElementById("pantry-edit-anchor")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -145,6 +153,7 @@ export function PantryManager() {
 
       {tab === "barcode" && <BarcodeIntake onAdded={load} />}
 
+      <div id="pantry-edit-anchor" />
       {tab === "manual" && (
         <ManualPantryIntake
           editingId={editingId}
@@ -220,11 +229,13 @@ export function PantryManager() {
                     category: item.category,
                   });
                   return (
-                  <li
-                    key={item.id}
-                    className="card flex items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <li key={item.id} className="card overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(item)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none ring-ember-500 focus-visible:ring-2"
+                    >
                       <div
                         className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sage-100 text-xl"
                         aria-hidden
@@ -275,7 +286,7 @@ export function PantryManager() {
                         </p>
                       )}
                     </div>
-                    </div>
+                    </button>
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
@@ -287,11 +298,20 @@ export function PantryManager() {
                       <button
                         type="button"
                         className="btn-ghost text-xs text-red-700"
-                        onClick={() => remove(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void remove(item.id);
+                        }}
                       >
                         Delete
                       </button>
                     </div>
+                    </div>
+                    {item.quantity <= 0 && (
+                      <p className="border-t border-ember-100 bg-ember-50/70 px-4 py-1.5 text-xs text-ember-800">
+                        You probably need more {item.name}.
+                      </p>
+                    )}
                   </li>
                   );
                 })}

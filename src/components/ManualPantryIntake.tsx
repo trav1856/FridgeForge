@@ -30,6 +30,7 @@ type EditForm = {
   tags: string;
   barcode: string;
   expirationDate: string;
+  imageUrl?: string | null;
 };
 
 type Props = {
@@ -600,14 +601,16 @@ function EditPantryForm({
 }) {
   const [form, setForm] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     try {
+      const qty = Number(form.quantity);
       const payload = {
         name: form.name.trim(),
-        quantity: Number(form.quantity) || 1,
+        quantity: Number.isFinite(qty) && qty >= 0 ? qty : 0,
         unit: form.unit.trim() || "each",
         category: form.category || null,
         tags: form.tags
@@ -635,6 +638,20 @@ function EditPantryForm({
     }
   }
 
+  async function onDelete() {
+    if (!confirm("Remove this pantry item?")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/pantry/${editingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete item");
+      setDeleting(false);
+    }
+  }
+
   const editUnitOptions = useMemo(
     () => unitsForItem(form.name, form.category),
     [form.name, form.category]
@@ -643,6 +660,16 @@ function EditPantryForm({
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
       <h2 className="font-display text-xl font-bold text-sage-900">Edit item</h2>
+      {form.imageUrl && (
+        <div className="flex h-24 w-24 overflow-hidden rounded-xl bg-sage-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={form.imageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label">Name</label>
@@ -658,7 +685,7 @@ function EditPantryForm({
           <input
             className="input"
             type="number"
-            min="0.01"
+            min="0"
             step="any"
             required
             value={form.quantity}
@@ -716,11 +743,12 @@ function EditPantryForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Tags (comma-separated)</label>
+          <label className="label">Notes / tags (comma-separated)</label>
           <input
             className="input"
             value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            placeholder="notes, tags…"
           />
         </div>
       </div>
@@ -731,6 +759,14 @@ function EditPantryForm({
         </button>
         <button type="button" className="btn-secondary" onClick={onCancel}>
           Cancel
+        </button>
+        <button
+          type="button"
+          className="btn-ghost text-red-700"
+          disabled={deleting}
+          onClick={() => void onDelete()}
+        >
+          {deleting ? "Deleting…" : "Delete"}
         </button>
       </div>
     </form>

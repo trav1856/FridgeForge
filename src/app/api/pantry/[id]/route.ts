@@ -6,7 +6,7 @@ import { serializePantry } from "@/lib/mappers";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
-  quantity: z.number().positive().optional(),
+  quantity: z.number().min(0).optional(),
   unit: z.string().min(1).max(40).optional(),
   category: z.string().max(60).optional().nullable(),
   tags: z.array(z.string()).optional(),

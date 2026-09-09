@@ -4,6 +4,7 @@ import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
 import { RequestRecipe } from "./RequestRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
+import { CookRecipeToggle } from "./CookRecipeToggle";
 
 type Props = {
   recipeId: string;
@@ -21,18 +22,21 @@ export function RecipeDetailActions({
   showRequest = false,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <FavoriteButton recipeId={recipeId} initialFavorited={favorited} />
-      <ShareRecipe recipeId={recipeId} title={title} compact />
-      {showRequest && <RequestRecipe recipeId={recipeId} />}
-      {missingNames.length > 0 && (
-        <AddToShoppingList
-          items={missingNames.map((name) => ({ name }))}
-          recipeId={recipeId}
-          recipeTitle={title}
-          label="Send missing to shopping list"
-        />
-      )}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <FavoriteButton recipeId={recipeId} initialFavorited={favorited} />
+        <ShareRecipe recipeId={recipeId} title={title} compact />
+        {showRequest && <RequestRecipe recipeId={recipeId} />}
+        {missingNames.length > 0 && (
+          <AddToShoppingList
+            items={missingNames.map((name) => ({ name }))}
+            recipeId={recipeId}
+            recipeTitle={title}
+            label="Send missing to shopping list"
+          />
+        )}
+      </div>
+      <CookRecipeToggle recipeId={recipeId} />
     </div>
   );
 }

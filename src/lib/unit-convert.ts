@@ -230,3 +230,45 @@ export function formatQuantity(qty: number): string {
   const t = Math.round(qty * 10) / 10;
   return Number.isInteger(t) ? String(t) : t.toFixed(1);
 }
+
+/** Convert quantity from one unit to another within mass or volume. Null if incompatible. */
+export function convertToUnit(
+  quantity: number,
+  fromUnit: string,
+  toUnit: string
+): number | null {
+  if (!Number.isFinite(quantity)) return null;
+  const from = normalizeUnitKey(fromUnit || "");
+  const to = normalizeUnitKey(toUnit || "");
+  if (!from || !to) return null;
+
+  const countAlias = (u: string) => {
+    if (u === "ea" || u === "each") return "each";
+    if (u === "cans" || u === "can") return "can";
+    if (u === "cloves" || u === "clove") return "clove";
+    if (u === "slices" || u === "slice") return "slice";
+    if (u === "pieces" || u === "piece") return "piece";
+    if (u === "packages" || u === "package" || u === "pack") return "pack";
+    return u;
+  };
+
+  if (COUNT_UNITS.has(from) || COUNT_UNITS.has(to)) {
+    return countAlias(from) === countAlias(to) ? quantity : null;
+  }
+
+  if (from === to) return quantity;
+
+  const fromVol = VOLUME_TO_ML[from];
+  const toVol = VOLUME_TO_ML[to];
+  if (fromVol != null && toVol != null) {
+    return (quantity * fromVol) / toVol;
+  }
+
+  const fromW = WEIGHT_TO_G[from];
+  const toW = WEIGHT_TO_G[to];
+  if (fromW != null && toW != null) {
+    return (quantity * fromW) / toW;
+  }
+
+  return null;
+}
