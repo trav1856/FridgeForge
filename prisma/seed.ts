@@ -64,7 +64,7 @@ async function main() {
       description:
         "Day-old rice energy. A glossy soy finish and a crispy-edged egg make it feel like takeout.",
       costTier: "cheap",
-      tags: j(["struggle", "rice", "egg", "15-min"]),
+      tags: j(["struggle", "rice", "egg", "15-min", "dinner"]),
       servings: 2,
       cookTimeMinutes: 15,
       isStruggleMeal: true,
@@ -94,7 +94,7 @@ async function main() {
       description:
         "Complete protein, complete comfort. Onion and chili do the heavy lifting.",
       costTier: "cheap",
-      tags: j(["struggle", "beans", "rice", "one-bowl"]),
+      tags: j(["struggle", "beans", "rice", "one-bowl", "dinner"]),
       servings: 4,
       cookTimeMinutes: 45,
       isStruggleMeal: true,
@@ -125,7 +125,7 @@ async function main() {
       description:
         "Canned tuna + tomatoes + spaghetti. Brighten with vinegar like you meant it.",
       costTier: "cheap",
-      tags: j(["struggle", "pasta", "canned", "weeknight"]),
+      tags: j(["struggle", "pasta", "canned", "weeknight", "lunch", "dinner"]),
       servings: 3,
       cookTimeMinutes: 25,
       isStruggleMeal: true,
@@ -154,7 +154,7 @@ async function main() {
       title: "Crispy Potato Hash with Eggs",
       description: "Cubed potatoes, hard sear, soft eggs. Breakfast-for-dinner royalty.",
       costTier: "cheap",
-      tags: j(["struggle", "potato", "egg", "brunch"]),
+      tags: j(["struggle", "potato", "egg", "brunch", "breakfast"]),
       servings: 2,
       cookTimeMinutes: 30,
       isStruggleMeal: true,
@@ -183,7 +183,7 @@ async function main() {
       description:
         "Unconventional pairing that tastes intentional: creamy peanut, crunchy cabbage, soy-vinegar glaze.",
       costTier: "cheap",
-      tags: j(["struggle", "creative", "cabbage", "pasta"]),
+      tags: j(["struggle", "creative", "cabbage", "pasta", "dinner"]),
       servings: 2,
       cookTimeMinutes: 20,
       isStruggleMeal: true,
@@ -238,7 +238,7 @@ async function main() {
       title: "Carrot-Onion Tomato Soup",
       description: "Blender optional. Soft vegetables, canned tomatoes, humble and warming.",
       costTier: "cheap",
-      tags: j(["soup", "vegetarian", "comfort"]),
+      tags: j(["soup", "vegetarian", "comfort", "lunch"]),
       servings: 4,
       cookTimeMinutes: 40,
       isStruggleMeal: false,
@@ -266,7 +266,7 @@ async function main() {
       description:
         "Moderate-tier only because butter feels fancy — still weeknight easy. Uses pantry pasta.",
       costTier: "moderate",
-      tags: j(["pasta", "bright", "date-night-cheap"]),
+      tags: j(["pasta", "bright", "date-night-cheap", "dinner"]),
       servings: 2,
       cookTimeMinutes: 20,
       isStruggleMeal: false,
@@ -352,7 +352,7 @@ async function main() {
       title: "Boiled / Steamed Rice",
       description: "Reliable pot of fluffy white rice — the canvas for almost every cuisine.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "rice", "side"]),
+      tags: j(["staple", "classic", "rice", "side", "dinner"]),
       servings: 4,
       cookTimeMinutes: 25,
       isStruggleMeal: false,
@@ -377,7 +377,7 @@ async function main() {
       title: "Spaghetti with Simple Tomato Sauce",
       description: "Garlic, olive oil, canned tomatoes — the weeknight pasta that never fails.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "pasta", "weeknight"]),
+      tags: j(["staple", "classic", "pasta", "weeknight", "dinner"]),
       servings: 4,
       cookTimeMinutes: 30,
       isStruggleMeal: false,
@@ -407,7 +407,7 @@ async function main() {
       title: "Grilled Cheese",
       description: "Crispy buttered bread, molten cheese — childhood classic, adult comfort.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "sandwich", "quick"]),
+      tags: j(["staple", "classic", "sandwich", "quick", "lunch"]),
       servings: 1,
       cookTimeMinutes: 10,
       isStruggleMeal: false,
@@ -432,7 +432,7 @@ async function main() {
       title: "Simple Chicken Soup",
       description: "Chicken, aromatics, broth — restorative bowl you can make from almost nothing.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "soup", "comfort"]),
+      tags: j(["staple", "classic", "soup", "comfort", "lunch"]),
       servings: 6,
       cookTimeMinutes: 60,
       isStruggleMeal: false,
@@ -493,7 +493,7 @@ async function main() {
       title: "Basic Roast Chicken",
       description: "Salt, pepper, hot oven — golden bird that feeds a household for days.",
       costTier: "moderate",
-      tags: j(["staple", "classic", "chicken", "roast"]),
+      tags: j(["staple", "classic", "chicken", "roast", "dinner"]),
       servings: 4,
       cookTimeMinutes: 90,
       isStruggleMeal: false,
@@ -579,7 +579,7 @@ async function main() {
       title: "Veg & Protein Stir-Fry",
       description: "Template stir-fry: hot pan, crisp veg, any protein, soy-garlic glaze.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "stir-fry", "weeknight", "template"]),
+      tags: j(["staple", "classic", "stir-fry", "weeknight", "template", "dinner"]),
       servings: 4,
       cookTimeMinutes: 25,
       isStruggleMeal: false,
@@ -610,7 +610,7 @@ async function main() {
       title: "Chili / Taco Filling",
       description: "Seasoned ground beef with onion and spices — chili base or taco night filling.",
       costTier: "cheap",
-      tags: j(["staple", "classic", "beef", "chili", "tacos"]),
+      tags: j(["staple", "classic", "beef", "chili", "tacos", "dinner"]),
       servings: 6,
       cookTimeMinutes: 40,
       isStruggleMeal: false,
@@ -683,6 +683,28 @@ async function main() {
     }
   }
 
+
+  // Non-destructive: merge meal-slot tags onto existing shared recipes when missing
+  function mergeMealTags(existingJson: string | null | undefined, desiredJson: string): string | null {
+    try {
+      const existing = JSON.parse(existingJson || "[]") as unknown;
+      const desired = JSON.parse(desiredJson || "[]") as unknown;
+      if (!Array.isArray(existing) || !Array.isArray(desired)) return null;
+      const set = new Set(existing.filter((t): t is string => typeof t === "string"));
+      const meal = new Set(["breakfast", "brunch", "lunch", "dinner"]);
+      let changed = false;
+      for (const t of desired) {
+        if (typeof t === "string" && meal.has(t.toLowerCase()) && !set.has(t)) {
+          set.add(t);
+          changed = true;
+        }
+      }
+      return changed ? JSON.stringify([...set]) : null;
+    } catch {
+      return null;
+    }
+  }
+
   let recipesCreated = 0;
   let recipesImaged = 0;
   for (const r of recipes) {
@@ -712,17 +734,25 @@ async function main() {
         },
       });
       recipesCreated += 1;
-    } else if (needsMealDbImage(existing.imageUrl)) {
-      const imageUrl = await resolveRecipeImageUrl({
-        title: rest.title,
-        preferDeterministicFallback: true,
-      });
-      if (imageUrl && imageUrl !== existing.imageUrl) {
+    } else {
+      const data: { imageUrl?: string; tags?: string } = {};
+      if (needsMealDbImage(existing.imageUrl)) {
+        const imageUrl = await resolveRecipeImageUrl({
+          title: rest.title,
+          preferDeterministicFallback: true,
+        });
+        if (imageUrl && imageUrl !== existing.imageUrl) {
+          data.imageUrl = imageUrl;
+          recipesImaged += 1;
+        }
+      }
+      const mergedTags = mergeMealTags(existing.tags, rest.tags);
+      if (mergedTags) data.tags = mergedTags;
+      if (Object.keys(data).length > 0) {
         await prisma.recipe.update({
           where: { id: existing.id },
-          data: { imageUrl },
+          data,
         });
-        recipesImaged += 1;
       }
     }
   }

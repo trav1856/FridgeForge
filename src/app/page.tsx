@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StruggleBanner } from "@/components/StruggleBanner";
+import { RecipeOfTheWeek } from "@/components/RecipeOfTheWeek";
 
 export default function HomePage() {
   return (
@@ -71,7 +72,7 @@ export default function HomePage() {
 
       <section className="card p-5 sm:p-6">
         <h2 className="font-display text-xl font-bold text-sage-900">
-          Flavor on a budget
+          Flavor on a Budget
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-sage-700">
           Cheap boosters that punch above their price: soy sauce, vinegar, chili
@@ -79,6 +80,8 @@ export default function HomePage() {
           for flavor, salt in layers, finish with acid.
         </p>
       </section>
+
+      <RecipeOfTheWeek />
     </div>
   );
 }

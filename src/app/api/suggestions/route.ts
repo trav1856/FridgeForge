@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveHouseholdId } from "@/lib/auth";
-import { householdWhere } from "@/lib/household";
+import { householdWhere, recipeScopeWhere, sharedOrHouseholdWhere } from "@/lib/household";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { collectAvailableTags, parseMoodParam } from "@/lib/moods";
@@ -28,15 +28,13 @@ export async function GET(req: NextRequest) {
   const qRaw = req.nextUrl.searchParams.get("q");
   const q = qRaw?.trim() ? qRaw.trim() : undefined;
 
-  const couponWhere =
-    householdId === null
-      ? householdWhere(null)
-      : { OR: [{ householdId: null }, { householdId }] };
+  const couponWhere = sharedOrHouseholdWhere(householdId);
 
+  // Recipes: shared catalog + household. Pantry: exact household (or guest null).
   const [pantryItems, recipes, coupons] = await Promise.all([
     prisma.pantryItem.findMany({ where: householdWhere(householdId) }),
     prisma.recipe.findMany({
-      where: householdWhere(householdId),
+      where: recipeScopeWhere(householdId),
       include: { ingredients: true },
     }),
     prisma.coupon.findMany({ where: couponWhere }),

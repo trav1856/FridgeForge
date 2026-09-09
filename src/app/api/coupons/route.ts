@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { resolveHouseholdId } from "@/lib/auth";
-import { householdWhere } from "@/lib/household";
+import { sharedOrHouseholdWhere } from "@/lib/household";
 import { serializeCoupon } from "@/lib/coupons";
 
 const createSchema = z.object({
@@ -21,12 +21,7 @@ export async function GET(req: NextRequest) {
   const filter = req.nextUrl.searchParams.get("filter") || "all";
   // Demo/CE coupons (null household) are always visible; household users also see theirs.
   const items = await prisma.coupon.findMany({
-    where:
-      householdId === null
-        ? householdWhere(null)
-        : {
-            OR: [{ householdId: null }, { householdId }],
-          },
+    where: sharedOrHouseholdWhere(householdId),
     orderBy: [{ clipped: "desc" }, { expiresAt: "asc" }, { brand: "asc" }],
   });
   let out = items.map(serializeCoupon);

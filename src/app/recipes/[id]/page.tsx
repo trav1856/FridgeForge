@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { recipeRowMatchesScope } from "@/lib/household";
 import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
@@ -16,6 +17,7 @@ type Props = { params: Promise<{ id: string }> };
 export default async function RecipeDetailPage({ params }: Props) {
   const { id } = await params;
   const user = await getCurrentUser();
+  const householdId = await resolveHouseholdId();
   const raw = await prisma.recipe.findUnique({
     where: { id },
     include: {
@@ -25,7 +27,7 @@ export default async function RecipeDetailPage({ params }: Props) {
         : false,
     },
   });
-  if (!raw) notFound();
+  if (!raw || !recipeRowMatchesScope(raw.householdId, householdId)) notFound();
   const favorited =
     user && Array.isArray((raw as { favorites?: unknown[] }).favorites)
       ? ((raw as { favorites: unknown[] }).favorites.length > 0)

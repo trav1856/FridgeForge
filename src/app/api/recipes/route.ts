@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
-import { householdWhere } from "@/lib/household";
+import { householdWhere, recipeScopeWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
 
@@ -36,14 +36,16 @@ export async function GET(req: NextRequest) {
   const favoritesOnly = req.nextUrl.searchParams.get("favorites") === "1";
   const scope = req.nextUrl.searchParams.get("scope"); // mine | household | (default all in scope)
 
+  // Default "All": shared catalog (householdId null) OR active household
   let where: Record<string, unknown> = {
-    ...householdWhere(householdId),
+    ...recipeScopeWhere(householdId),
     ...(struggle === "1" ? { isStruggleMeal: true } : {}),
   };
 
   if (scope === "mine" && user) {
     where = { ownerUserId: user.id };
   } else if (scope === "household") {
+    // Household collection only (not the shared catalog)
     where = {
       ...householdWhere(householdId),
       ...(householdId != null
@@ -57,7 +59,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json([]);
     }
     where = {
-      favorites: { some: { userId: user.id } },
+      AND: [
+        recipeScopeWhere(householdId),
+        { favorites: { some: { userId: user.id } } },
+      ],
     };
   }
 

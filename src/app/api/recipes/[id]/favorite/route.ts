@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { AuthError, getCurrentUser } from "@/lib/auth";
+import { AuthError, getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { recipeRowMatchesScope } from "@/lib/household";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -9,8 +10,9 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     const user = await getCurrentUser();
     if (!user) throw new AuthError();
     const { id: recipeId } = await ctx.params;
+    const householdId = await resolveHouseholdId();
     const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
-    if (!recipe) {
+    if (!recipe || !recipeRowMatchesScope(recipe.householdId, householdId)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     const existing = await prisma.recipeFavorite.findUnique({
