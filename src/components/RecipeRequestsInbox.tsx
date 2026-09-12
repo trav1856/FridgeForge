@@ -1,22 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
-type Incoming = {
-  id: string;
-  status: string;
-  message: string | null;
-  createdAt: string;
-  recipe: { id: string; title: string };
-  fromUser: { id: string; email: string; name: string | null };
-};
+import {
+  groupPendingByRecipe,
+  notifyRecipeRequestsChanged,
+  type IncomingRequestRow,
+} from "@/lib/recipe-request";
 
 export function RecipeRequestsInbox() {
-  const [items, setItems] = useState<Incoming[]>([]);
+  const [items, setItems] = useState<IncomingRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** recipeIds whose "Choose who gets this" list is expanded */
+  const [choosing, setChoosing] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,7 +43,7 @@ export function RecipeRequestsInbox() {
   }, [load]);
 
   async function act(id: string, action: "accept" | "decline") {
-    setBusyId(id);
+    setBusyKey(id);
     setNote(null);
     setError(null);
     try {
@@ -67,20 +65,65 @@ export function RecipeRequestsInbox() {
           : "Declined."
       );
       await load();
+      notifyRecipeRequestsChanged();
     } catch {
       setError("Network error");
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
   }
 
-  const pending = items.filter((i) => i.status === "pending");
+  async function acceptAllForRecipe(recipeId: string, title: string, count: number) {
+    const ok = window.confirm(
+      `Accept all ${count} pending request${count === 1 ? "" : "s"} for “${title}”?`
+    );
+    if (!ok) return;
+    setBusyKey(`all:${recipeId}`);
+    setNote(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/recipe-requests/bulk-accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(
+          typeof data.error === "string" ? data.error : "Bulk accept failed"
+        );
+        return;
+      }
+      const n = typeof data.approved === "number" ? data.approved : count;
+      setNote(
+        n === 0
+          ? "No pending requests left to accept."
+          : `Accepted ${n} request${n === 1 ? "" : "s"} for “${title}”.`
+      );
+      await load();
+      notifyRecipeRequestsChanged();
+    } catch {
+      setError("Network error");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  const groups = groupPendingByRecipe(items);
+  const pendingTotal = groups.reduce((n, g) => n + g.requests.length, 0);
 
   return (
     <div className="card p-5 space-y-4">
-      <h2 className="font-display text-xl font-bold text-sage-900">
-        Recipe requests
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-display text-xl font-bold text-sage-900">
+          Recipe requests
+        </h2>
+        {pendingTotal > 0 && (
+          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+            {pendingTotal > 99 ? "99+" : pendingTotal}
+          </span>
+        )}
+      </div>
       <p className="text-sm text-sage-600">
         When someone asks &quot;Can I have that recipe?&quot; it shows up here.
         Accept copies the recipe into their household.
@@ -97,40 +140,109 @@ export function RecipeRequestsInbox() {
       )}
       {loading ? (
         <p className="text-sm text-sage-600">Loading…</p>
-      ) : pending.length === 0 ? (
+      ) : groups.length === 0 ? (
         <p className="text-sm text-sage-600">No pending requests.</p>
       ) : (
-        <ul className="space-y-3">
-          {pending.map((r) => (
-            <li
-              key={r.id}
-              className="rounded-xl border border-cream-300 bg-cream-50/80 px-3 py-3"
-            >
-              <div className="font-medium text-sage-900">{r.recipe.title}</div>
-              <div className="mt-0.5 text-xs text-sage-600">
-                From {r.fromUser.name || r.fromUser.email}
-                {r.message ? ` — “${r.message}”` : ""}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn-primary text-xs"
-                  disabled={busyId === r.id}
-                  onClick={() => void act(r.id, "accept")}
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-xs"
-                  disabled={busyId === r.id}
-                  onClick={() => void act(r.id, "decline")}
-                >
-                  Decline
-                </button>
-              </div>
-            </li>
-          ))}
+        <ul className="space-y-4">
+          {groups.map((g) => {
+            const multi = g.requests.length > 1;
+            const showWho = multi
+              ? Boolean(choosing[g.recipeId])
+              : true;
+            return (
+              <li
+                key={g.recipeId}
+                className="rounded-xl border border-cream-300 bg-cream-50/80 px-3 py-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-sage-900">{g.title}</div>
+                    <div className="mt-0.5 text-xs text-sage-600">
+                      {g.requests.length} pending request
+                      {g.requests.length === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  {multi && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn-primary text-xs"
+                        disabled={busyKey === `all:${g.recipeId}`}
+                        onClick={() =>
+                          void acceptAllForRecipe(
+                            g.recipeId,
+                            g.title,
+                            g.requests.length
+                          )
+                        }
+                      >
+                        Approve all
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        onClick={() =>
+                          setChoosing((prev) => ({
+                            ...prev,
+                            [g.recipeId]: !showWho,
+                          }))
+                        }
+                      >
+                        Choose who gets this
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {showWho && (
+                  <div className="mt-3 space-y-2 border-t border-cream-300 pt-3">
+                    {multi && (
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
+                        Choose who gets this
+                      </p>
+                    )}
+                    <ul className="space-y-2">
+                    {g.requests.map((r) => (
+                      <li
+                        key={r.id}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0 text-xs text-sage-700">
+                          <span className="font-medium text-sage-900">
+                            {r.fromUser.name || r.fromUser.email}
+                          </span>
+                          {r.message ? (
+                            <span className="text-sage-600">
+                              {" "}
+                              — “{r.message}”
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="btn-primary text-xs"
+                            disabled={busyKey === r.id}
+                            onClick={() => void act(r.id, "accept")}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={busyKey === r.id}
+                            onClick={() => void act(r.id, "decline")}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    </ul>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

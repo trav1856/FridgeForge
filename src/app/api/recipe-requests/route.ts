@@ -7,6 +7,7 @@ import {
   getCurrentUser,
 } from "@/lib/auth";
 import { canRequestRecipe } from "@/lib/recipe-request";
+import { countPendingIncomingForUser } from "@/lib/recipe-request-actions";
 
 const createSchema = z.object({
   recipeId: z.string().min(1),
@@ -39,6 +40,11 @@ export async function GET(req: NextRequest) {
     if (!user) throw new AuthError();
     const box = req.nextUrl.searchParams.get("box") || "incoming";
 
+    if (box === "pending-count") {
+      const pendingCount = await countPendingIncomingForUser(user.id);
+      return NextResponse.json({ pendingCount });
+    }
+
     if (box === "outgoing") {
       const requests = await prisma.recipeRequest.findMany({
         where: { fromUserId: user.id },
@@ -61,7 +67,8 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-    return NextResponse.json({ requests });
+    const pendingCount = requests.filter((r) => r.status === "pending").length;
+    return NextResponse.json({ requests, pendingCount });
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import clsx from "clsx";
+import { RECIPE_REQUESTS_CHANGED_EVENT } from "@/lib/recipe-request";
 
 const links = [
   { href: "/", label: "Home" },
@@ -20,6 +21,18 @@ export function Nav() {
   const { struggleMode, toggle } = useStruggleMode();
   const [planLabel, setPlanLabel] = useState<string | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  const refreshPendingCount = useCallback(() => {
+    fetch("/api/recipe-requests?box=pending-count")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const n =
+          typeof data?.pendingCount === "number" ? data.pendingCount : 0;
+        setPendingRequestCount(n);
+      })
+      .catch(() => setPendingRequestCount(0));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,17 +44,33 @@ export function Nav() {
         else if (data?.user) setPlanLabel("Community");
         else setPlanLabel(null);
         setIsAdminUser(data?.user?.role === "admin");
+        if (data?.user) {
+          refreshPendingCount();
+        } else {
+          setPendingRequestCount(0);
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setPlanLabel(null);
           setIsAdminUser(false);
+          setPendingRequestCount(0);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [pathname, refreshPendingCount]);
+
+  useEffect(() => {
+    const onChange = () => refreshPendingCount();
+    window.addEventListener(RECIPE_REQUESTS_CHANGED_EVENT, onChange);
+    window.addEventListener("focus", onChange);
+    return () => {
+      window.removeEventListener(RECIPE_REQUESTS_CHANGED_EVENT, onChange);
+      window.removeEventListener("focus", onChange);
+    };
+  }, [refreshPendingCount]);
 
   const accountActive = pathname.startsWith("/account");
   const adminActive = pathname.startsWith("/admin");
@@ -101,13 +130,28 @@ export function Nav() {
           <Link
             href="/account"
             className={clsx(
-              "rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+              "relative rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
               accountActive
                 ? "bg-sage-800 text-cream-50 shadow-sm"
                 : "bg-sage-100 text-sage-700 hover:bg-sage-200"
             )}
+            aria-label={
+              pendingRequestCount > 0
+                ? `Account, ${pendingRequestCount} pending recipe request${
+                    pendingRequestCount === 1 ? "" : "s"
+                  }`
+                : "Account"
+            }
           >
             Account
+            {pendingRequestCount > 0 && (
+              <span
+                className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-cream-50"
+                aria-hidden
+              >
+                {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+              </span>
+            )}
           </Link>
         </div>
       </div>
