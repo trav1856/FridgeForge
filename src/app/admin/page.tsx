@@ -2,16 +2,25 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 
 export default async function AdminDashboardPage() {
-  const [users, admins, recipes, publicRecipes, reviews, households, pantryItems] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { role: "admin" } }),
-      prisma.recipe.count(),
-      prisma.recipe.count({ where: { visibility: { in: ["public", "global"] } } }),
-      prisma.recipeReview.count(),
-      prisma.household.count(),
-      prisma.pantryItem.count(),
-    ]);
+  const [
+    users,
+    admins,
+    recipes,
+    publicRecipes,
+    reviews,
+    households,
+    pantryItems,
+    badges,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { role: "admin" } }),
+    prisma.recipe.count(),
+    prisma.recipe.count({ where: { visibility: { in: ["public", "global"] } } }),
+    prisma.recipeReview.count(),
+    prisma.household.count(),
+    prisma.pantryItem.count(),
+    prisma.howToBadge.count(),
+  ]);
 
   const stats = [
     { label: "Users", value: users, href: "/admin/users" },
@@ -19,6 +28,7 @@ export default async function AdminDashboardPage() {
     { label: "Recipes", value: recipes, href: "/admin/recipes" },
     { label: "Public recipes", value: publicRecipes, href: "/admin/recipes" },
     { label: "Reviews", value: reviews, href: "/admin/recipes" },
+    { label: "Badges", value: badges, href: "/admin/badges" },
     { label: "Households", value: households },
     { label: "Pantry items", value: pantryItems },
   ];
@@ -26,8 +36,8 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-sage-600">
-        Manage recipes and users. Recipe ratings are available to all signed-in
-        cooks — this panel is admin-only.
+        Manage recipes, users, and badges. Recipe ratings are available to all
+        signed-in cooks — this panel is admin-only.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {stats.map((s) => {

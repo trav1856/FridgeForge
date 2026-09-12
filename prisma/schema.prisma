@@ -350,6 +350,10 @@ model HowToBadge {
   title       String
   description String?
   emoji       String          @default("🏅")
+  /** Public URL path e.g. /badge-images/xyz.jpg (local public/). */
+  imageUrl    String?
+  /** howto = course award catalog; manual = admin-created award badge. */
+  kind        String          @default("howto")
   createdAt   DateTime        @default(now())
   courses     HowToCourse[]
   awards      HowToUserBadge[]

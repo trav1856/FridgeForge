@@ -21,3 +21,7 @@ next-env.d.ts
 
 # Local Corelia ops (scripts, archives — not for GitHub)
 /ops/
+
+# Admin-uploaded badge photos (keep folder)
+/public/badge-images/*
+!/public/badge-images/.gitkeep

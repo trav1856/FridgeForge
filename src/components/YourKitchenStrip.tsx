@@ -46,7 +46,16 @@ export async function YourKitchenStrip() {
                   className="inline-flex items-center gap-1 rounded-full bg-ember-50 px-2 py-0.5 text-xs font-medium text-ember-900 ring-1 ring-ember-100"
                   title={b.title}
                 >
-                  <span aria-hidden>{b.emoji}</span>
+                  {b.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={b.imageUrl}
+                      alt=""
+                      className="h-4 w-4 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span aria-hidden>{b.emoji}</span>
+                  )}
                   <span className="hidden sm:inline">{b.title}</span>
                 </li>
               ))}

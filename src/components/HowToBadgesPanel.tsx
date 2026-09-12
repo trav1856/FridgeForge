@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BadgeChip } from "@/components/BadgeChip";
 import type { HowToBadgeDTO } from "@/lib/howto";
 
 type BadgeRow = HowToBadgeDTO & { awardedAt: string };
@@ -55,14 +56,7 @@ export function HowToBadgesPanel() {
       ) : (
         <ul className="flex flex-wrap gap-2">
           {badges.map((b) => (
-            <li
-              key={b.id}
-              className="inline-flex items-center gap-1.5 rounded-full bg-ember-50 px-3 py-1.5 text-sm font-medium text-ember-900 ring-1 ring-ember-200"
-              title={b.description ?? undefined}
-            >
-              <span aria-hidden>{b.emoji}</span>
-              {b.title}
-            </li>
+            <BadgeChip key={b.id} badge={b} />
           ))}
         </ul>
       )}

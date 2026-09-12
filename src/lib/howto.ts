@@ -6,6 +6,10 @@ export type HowToBadgeDTO = {
   title: string;
   description: string | null;
   emoji: string;
+  /** Local path `/badge-images/...` or null. */
+  imageUrl: string | null;
+  /** howto = course catalog; manual = admin-created award. */
+  kind: string;
 };
 
 export type HowToLessonDTO = {
@@ -75,6 +79,8 @@ export function serializeBadge(b: {
   title: string;
   description: string | null;
   emoji: string;
+  imageUrl?: string | null;
+  kind?: string | null;
 }): HowToBadgeDTO {
   return {
     id: b.id,
@@ -82,6 +88,8 @@ export function serializeBadge(b: {
     title: b.title,
     description: b.description,
     emoji: b.emoji,
+    imageUrl: b.imageUrl ?? null,
+    kind: b.kind === "manual" ? "manual" : "howto",
   };
 }
 

@@ -37,6 +37,9 @@ export default async function AdminLayout({
           <Link href="/admin/users" className="btn-ghost text-xs">
             Users
           </Link>
+          <Link href="/admin/badges" className="btn-ghost text-xs">
+            Badges
+          </Link>
         </nav>
       </div>
       {children}
