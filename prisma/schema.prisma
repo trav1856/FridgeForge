@@ -11,6 +11,8 @@ model User {
   id           String            @id @default(cuid())
   email        String            @unique
   name         String?
+  /** Public profile URL segment (/u/[profileSlug]); unique when set. */
+  profileSlug  String?           @unique
   passwordHash String?
   plan         String            @default("community") // community | pro
   /** user | admin */

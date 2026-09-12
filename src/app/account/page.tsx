@@ -17,6 +17,7 @@ type MeUser = {
   id: string;
   email: string;
   name: string | null;
+  profileSlug: string | null;
   plan: string;
   households: Household[];
 };
@@ -270,14 +271,32 @@ export default function AccountPage() {
                 {user.plan === "pro" ? "Pro" : "Community"}
               </span>
             </div>
-            <button
-              type="button"
-              className="btn-secondary text-sm"
-              onClick={onSignOut}
-              disabled={busy}
-            >
-              Sign out
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {user.profileSlug ? (
+                <a
+                  href={`/u/${user.profileSlug}`}
+                  className="btn-secondary text-sm"
+                >
+                  View public profile
+                </a>
+              ) : null}
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={onSignOut}
+                disabled={busy}
+              >
+                Sign out
+              </button>
+            </div>
+            {user.profileSlug ? (
+              <p className="text-xs text-sage-600">
+                Public URL:{" "}
+                <code className="rounded bg-cream-100 px-1.5 py-0.5 font-mono text-sage-800">
+                  /u/{user.profileSlug}
+                </code>
+              </p>
+            ) : null}
           </div>
 
           <RecipeRequestsInbox />

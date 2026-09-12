@@ -113,7 +113,7 @@ export function RecipeRequestsInbox() {
   const pendingTotal = groups.reduce((n, g) => n + g.requests.length, 0);
 
   return (
-    <div className="card p-5 space-y-4">
+    <div id="recipe-requests" className="card p-5 space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-xl font-bold text-sage-900">
           Recipe requests

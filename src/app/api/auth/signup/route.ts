@@ -8,6 +8,7 @@ import {
   hashPassword,
   publicUser,
 } from "@/lib/auth";
+import { allocateProfileSlugForCreate } from "@/lib/public-profile";
 
 const schema = z.object({
   email: z.string().email().max(200),
@@ -30,10 +31,15 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(data.password);
+    const profileSlug = await allocateProfileSlugForCreate(
+      email,
+      data.name?.trim() || null
+    );
     const created = await prisma.user.create({
       data: {
         email,
         name: data.name?.trim() || null,
+        profileSlug,
         passwordHash,
         plan: "community",
       },

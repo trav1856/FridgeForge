@@ -130,6 +130,7 @@ export function publicUser(user: AuthUser) {
     id: user.id,
     email: user.email,
     name: user.name,
+    profileSlug: user.profileSlug ?? null,
     plan: user.plan,
     role: user.role === "admin" ? "admin" : "user",
     disabled: Boolean(user.disabled),

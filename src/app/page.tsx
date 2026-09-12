@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StruggleBanner } from "@/components/StruggleBanner";
+import { YourKitchenStrip } from "@/components/YourKitchenStrip";
 import { RecipeOfTheWeek } from "@/components/RecipeOfTheWeek";
 import { PopularThisWeek } from "@/components/PopularThisWeek";
 
@@ -9,6 +10,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <StruggleBanner />
+      <YourKitchenStrip />
 
       <section className="overflow-hidden rounded-3xl border border-cream-300 bg-gradient-to-br from-cream-50 via-white to-ember-50 p-6 shadow-card sm:p-10">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-ember-700">
