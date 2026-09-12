@@ -34,6 +34,7 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
               <Link
                 href={`/coupons/${d.id}`}
                 className="font-semibold text-ember-700 hover:underline"
+                onClick={(e) => e.stopPropagation()}
               >
                 {d.brand}
               </Link>
@@ -86,6 +87,7 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
                 <Link
                   href={`/coupons/${d.id}`}
                   className="btn-primary shrink-0 px-3 py-1.5 text-xs"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   Redeem
                 </Link>

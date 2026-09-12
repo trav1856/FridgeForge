@@ -402,7 +402,7 @@ function Section({
                     alt=""
                     className="rounded-none rounded-t-xl"
                   />
-                  <div className="p-4 pb-16">
+                  <div className="p-4 pb-0">
                     <div className="mb-1 flex flex-wrap gap-1.5">
                       {isPick && (
                         <span className="badge bg-ember-600 text-white">
@@ -480,7 +480,10 @@ function Section({
                         ✨ {s.creativeNote}
                       </p>
                     )}
-
+                  </div>
+                </Link>
+                {/* Coupon links stay outside the recipe card anchor — nested anchors break hydration. */}
+                <div className="px-4 pb-16">
                     <DealsBanner deals={s.deals || []} compact />
 
                     {s.recipe.flavorBoosters.length > 0 && (
@@ -496,8 +499,7 @@ function Section({
                         ))}
                       </ul>
                     )}
-                  </div>
-                </Link>
+                </div>
                 <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center justify-between gap-2">
                   {s.missingCount > 0 ? (
                     <AddToShoppingList
