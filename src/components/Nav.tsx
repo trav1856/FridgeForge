@@ -14,6 +14,7 @@ const links = [
   { href: "/recipes", label: "Recipes" },
   { href: "/suggestions", label: "Cook Now" },
   { href: "/coupons", label: "Coupons" },
+  { href: "/howto", label: "How-to" },
 ];
 
 export function Nav() {

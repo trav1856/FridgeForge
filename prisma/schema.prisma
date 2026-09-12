@@ -31,6 +31,8 @@ model User {
   reviews      RecipeReview[]
   cookSessions RecipeCookSession[]
   cookStats    RecipeCookStat[]
+  howToLessonProgress HowToLessonProgress[]
+  howToBadges         HowToUserBadge[]
 }
 
 model Session {
@@ -339,4 +341,79 @@ model RecipeCookStat {
   @@index([householdId])
 }
 
+
+model HowToBadge {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  description String?
+  emoji       String          @default("🏅")
+  createdAt   DateTime        @default(now())
+  courses     HowToCourse[]
+  awards      HowToUserBadge[]
+}
+
+model HowToCourse {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String?
+  sortOrder   Int          @default(0)
+  badgeId     String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  badge       HowToBadge?  @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  lessons     HowToLesson[]
+
+  @@index([sortOrder])
+  @@index([badgeId])
+}
+
+model HowToLesson {
+  id               String                @id @default(cuid())
+  courseId         String
+  slug             String
+  title            String
+  summary          String?
+  /** Plain-text lesson body; paragraphs separated by blank lines. */
+  body             String
+  sortOrder        Int                   @default(0)
+  estimatedMinutes Int?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  course           HowToCourse           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress         HowToLessonProgress[]
+
+  @@unique([courseId, slug])
+  @@index([courseId])
+  @@index([sortOrder])
+}
+
+model HowToLessonProgress {
+  id          String     @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      HowToLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+model HowToUserBadge {
+  id        String     @id @default(cuid())
+  userId    String
+  badgeId   String
+  /** Course that triggered the award (optional for future one-off badges). */
+  courseId  String?
+  awardedAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     HowToBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+}
 

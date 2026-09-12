@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
+import { HowToBadgesPanel } from "@/components/HowToBadgesPanel";
 
 type Household = {
   id: string;
@@ -280,6 +281,8 @@ export default function AccountPage() {
           </div>
 
           <RecipeRequestsInbox />
+
+          <HowToBadgesPanel />
 
           <div className="card p-5 space-y-4">
             <h2 className="font-display text-xl font-bold text-sage-900">

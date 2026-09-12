@@ -14,10 +14,14 @@ function clientIsCurrent(client: PrismaClient): boolean {
   const c = client as {
     recipeCookSession?: unknown;
     recipeCookStat?: unknown;
+    howToCourse?: unknown;
+    howToLessonProgress?: unknown;
   };
   return (
     typeof c.recipeCookSession !== "undefined" &&
-    typeof c.recipeCookStat !== "undefined"
+    typeof c.recipeCookStat !== "undefined" &&
+    typeof c.howToCourse !== "undefined" &&
+    typeof c.howToLessonProgress !== "undefined"
   );
 }
 
