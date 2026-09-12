@@ -19,8 +19,15 @@ next-env.d.ts
 .vitest
 
 
-# Local Corelia ops (scripts, archives — not for GitHub)
-/ops/
+# Local Corelia ops (ignore by default; track keepalive LaunchAgent only)
+/ops/**
+!/ops/ff-next-run.sh
+!/ops/ff-keepalive-lib.sh
+!/ops/com.fridgeforge.next.plist
+!/ops/FridgeForge-keepalive-install.command
+!/ops/FridgeForge-keepalive-stop.command
+!/ops/FridgeForge-keepalive-status.command
+!/ops/FridgeForge-stop.command
 
 # Admin-uploaded badge photos (keep folder)
 /public/badge-images/*
