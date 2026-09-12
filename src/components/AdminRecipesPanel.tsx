@@ -14,6 +14,7 @@ import {
   nextVisibility,
   visibilityLabel,
 } from "@/lib/recipe-visibility";
+import { hasRecipePhoto } from "@/lib/recipe-image";
 import { RecipeShareManager } from "./RecipeShareManager";
 
 type RecipeRow = {
@@ -30,6 +31,7 @@ type RecipeRow = {
   origins?: string[];
   originStory?: string | null;
   tags?: string[];
+  imageUrl?: string | null;
 };
 
 type Props = { initial: RecipeRow[] };
@@ -43,6 +45,7 @@ export function AdminRecipesPanel({ initial }: Props) {
   const [course, setCourse] = useState("");
   const [foodCategory, setFoodCategory] = useState("");
   const [origin, setOrigin] = useState("");
+  const [photoFilter, setPhotoFilter] = useState<"" | "has" | "missing">("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCuisine, setEditCuisine] = useState("");
   const [editCourse, setEditCourse] = useState("");
@@ -52,16 +55,23 @@ export function AdminRecipesPanel({ initial }: Props) {
 
   const filtered = useMemo(
     () =>
-      rows.filter((r) =>
-        matchesTaxonomyFilters(r, {
-          q,
-          cuisine: cuisine || null,
-          course: course || null,
-          foodCategory: foodCategory || null,
-          origin: origin || null,
-        })
-      ),
-    [rows, q, cuisine, course, foodCategory, origin]
+      rows.filter((r) => {
+        if (
+          !matchesTaxonomyFilters(r, {
+            q,
+            cuisine: cuisine || null,
+            course: course || null,
+            foodCategory: foodCategory || null,
+            origin: origin || null,
+          })
+        ) {
+          return false;
+        }
+        if (photoFilter === "has") return hasRecipePhoto(r.imageUrl);
+        if (photoFilter === "missing") return !hasRecipePhoto(r.imageUrl);
+        return true;
+      }),
+    [rows, q, cuisine, course, foodCategory, origin, photoFilter]
   );
 
   async function patch(id: string, body: Record<string, unknown>) {
@@ -144,7 +154,7 @@ export function AdminRecipesPanel({ initial }: Props) {
     <div className="space-y-3">
       <p className="text-sm text-sage-600">
         {filtered.length} of {rows.length} recipes — search, filter, edit taxonomy,
-        visibility, struggle flag, or delete.
+        visibility, photo status, struggle flag, or delete.
       </p>
 
       <div className="card space-y-2 p-3">
@@ -211,6 +221,17 @@ export function AdminRecipesPanel({ initial }: Props) {
               </optgroup>
             ))}
           </select>
+          <select
+            className="input max-w-[12rem] text-sm"
+            value={photoFilter}
+            onChange={(e) =>
+              setPhotoFilter(e.target.value as "" | "has" | "missing")
+            }
+          >
+            <option value="">Any photo status</option>
+            <option value="has">Has photo</option>
+            <option value="missing">Missing photo</option>
+          </select>
         </div>
       </div>
 
@@ -226,7 +247,17 @@ export function AdminRecipesPanel({ initial }: Props) {
                 >
                   {r.title}
                 </Link>
-                <div className="mt-0.5 text-[11px] text-sage-500">
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-sage-500">
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-medium ${
+                      hasRecipePhoto(r.imageUrl)
+                        ? "bg-sage-100 text-sage-800"
+                        : "bg-ember-100 text-ember-800"
+                    }`}
+                  >
+                    {hasRecipePhoto(r.imageUrl) ? "Has photo" : "Missing photo"}
+                  </span>
+                  <span>
                   {r.costTier}
                   {r.isStruggleMeal ? " · struggle" : ""}
                   {r.householdId ? "" : " · shared catalog"}
@@ -240,6 +271,7 @@ export function AdminRecipesPanel({ initial }: Props) {
                   {(r.origins || []).length
                     ? ` · origins: ${(r.origins || []).join(", ")}`
                     : ""}
+                  </span>
                 </div>
               </div>
               <button

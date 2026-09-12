@@ -58,7 +58,29 @@ export const MEALDB_TITLE_KEYWORDS: Record<string, string> = {
  * (e.g. "cookie" → Peanut Butter Cookies thumb for Chocolate Chip Cookies).
  */
 export const LOCAL_RECIPE_IMAGES: Record<string, string> = {
+  "Banana Bread": "/recipe-images/banana-bread.jpg",
+  "Basic Roast Chicken": "/recipe-images/basic-roast-chicken.jpg",
+  "Boiled / Steamed Rice": "/recipe-images/boiled-steamed-rice.jpg",
+  "Carrot-Onion Tomato Soup": "/recipe-images/carrot-onion-tomato-soup.jpg",
+  "Cheesy Egg Tortilla Melts": "/recipe-images/cheesy-egg-tortilla-melts.jpg",
+  "Chili / Taco Filling": "/recipe-images/chili-taco-filling.jpg",
   "Chocolate Chip Cookies": "/recipe-images/chocolate-chip-cookies.jpg",
+  "Classic Apple Pie": "/recipe-images/classic-apple-pie.jpg",
+  "Crispy Potato Hash with Eggs": "/recipe-images/crispy-potato-hash-eggs.jpg",
+  "Garlic Fried Rice with Crispy Egg": "/recipe-images/garlic-fried-rice-crispy-egg.jpg",
+  "Grilled Cheese": "/recipe-images/grilled-cheese.jpg",
+  "Lemon-Garlic Butter Pasta": "/recipe-images/lemon-garlic-butter-pasta.jpg",
+  "Lo Mein Noodles": "/recipe-images/lo-mein-noodles.jpg",
+  "Mashed Potatoes": "/recipe-images/mashed-potatoes.jpg",
+  "Pancakes": "/recipe-images/pancakes.jpg",
+  "Pantry Tuna Pasta": "/recipe-images/pantry-tuna-pasta.jpg",
+  "Peanut-Cabbage Noodle Stir": "/recipe-images/peanut-cabbage-noodle-stir.jpg",
+  "Scrambled Eggs": "/recipe-images/scrambled-eggs.jpg",
+  "Simple Chicken Soup": "/recipe-images/simple-chicken-soup.jpg",
+  "Smoky Beans & Rice Bowl": "/recipe-images/smoky-beans-rice-bowl.jpg",
+  "Spaghetti with Simple Tomato Sauce": "/recipe-images/spaghetti-tomato-sauce.jpg",
+  "Tomato Basil Grilled Cheese": "/recipe-images/tomato-basil-grilled-cheese.jpg",
+  "Veg & Protein Stir-Fry": "/recipe-images/veg-protein-stir-fry.jpg",
 };
 
 /** Known wrong TheMealDB thumbs we should never keep (Peanut Butter Cookies image). */
@@ -378,8 +400,14 @@ export async function resolveRecipeImageUrl(opts: {
 export function needsMealDbImage(imageUrl: string | null | undefined): boolean {
   if (!imageUrl || !imageUrl.trim()) return true;
   if (imageUrl === RECIPE_PLACEHOLDER_PATH) return true;
+  if (imageUrl.includes("placeholder.svg")) return true;
   if (imageUrl.includes("foodish-api.com")) return true;
   if (imageUrl.includes("loremflickr")) return true;
   if (KNOWN_WRONG_MEALDB_URLS.some((u) => imageUrl.includes("1544384070"))) return true;
   return false;
+}
+
+/** Admin/UI: recipe has a real photo path/URL (not empty/placeholder/junk). */
+export function hasRecipePhoto(imageUrl: string | null | undefined): boolean {
+  return !needsMealDbImage(imageUrl);
 }
