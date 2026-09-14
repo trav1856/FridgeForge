@@ -8,6 +8,7 @@ import { RecipeImage } from "./RecipeImage";
 import { RecipeIcons } from "./RecipeIcons";
 import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
+import { RecipeCardRating } from "./RecipeCardRating";
 import {
   COURSES,
   CUISINES,
@@ -34,6 +35,8 @@ type Recipe = {
   ownerUserId?: string | null;
   visibility?: string;
   householdId?: string | null;
+  averageStars?: number | null;
+  reviewCount?: number;
 };
 
 type Scope = "all" | "mine" | "household" | "favorites";
@@ -447,6 +450,11 @@ export function RecipeList() {
                   <h3 className="font-display text-lg font-bold text-sage-900">
                     {r.title}
                   </h3>
+                  <RecipeCardRating
+                    averageStars={r.averageStars}
+                    reviewCount={r.reviewCount}
+                    className="mt-1"
+                  />
                   {r.description && (
                     <p className="mt-1 line-clamp-2 text-sm text-sage-600">
                       {r.description}

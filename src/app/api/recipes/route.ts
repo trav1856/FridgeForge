@@ -11,6 +11,10 @@ import { stringifyArray } from "@/lib/json";
 import { serializeRecipe } from "@/lib/mappers";
 import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
+import {
   matchesTaxonomyFilters,
   normalizeCuisine,
   normalizeCourse,
@@ -128,14 +132,21 @@ export async function GET(req: NextRequest) {
       { q, cuisine, course, foodCategory, origin }
     );
   });
+  const reviewStats = await getReviewStatsByRecipeIds(
+    filtered.map((r) => r.id)
+  );
+
   return NextResponse.json(
     filtered.map((r) => {
       const { favorites, ...rest } = r as typeof r & {
         favorites?: { id: string }[];
       };
+      const stats = reviewStatsFor(reviewStats, r.id);
       return {
         ...serializeRecipe(rest),
         favorited: Array.isArray(favorites) ? favorites.length > 0 : false,
+        averageStars: stats.averageStars,
+        reviewCount: stats.reviewCount,
       };
     })
   );

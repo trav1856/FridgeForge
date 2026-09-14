@@ -10,6 +10,7 @@ import { RecipeIcons } from "./RecipeIcons";
 import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
+import { RecipeCardRating } from "./RecipeCardRating";
 import type { DealCouponSummary } from "@/lib/deals";
 import { buildMoodChips, pickSurprise, type MoodDef } from "@/lib/moods";
 
@@ -36,6 +37,8 @@ type Suggestion = {
     techniqueTips: string[];
     flavorBoosters: string[];
     ingredients?: { name: string }[];
+    averageStars?: number | null;
+    reviewCount?: number;
   };
 };
 
@@ -260,6 +263,11 @@ export function SuggestionsView() {
               <h2 className="font-display text-xl font-bold text-sage-900">
                 {tonightPick.recipe.title}
               </h2>
+              <RecipeCardRating
+                averageStars={tonightPick.recipe.averageStars}
+                reviewCount={tonightPick.recipe.reviewCount}
+                className="mt-1"
+              />
               <p className="mt-1 text-sm text-sage-600">
                 {tonightPick.canMakeNow
                   ? "You can make this now."
@@ -446,6 +454,11 @@ function Section({
                     <h3 className="font-display text-xl font-bold text-sage-900">
                       {s.recipe.title}
                     </h3>
+                    <RecipeCardRating
+                      averageStars={s.recipe.averageStars}
+                      reviewCount={s.recipe.reviewCount}
+                      className="mt-1"
+                    />
                     {s.recipe.description && (
                       <p className="mt-1 text-sm text-sage-600">
                         {s.recipe.description}

@@ -7,6 +7,10 @@ import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { collectAvailableTags, parseMoodParam } from "@/lib/moods";
 import { suggestMeals } from "@/lib/suggestions";
 import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
+import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
 
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
@@ -43,17 +47,31 @@ export async function GET(req: NextRequest) {
 
   const pantry = pantryItems.map(toPantrySnapshot);
   const recipeData = dedupeRecipesByTitle(recipes, householdId).map(toRecipeForMatch);
-  const suggestions = suggestMeals(recipeData, pantry, {
+  const ranked = suggestMeals(recipeData, pantry, {
     struggleMode,
     maxMissing: Number.isFinite(maxMissing) ? maxMissing : 2,
     maxMinutes,
     includeUnknownTime,
     mood,
     q,
-  }).map((s) => ({
-    ...s,
-    deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
-  }));
+  });
+
+  // Display-only averages — do not affect Cook Now ranking / soft-boost.
+  const reviewStats = await getReviewStatsByRecipeIds(
+    ranked.map((s) => s.recipe.id)
+  );
+  const suggestions = ranked.map((s) => {
+    const stats = reviewStatsFor(reviewStats, s.recipe.id);
+    return {
+      ...s,
+      recipe: {
+        ...s.recipe,
+        averageStars: stats.averageStars,
+        reviewCount: stats.reviewCount,
+      },
+      deals: findDealsForMissingIngredients(s.missingIngredients, coupons),
+    };
+  });
 
   const availableTags = collectAvailableTags(recipeData);
 

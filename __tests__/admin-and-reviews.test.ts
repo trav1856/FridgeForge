@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { isAdmin, adminBootstrapEmails, DEFAULT_ADMIN_EMAILS } from "@/lib/admin";
 import {
   REVIEW_BODY_MAX,
+  formatCardRating,
+  roundAverageStars,
   validateRecipeReview,
 } from "@/lib/recipe-review";
 
@@ -73,5 +75,24 @@ describe("recipe review validation", () => {
       stars: 2,
       body: "hi",
     });
+  });
+});
+
+describe("card rating display", () => {
+  it("rounds average to one decimal", () => {
+    expect(roundAverageStars(4.26)).toBe(4.3);
+    expect(roundAverageStars(null)).toBe(null);
+  });
+
+  it("formats when there are reviews and omits when empty", () => {
+    expect(
+      formatCardRating({ averageStars: 4.2, reviewCount: 3 })
+    ).toBe("4.2★ · 3");
+    expect(
+      formatCardRating({ averageStars: null, reviewCount: 0 })
+    ).toBe(null);
+    expect(
+      formatCardRating({ averageStars: 5, reviewCount: 0 })
+    ).toBe(null);
   });
 });

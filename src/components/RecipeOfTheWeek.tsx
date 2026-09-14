@@ -9,6 +9,11 @@ import {
 } from "@/lib/featured-meals";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIcons } from "@/components/RecipeIcons";
+import { RecipeCardRating } from "@/components/RecipeCardRating";
+import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
 
 const SLOT_EMOJI: Record<MealSlot, string> = {
   breakfast: "🌅",
@@ -43,6 +48,10 @@ export async function RecipeOfTheWeek() {
 
   const picks = pickFeaturedMeals(catalog);
   if (picks.length === 0) return null;
+
+  const reviewStats = await getReviewStatsByRecipeIds(
+    picks.map((p) => p.recipe.id)
+  );
 
   return (
     <section className="space-y-4">
@@ -107,6 +116,11 @@ export async function RecipeOfTheWeek() {
                 <h3 className="font-display text-lg font-bold text-sage-900 group-hover:text-ember-700">
                   {r.title}
                 </h3>
+                <RecipeCardRating
+                  averageStars={reviewStatsFor(reviewStats, r.id).averageStars}
+                  reviewCount={reviewStatsFor(reviewStats, r.id).reviewCount}
+                  className="mt-1"
+                />
                 {r.description && (
                   <p className="mt-1 line-clamp-2 text-sm text-sage-600">
                     {r.description}

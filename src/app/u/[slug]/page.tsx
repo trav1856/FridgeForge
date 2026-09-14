@@ -8,6 +8,7 @@ import {
 import { BadgeChip } from "@/components/BadgeChip";
 import { getPublicProfileBySlug } from "@/lib/public-profile";
 import { visibilityLabel } from "@/lib/recipe-visibility";
+import { RecipeCardRating } from "@/components/RecipeCardRating";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,11 @@ export default async function PublicProfilePage({ params }: Props) {
                       {r.description}
                     </p>
                   )}
+                  <RecipeCardRating
+                    averageStars={r.averageStars}
+                    reviewCount={r.reviewCount}
+                    className="mt-1"
+                  />
                   <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-sage-500">
                     {r.isStruggleMeal && <span>Struggle meal</span>}
                     {r.cookTimeMinutes != null && (

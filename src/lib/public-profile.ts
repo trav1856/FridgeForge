@@ -6,6 +6,10 @@ import {
   type RecipeAccessActor,
 } from "@/lib/recipe-visibility";
 import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
+import {
   defaultProfileSlugBase,
   isValidProfileSlug,
   slugifyProfileBase,
@@ -25,6 +29,8 @@ export type PublicProfileRecipe = {
   cookTimeMinutes: number | null;
   costTier: string;
   isStruggleMeal: boolean;
+  averageStars: number | null;
+  reviewCount: number;
 };
 
 export type PublicProfileDTO = {
@@ -148,19 +154,21 @@ export async function getPublicProfileBySlug(
     }),
   ]);
 
-  const recipes = owned
-    .filter((r) =>
-      recipeVisibleOnPublicProfile(
-        {
-          ownerUserId: r.ownerUserId,
-          visibility: r.visibility,
-          householdId: r.householdId,
-        },
-        user.id,
-        viewer
-      )
+  const visible = owned.filter((r) =>
+    recipeVisibleOnPublicProfile(
+      {
+        ownerUserId: r.ownerUserId,
+        visibility: r.visibility,
+        householdId: r.householdId,
+      },
+      user.id,
+      viewer
     )
-    .map((r) => ({
+  );
+  const reviewStats = await getReviewStatsByRecipeIds(visible.map((r) => r.id));
+  const recipes = visible.map((r) => {
+    const stats = reviewStatsFor(reviewStats, r.id);
+    return {
       id: r.id,
       title: r.title,
       description: r.description,
@@ -169,7 +177,10 @@ export async function getPublicProfileBySlug(
       cookTimeMinutes: r.cookTimeMinutes,
       costTier: r.costTier,
       isStruggleMeal: r.isStruggleMeal,
-    }));
+      averageStars: stats.averageStars,
+      reviewCount: stats.reviewCount,
+    };
+  });
 
   return {
     id: user.id,

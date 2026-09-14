@@ -42,3 +42,31 @@ export function validateRecipeReview(
 export function reviewShareText(recipeTitle: string, stars: number): string {
   return `I rated "${recipeTitle}" ${stars}/5 on FridgeForge`;
 }
+
+export type RecipeReviewStats = {
+  averageStars: number | null;
+  reviewCount: number;
+};
+
+export const EMPTY_REVIEW_STATS: RecipeReviewStats = {
+  averageStars: null,
+  reviewCount: 0,
+};
+
+/** Round to one decimal for card display (e.g. 4.2). */
+export function roundAverageStars(avg: number | null | undefined): number | null {
+  if (avg == null || !Number.isFinite(avg)) return null;
+  return Math.round(avg * 10) / 10;
+}
+
+/**
+ * Card label when there is at least one rating, e.g. "4.2★ · 3".
+ * Returns null when there are no reviews (omit clutter on cards).
+ */
+export function formatCardRating(stats: RecipeReviewStats): string | null {
+  if (stats.reviewCount <= 0) return null;
+  const avg = roundAverageStars(stats.averageStars);
+  if (avg == null) return null;
+  const count = stats.reviewCount;
+  return `${avg.toFixed(1)}★ · ${count}`;
+}

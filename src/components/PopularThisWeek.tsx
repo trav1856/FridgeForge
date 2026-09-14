@@ -8,6 +8,11 @@ import {
 } from "@/lib/trending-recipes";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIcons } from "@/components/RecipeIcons";
+import { RecipeCardRating } from "@/components/RecipeCardRating";
+import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
 
 const LIMIT = 6;
 
@@ -128,6 +133,10 @@ export async function PopularThisWeek() {
   );
   if (picks.length === 0) return null;
 
+  const reviewStats = await getReviewStatsByRecipeIds(
+    picks.map((p) => p.recipe.id)
+  );
+
   const usingFallback = picks[0]?.source === "fallback";
   const subtitle = usingFallback
     ? "A taste of the shared catalog — favorite recipes to help this list climb."
@@ -182,6 +191,11 @@ export async function PopularThisWeek() {
                 <h3 className="font-display text-lg font-bold text-sage-900 group-hover:text-ember-700">
                   {r.title}
                 </h3>
+                <RecipeCardRating
+                  averageStars={reviewStatsFor(reviewStats, r.id).averageStars}
+                  reviewCount={reviewStatsFor(reviewStats, r.id).reviewCount}
+                  className="mt-1"
+                />
                 {r.description && (
                   <p className="mt-1 line-clamp-2 text-sm text-sage-600">
                     {r.description}
