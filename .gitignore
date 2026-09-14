@@ -32,3 +32,7 @@ next-env.d.ts
 # Admin-uploaded badge photos (keep folder)
 /public/badge-images/*
 !/public/badge-images/.gitkeep
+
+# User-uploaded recipe photos (keep folder)
+/public/recipe-images/user/*
+!/public/recipe-images/user/.gitkeep

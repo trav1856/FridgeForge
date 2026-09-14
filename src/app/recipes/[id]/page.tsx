@@ -10,6 +10,8 @@ import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIngredients } from "@/components/RecipeIngredients";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeDetailActions } from "@/components/RecipeDetailActions";
+import { RecipePhotoUpload } from "@/components/RecipePhotoUpload";
+import { canEditRecipeImage } from "@/lib/recipe-user-images";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
@@ -60,6 +62,10 @@ export default async function RecipeDetailPage({ params }: Props) {
       visibility: raw.visibility,
     },
     user ? { userId: user.id, householdId } : null
+  );
+  const canEditPhoto = canEditRecipeImage(
+    { ownerUserId: raw.ownerUserId, householdId: raw.householdId },
+    { userId: user?.id ?? null, householdId }
   );
   const favorited =
     user && Array.isArray((raw as { favorites?: unknown[] }).favorites)
@@ -177,8 +183,18 @@ export default async function RecipeDetailPage({ params }: Props) {
           ))}
         </div>
         <div className="mt-3 flex max-w-4xl flex-col gap-4 md:flex-row md:items-start">
-          <div className="min-w-0 flex-1 max-w-2xl">
+          <div className="min-w-0 flex-1 max-w-2xl space-y-3">
             <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+            {canEditPhoto && (
+              <div className="card p-4">
+                <RecipePhotoUpload
+                  recipeId={recipe.id}
+                  imageUrl={recipe.imageUrl}
+                  alt={recipe.title}
+                  showPreview={false}
+                />
+              </div>
+            )}
           </div>
           <div className="md:w-44 md:shrink-0 lg:w-52">
             <RecipeVariants variants={variants} />

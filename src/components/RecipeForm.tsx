@@ -4,6 +4,10 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
 import {
+  RecipePhotoUpload,
+  uploadRecipePhotoAfterCreate,
+} from "./RecipePhotoUpload";
+import {
   COURSES,
   CUISINES,
   FOOD_CATEGORIES,
@@ -78,6 +82,7 @@ export function RecipeForm() {
   const [ingredients, setIngredients] = useState<Ing[]>([blankIng()]);
   const [importUrl, setImportUrl] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [suggestPaste, setSuggestPaste] = useState(false);
@@ -228,6 +233,17 @@ export function RecipeForm() {
         throw new Error(data.error ? JSON.stringify(data.error) : "Save failed");
       }
       const created = await res.json();
+      if (pendingPhoto) {
+        const up = await uploadRecipePhotoAfterCreate(created.id, pendingPhoto);
+        if (!up.ok) {
+          setError(
+            `Recipe saved, but photo failed: ${up.error}. You can add a photo on the recipe page.`
+          );
+          setSaving(false);
+          router.push(`/recipes/${created.id}`);
+          return;
+        }
+      }
       router.push(`/recipes/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save recipe");
@@ -293,7 +309,7 @@ export function RecipeForm() {
             )}
           </p>
         )}
-        {imageUrl && (
+        {imageUrl && !pendingPhoto && (
           <div className="max-w-sm">
             <RecipeImage src={imageUrl} alt={title || "Imported recipe"} />
           </div>
@@ -371,6 +387,19 @@ export function RecipeForm() {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
+        <RecipePhotoUpload
+          imageUrl={imageUrl}
+          alt={title || "Recipe photo"}
+          pendingFile={pendingPhoto}
+          onPendingFileChange={(file) => {
+            setPendingPhoto(file);
+            if (file) {
+              // Prefer user photo over imported scrape URL on save
+              setImageUrl(null);
+            }
+          }}
+          onImageUrlChange={setImageUrl}
+        />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="label">Cost tier</label>
