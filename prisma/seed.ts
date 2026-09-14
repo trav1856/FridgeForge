@@ -39,6 +39,7 @@ async function main() {
     await prisma.howToLesson.deleteMany().catch(() => {});
     await prisma.howToCourse.deleteMany().catch(() => {});
     await prisma.howToBadge.deleteMany().catch(() => {});
+    await prisma.struggleResource.deleteMany().catch(() => {});
     await prisma.coupon.deleteMany();
     await prisma.customPantryStaple.deleteMany().catch(() => {});
     await prisma.household.deleteMany();
@@ -1399,7 +1400,16 @@ Write down what fixed a dish once you nail it. Next time is faster.`,
     }
   }
 
+  // Struggle Mode tips / kids-meal cards (non-destructive by slug)
+  const { ensureStruggleResourcesSeeded } = await import(
+    "../src/lib/struggle-resources"
+  );
+  const struggleSeed = await ensureStruggleResourcesSeeded();
   console.log(
+    `Struggle resources seed: +${struggleSeed.created} created (${struggleSeed.updated} force-updated)`
+  );
+
+    console.log(
     `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}, stories +${storiesFilled}), coupons +${couponsCreated}, howto courses ${howtoCoursesEnsured} (new lessons +${howtoLessonsEnsured}). forceReset=${forceReset}`
   );
   console.log(

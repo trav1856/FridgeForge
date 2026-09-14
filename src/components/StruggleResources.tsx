@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useStruggleMode } from "./StruggleModeProvider";
-import {
-  BUDGET_GROCERY_TIPS,
-  KIDS_MEAL_CAVEATS,
-  KIDS_MEAL_DEALS,
-  NON_RESTAURANT_KID_FOOD,
-} from "@/lib/struggle-content";
+import { KIDS_MEAL_CAVEATS } from "@/lib/struggle-content";
+import type { StruggleResourceDTO } from "@/lib/struggle-resources";
+
+type Props = {
+  tips: StruggleResourceDTO[];
+  kidsMeals: StruggleResourceDTO[];
+};
 
 /** Full Struggle hub body — content only when Struggle Mode is on. */
-export function StruggleResources() {
+export function StruggleResources({ tips, kidsMeals }: Props) {
   const { struggleMode, setStruggleMode } = useStruggleMode();
 
   if (!struggleMode) {
@@ -49,7 +50,8 @@ export function StruggleResources() {
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-sage-700">
           Practical grocery habits and a snapshot of family restaurant deals.
-          No lectures — just options when money is tight.
+          Tap a card for the fuller write-up. No lectures — just options when
+          money is tight.
         </p>
       </header>
 
@@ -61,17 +63,28 @@ export function StruggleResources() {
           <span className="badge bg-ember-100 text-ember-800">Shopping</span>
         </div>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {BUDGET_GROCERY_TIPS.map((tip) => (
-            <li key={tip.id} className="card p-4">
-              <h3 className="font-display text-lg font-bold text-sage-900">
-                {tip.title}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-sage-700">
-                {tip.body}
-              </p>
+          {tips.map((tip) => (
+            <li key={tip.id}>
+              <Link
+                href={`/struggle/${tip.slug}`}
+                className="card block h-full p-4 transition hover:shadow-card-hover"
+              >
+                <h3 className="font-display text-lg font-bold text-sage-900">
+                  {tip.title}
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-sage-700">
+                  {tip.summary}
+                </p>
+                <span className="mt-2 inline-block text-xs font-bold text-ember-700">
+                  Read more →
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
+        {tips.length === 0 && (
+          <p className="text-sm text-sage-600">No tips published yet.</p>
+        )}
       </section>
 
       <section id="kids-meals" className="scroll-mt-28 space-y-4">
@@ -92,33 +105,35 @@ export function StruggleResources() {
         </div>
 
         <ul className="grid gap-3 sm:grid-cols-2">
-          {KIDS_MEAL_DEALS.map((d) => (
-            <li key={d.id} className="card p-4">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-display text-lg font-bold text-sage-900">
-                  {d.place}
-                </h3>
-                {d.when && (
-                  <span className="badge shrink-0 bg-cream-200 text-sage-800">
-                    {d.when}
-                  </span>
-                )}
-              </div>
-              <p className="mt-1.5 text-sm leading-relaxed text-sage-700">
-                {d.note}
-              </p>
+          {kidsMeals.map((d) => (
+            <li key={d.id}>
+              <Link
+                href={`/struggle/${d.slug}`}
+                className="card block h-full p-4 transition hover:shadow-card-hover"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-display text-lg font-bold text-sage-900">
+                    {d.title}
+                  </h3>
+                  {d.whenLabel && (
+                    <span className="badge shrink-0 bg-cream-200 text-sage-800">
+                      {d.whenLabel}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-sm leading-relaxed text-sage-700">
+                  {d.summary}
+                </p>
+                <span className="mt-2 inline-block text-xs font-bold text-ember-700">
+                  Details →
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
-
-        <div className="card border-sage-200 bg-sage-50/60 p-5">
-          <h3 className="font-display text-lg font-bold text-sage-900">
-            {NON_RESTAURANT_KID_FOOD.title}
-          </h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-sage-700">
-            {NON_RESTAURANT_KID_FOOD.body}
-          </p>
-        </div>
+        {kidsMeals.length === 0 && (
+          <p className="text-sm text-sage-600">No kids-meal deals published yet.</p>
+        )}
       </section>
 
       <p className="text-center text-xs text-sage-500">

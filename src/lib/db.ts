@@ -16,12 +16,14 @@ function clientIsCurrent(client: PrismaClient): boolean {
     recipeCookStat?: unknown;
     howToCourse?: unknown;
     howToLessonProgress?: unknown;
+    struggleResource?: unknown;
   };
   return (
     typeof c.recipeCookSession !== "undefined" &&
     typeof c.recipeCookStat !== "undefined" &&
     typeof c.howToCourse !== "undefined" &&
-    typeof c.howToLessonProgress !== "undefined"
+    typeof c.howToLessonProgress !== "undefined" &&
+    typeof c.struggleResource !== "undefined"
   );
 }
 

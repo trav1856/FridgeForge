@@ -423,3 +423,28 @@ model HowToUserBadge {
   @@index([badgeId])
 }
 
+
+/** Struggle Mode hub cards (budget tips + kids-eat-free) — admin-editable. */
+model StruggleResource {
+  id        String   @id @default(cuid())
+  /** tip | kids_meal */
+  kind      String
+  title     String
+  slug      String   @unique
+  /** Short blurb on the list card. */
+  summary   String
+  /** Longer detail article (plain text; blank lines = paragraphs; optional markdown links). */
+  body      String   @default("")
+  /** JSON array: [{ "label": string, "url": string }] */
+  linksJson String   @default("[]")
+  /** Kids-meal cadence badge, e.g. "Wed", "Mon", "app Tue". */
+  whenLabel String?
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, sortOrder])
+  @@index([published])
+  @@index([kind, published, sortOrder])
+}

@@ -185,3 +185,51 @@ export const STRUGGLE_SECTIONS = [
     icon: "👨‍👩‍👧‍👦",
   },
 ] as const;
+
+/** Longer detail article for a budget tip (seed + fallback). */
+export function tipDetailBody(id: string, title: string, summary: string): string {
+  const extras: Record<string, string> = {
+    "pantry-first": `Make a quick inventory on your phone notes: proteins, grains, produce that needs using, and condiments. Cross items off the flyer that duplicate what you already own.
+
+FridgeForge’s pantry and shopping list help here — build the list after you know what’s home, then walk the store once.`,
+    "unit-price": `Unit price is the small number on the shelf tag (per oz, per lb, per 100ct). A “family size” bag can cost more per ounce than two smaller ones on sale.
+
+Watch for different units on neighboring tags (per lb vs per each). When in doubt, do the napkin math: price ÷ ounces.`,
+    "store-brands": `Store brands are often packed by the same plants as national labels. Start with low-risk staples — rice, beans, oats, canned tomatoes, frozen veg — then decide what brand loyalty is worth keeping.`,
+    "protein-value": `A pound of dry beans or a dozen eggs usually beats premium steaks on cost-per-protein. Chicken thighs stay juicy and forgive timing mistakes.
+
+Season aggressively: salt early, finish with acid or heat so “cheap” tastes intentional.`,
+    "frozen-produce": `Frozen veg is picked ripe and flash-frozen — often more consistent than limp “fresh” that sat on the truck. Keep a bag of mixed veg and berries for nights you can’t shop.`,
+    "batch-cook": `One tray of roasted vegetables + a pot of grains covers two dinners and a lunch. Cool leftovers quickly, label the container, and freeze what you won’t eat in three days.`,
+    "loyalty-apps": `Clip digital coupons that match your list before you shop. Ignore “spend $X more to unlock” ladders unless you already needed those items.`,
+    "season-sales": `Keep two or three flexible recipes (stir-fry, tacos, soup) that swap protein. Let the store flyer pick the protein; keep the method the same.`,
+    "waste-less": `Half an onion, leftover rice, and bread heels all freeze. A soft tomato becomes sauce; wilted greens go in soup. Waste is often a planning problem, not a willpower problem.`,
+    "flavor-cheap": `Build a tiny “flavor shelf”: soy or fish sauce, vinegar, chili, garlic, citrus, and one toasted spice. Salt in layers while cooking; finish with acid so the dish wakes up.`,
+  };
+  const extra = extras[id] ?? `A little planning around “${title.toLowerCase()}” saves more than most coupon hunts. Start with one change this week and keep what sticks.`;
+  return `${summary}
+
+${extra}`;
+}
+
+/** Longer detail article for a kids-meal deal (seed + fallback). */
+export function kidsMealDetailBody(
+  id: string,
+  place: string,
+  note: string,
+  when?: string
+): string {
+  const whenLine = when
+    ? `Typical cadence we’ve seen: ${when} (still verify — markets differ).`
+    : `Cadence varies by market — some nights, some app days, some always-on kids menus.`;
+  return `${note}
+
+${whenLine}
+
+Before you drive over:
+- Confirm today’s offer on the restaurant’s site, app, or by phone.
+- Ask about age cutoffs and how many kids meals per paying adult.
+- FridgeForge is not affiliated with ${place}; this is a community snapshot, not a coupon.
+
+If the deal isn’t running, ask about kids-menu pricing anyway — sometimes the plain kids plate is still the budget move.`;
+}

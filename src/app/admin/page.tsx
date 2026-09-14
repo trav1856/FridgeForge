@@ -11,6 +11,7 @@ export default async function AdminDashboardPage() {
     households,
     pantryItems,
     badges,
+    struggleCards,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "admin" } }),
@@ -20,6 +21,7 @@ export default async function AdminDashboardPage() {
     prisma.household.count(),
     prisma.pantryItem.count(),
     prisma.howToBadge.count(),
+    prisma.struggleResource.count(),
   ]);
 
   const stats = [
@@ -29,6 +31,7 @@ export default async function AdminDashboardPage() {
     { label: "Public recipes", value: publicRecipes, href: "/admin/recipes" },
     { label: "Reviews", value: reviews, href: "/admin/recipes" },
     { label: "Badges", value: badges, href: "/admin/badges" },
+    { label: "Struggle cards", value: struggleCards, href: "/admin/struggle" },
     { label: "Households", value: households },
     { label: "Pantry items", value: pantryItems },
   ];
@@ -36,7 +39,7 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-sage-600">
-        Manage recipes, users, and badges. Recipe ratings are available to all
+        Manage recipes, users, badges, and Struggle cards. Recipe ratings are available to all
         signed-in cooks — this panel is admin-only.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">

@@ -40,6 +40,9 @@ export default async function AdminLayout({
           <Link href="/admin/badges" className="btn-ghost text-xs">
             Badges
           </Link>
+          <Link href="/admin/struggle" className="btn-ghost text-xs">
+            Struggle
+          </Link>
         </nav>
       </div>
       {children}
