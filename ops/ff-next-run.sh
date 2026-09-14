@@ -26,4 +26,6 @@ echo "$(date '+%Y-%m-%d %H:%M:%S %Z') ff-next-run: starting next dev on :3000 (p
 
 # exec next directly so LaunchAgent KeepAlive watches the server process
 # (not an npm parent that can outlive a crashed next-server child).
-exec "$ROOT/node_modules/.bin/next" dev --port 3000 --hostname 0.0.0.0
+# Bind :: so mDNS/corelia.local (often IPv6-first in Chrome) can connect.
+# On macOS/Node this dual-stacks unless ipv6Only is forced.
+exec "$ROOT/node_modules/.bin/next" dev --port 3000 --hostname ::
