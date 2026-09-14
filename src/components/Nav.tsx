@@ -7,7 +7,7 @@ import { useStruggleMode } from "./StruggleModeProvider";
 import clsx from "clsx";
 import { RECIPE_REQUESTS_CHANGED_EVENT } from "@/lib/recipe-request";
 
-const links = [
+const baseLinks = [
   { href: "/", label: "Home" },
   { href: "/pantry", label: "Pantry" },
   { href: "/shopping-list", label: "List" },
@@ -16,6 +16,8 @@ const links = [
   { href: "/coupons", label: "Coupons" },
   { href: "/howto", label: "How-to" },
 ];
+
+const struggleLink = { href: "/struggle", label: "Struggle" };
 
 export function Nav() {
   const pathname = usePathname();
@@ -158,7 +160,7 @@ export function Nav() {
       </div>
 
       <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
-        {links.map((l) => {
+        {[...baseLinks, ...(struggleMode ? [struggleLink] : [])].map((l) => {
           const active =
             l.href === "/"
               ? pathname === "/"
