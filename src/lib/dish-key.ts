@@ -42,6 +42,8 @@ export const STAPLE_DISH_KEYS: Record<string, string> = {
   "Simple Chicken Soup": "chicken-soup",
   "Veg & Protein Stir-Fry": "stir-fry",
   "Garlic Fried Rice with Crispy Egg": "fried-rice",
+  "Uncle Roger Egg Fried Rice": "fried-rice",
+  "Wok Hei Vegetable Fried Rice": "fried-rice",
   "Smoky Beans & Rice Bowl": "beans-and-rice",
 };
 

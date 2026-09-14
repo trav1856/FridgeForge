@@ -15,6 +15,11 @@ describe("dishKeyForTitle", () => {
     expect(dishKeyForTitle("Tomato Basil Grilled Cheese")).toBe(
       "grilled-cheese"
     );
+    expect(dishKeyForTitle("Garlic Fried Rice with Crispy Egg")).toBe(
+      "fried-rice"
+    );
+    expect(dishKeyForTitle("Uncle Roger Egg Fried Rice")).toBe("fried-rice");
+    expect(dishKeyForTitle("Wok Hei Vegetable Fried Rice")).toBe("fried-rice");
   });
 });
 

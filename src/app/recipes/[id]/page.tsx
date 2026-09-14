@@ -17,6 +17,11 @@ import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
 import { RecipeVariants } from "@/components/RecipeVariants";
 import { dishKeyForTitle } from "@/lib/dish-key";
+import { pickDishVariantHighlights } from "@/lib/dish-variant-picks";
+import {
+  getReviewStatsByRecipeIds,
+  reviewStatsFor,
+} from "@/lib/recipe-review-stats";
 import { recipeListAccessWhere } from "@/lib/recipe-visibility";
 
 type Props = { params: Promise<{ id: string }> };
@@ -89,7 +94,24 @@ export default async function RecipeDetailPage({ params }: Props) {
     (raw as { dishKey?: string | null }).dishKey ||
     dishKeyForTitle(recipe.title);
 
-  let variants: { id: string; title: string; imageUrl: string | null }[] = [];
+  let featuredVariants: ReturnType<
+    typeof pickDishVariantHighlights<{
+      id: string;
+      title: string;
+      imageUrl: string | null;
+      createdAt: Date;
+      averageStars: number | null;
+      reviewCount: number;
+    }>
+  >["featured"] = [];
+  let restVariants: {
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    averageStars?: number | null;
+    reviewCount?: number;
+  }[] = [];
+
   if (dishKey) {
     const access = recipeListAccessWhere({
       userId: user?.id,
@@ -100,7 +122,6 @@ export default async function RecipeDetailPage({ params }: Props) {
       where: {
         AND: [
           access,
-          { id: { not: recipe.id } },
           {
             OR: [
               { dishKey },
@@ -121,21 +142,50 @@ export default async function RecipeDetailPage({ params }: Props) {
           },
         ],
       },
-      select: { id: true, title: true, imageUrl: true, dishKey: true },
-      take: 24,
-      orderBy: { title: "asc" },
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        dishKey: true,
+        createdAt: true,
+      },
+      take: 48,
+      orderBy: { createdAt: "asc" },
     });
-    // Prefer exact dishKey matches; de-dupe; cap ~12
+    // Prefer exact dishKey matches; de-dupe; include current recipe in the pool
     const exact = rows.filter((r) => r.dishKey === dishKey);
-    const rest = rows.filter((r) => r.dishKey !== dishKey);
+    const fuzzy = rows.filter((r) => r.dishKey !== dishKey);
     const seen = new Set<string>();
-    variants = [];
-    for (const r of [...exact, ...rest]) {
+    const pooled: typeof rows = [];
+    for (const r of [...exact, ...fuzzy]) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
-      variants.push({ id: r.id, title: r.title, imageUrl: r.imageUrl });
-      if (variants.length >= 12) break;
+      pooled.push(r);
+      if (pooled.length >= 24) break;
     }
+
+    const reviewStats = await getReviewStatsByRecipeIds(pooled.map((r) => r.id));
+    const candidates = pooled.map((r) => {
+      const stats = reviewStatsFor(reviewStats, r.id);
+      return {
+        id: r.id,
+        title: r.title,
+        imageUrl: r.imageUrl,
+        createdAt: r.createdAt,
+        averageStars: stats.averageStars,
+        reviewCount: stats.reviewCount,
+      };
+    });
+
+    const picks = pickDishVariantHighlights(candidates);
+    featuredVariants = picks.featured;
+    restVariants = picks.rest.map((r) => ({
+      id: r.id,
+      title: r.title,
+      imageUrl: r.imageUrl,
+      averageStars: r.averageStars,
+      reviewCount: r.reviewCount,
+    }));
   }
 
   return (
@@ -182,24 +232,28 @@ export default async function RecipeDetailPage({ params }: Props) {
             </span>
           ))}
         </div>
-        <div className="mt-3 flex max-w-4xl flex-col gap-4 md:flex-row md:items-start">
-          <div className="min-w-0 flex-1 max-w-2xl space-y-3">
-            <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
-            {canEditPhoto && (
-              <div className="card p-4">
-                <RecipePhotoUpload
-                  recipeId={recipe.id}
-                  imageUrl={recipe.imageUrl}
-                  alt={recipe.title}
-                  showPreview={false}
-                />
-              </div>
-            )}
-          </div>
-          <div className="md:w-44 md:shrink-0 lg:w-52">
-            <RecipeVariants variants={variants} />
-          </div>
+        <div className="mt-3 max-w-2xl space-y-3">
+          <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+          {canEditPhoto && (
+            <div className="card p-4">
+              <RecipePhotoUpload
+                recipeId={recipe.id}
+                imageUrl={recipe.imageUrl}
+                alt={recipe.title}
+                showPreview={false}
+              />
+            </div>
+          )}
         </div>
+        {(featuredVariants.length > 0 || restVariants.length > 0) && (
+          <div className="mt-4 max-w-4xl">
+            <RecipeVariants
+              featured={featuredVariants}
+              rest={restVariants}
+              currentRecipeId={recipe.id}
+            />
+          </div>
+        )}
         <RecipeIcons
           title={recipe.title}
           tags={recipe.tags}
