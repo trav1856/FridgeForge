@@ -35,6 +35,7 @@ model User {
   cookStats    RecipeCookStat[]
   howToLessonProgress HowToLessonProgress[]
   howToBadges         HowToUserBadge[]
+  weeklyMenuPlans     WeeklyMenuPlan[]
 }
 
 model Session {
@@ -64,6 +65,7 @@ model Household {
   sharesReceived RecipeShare[]
   cookSessions RecipeCookSession[]
   cookStats    RecipeCookStat[]
+  weeklyMenuPlans WeeklyMenuPlan[]
 }
 
 model HouseholdMember {
@@ -256,6 +258,23 @@ model ShoppingListItem {
   @@index([householdId])
   @@index([userId])
   @@index([checked])
+}
+
+/** Current week meal plan (breakfast/lunch/dinner × 7) per household or user. */
+model WeeklyMenuPlan {
+  id           String     @id @default(cuid())
+  householdId  String?
+  userId       String?
+  /** JSON WeeklyMenuPlanData */
+  planJson     String
+  struggleMode Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  household    Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([userId])
 }
 
 model RecipeRequest {

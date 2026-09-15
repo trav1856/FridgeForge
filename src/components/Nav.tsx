@@ -13,6 +13,7 @@ const baseLinks = [
   { href: "/shopping-list", label: "List" },
   { href: "/recipes", label: "Recipes" },
   { href: "/suggestions", label: "Cook Now" },
+  { href: "/menu", label: "Weekly menu" },
   { href: "/coupons", label: "Coupons" },
   { href: "/howto", label: "How-to" },
 ];

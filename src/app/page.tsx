@@ -30,13 +30,16 @@ export default function HomePage() {
           <Link href="/suggestions" className="btn-primary">
             Suggest meals
           </Link>
+          <Link href="/menu" className="btn-secondary">
+            Weekly menu
+          </Link>
           <Link href="/pantry" className="btn-secondary">
             Open pantry
           </Link>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
           {
             href: "/pantry",
@@ -55,6 +58,12 @@ export default function HomePage() {
             title: "Cook Now",
             body: "Match pantry to recipes. Near-misses suggest 1–2 cheap staples to pick up.",
             icon: "✨",
+          },
+          {
+            href: "/menu",
+            title: "Weekly menu",
+            body: "Build breakfast, lunch, and dinner for the next week from your pantry.",
+            icon: "📅",
           },
           {
             href: "/coupons",
