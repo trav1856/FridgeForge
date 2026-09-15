@@ -10,6 +10,9 @@ export type DishVariantCandidate = {
   createdAt: Date | string;
   averageStars: number | null;
   reviewCount: number;
+  vegetarianEligible?: boolean;
+  pescatarianEligible?: boolean;
+  veganEligible?: boolean;
 };
 
 export type DishVariantRole = "top-rated" | "oldest" | "surprise";
@@ -82,16 +85,33 @@ function byTitle(a: DishVariantCandidate, b: DishVariantCandidate): number {
  */
 export function pickDishVariantHighlights<T extends DishVariantCandidate>(
   variants: T[],
-  options?: { rng?: () => number }
+  options?: {
+    rng?: () => number;
+    /** When set, rank/filter Top 3 + list toward matching eligibility first. */
+    preferMatch?: (v: T) => boolean;
+  }
 ): DishVariantPicks<T> {
   if (variants.length === 0) return { featured: [], rest: [] };
 
   const rng = options?.rng ?? Math.random;
-  const pool = [...variants];
+  const preferMatch = options?.preferMatch;
+  let pool = [...variants];
+  if (preferMatch) {
+    const matched = pool.filter(preferMatch);
+    const restPool = pool.filter((v) => !preferMatch(v));
+    // Prefer matched for featured picks; fill from rest if needed
+    pool = matched.length > 0 ? [...matched, ...restPool] : pool;
+  }
   const featured: FeaturedDishVariant<T>[] = [];
   const used = new Set<string>();
 
-  const topRated = [...pool].sort(compareTopRated)[0]!;
+  const rankedPool = preferMatch
+    ? [
+        ...pool.filter(preferMatch).sort(compareTopRated),
+        ...pool.filter((v) => !preferMatch(v)).sort(compareTopRated),
+      ]
+    : [...pool].sort(compareTopRated);
+  const topRated = rankedPool[0]!;
   featured.push({
     role: "top-rated",
     label: DISH_VARIANT_ROLE_LABEL["top-rated"],
@@ -99,9 +119,13 @@ export function pickDishVariantHighlights<T extends DishVariantCandidate>(
   });
   used.add(topRated.id);
 
-  const oldestCandidate = [...pool]
-    .sort(compareOldest)
-    .find((r) => !used.has(r.id));
+  const oldestOrdered = preferMatch
+    ? [
+        ...pool.filter(preferMatch).sort(compareOldest),
+        ...pool.filter((v) => !preferMatch(v)).sort(compareOldest),
+      ]
+    : [...pool].sort(compareOldest);
+  const oldestCandidate = oldestOrdered.find((r) => !used.has(r.id));
   if (oldestCandidate) {
     featured.push({
       role: "oldest",
@@ -111,7 +135,11 @@ export function pickDishVariantHighlights<T extends DishVariantCandidate>(
     used.add(oldestCandidate.id);
   }
 
-  const remainingForSurprise = pool.filter((r) => !used.has(r.id));
+  let remainingForSurprise = pool.filter((r) => !used.has(r.id));
+  if (preferMatch) {
+    const matchedRem = remainingForSurprise.filter(preferMatch);
+    if (matchedRem.length > 0) remainingForSurprise = matchedRem;
+  }
   if (remainingForSurprise.length > 0) {
     const idx = Math.min(
       remainingForSurprise.length - 1,
@@ -126,6 +154,12 @@ export function pickDishVariantHighlights<T extends DishVariantCandidate>(
     used.add(surprise.id);
   }
 
-  const rest = pool.filter((r) => !used.has(r.id)).sort(byTitle);
+  const unused = pool.filter((r) => !used.has(r.id));
+  const rest = preferMatch
+    ? [
+        ...unused.filter(preferMatch).sort(byTitle),
+        ...unused.filter((v) => !preferMatch(v)).sort(byTitle),
+      ]
+    : unused.sort(byTitle);
   return { featured, rest };
 }

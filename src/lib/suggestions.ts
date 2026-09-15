@@ -5,7 +5,11 @@ import type {
   RecipeForMatch,
   SuggestionResult,
 } from "./types";
-import { KOSHER_SOFT_BOOST } from "./dietary";
+import {
+  KOSHER_SOFT_BOOST,
+  passesPlantDietaryFilter,
+  plantSoftBoost,
+} from "./dietary";
 
 const CHEAP_STAPLES = new Set([
   "rice",
@@ -68,6 +72,13 @@ export type SuggestOptions = {
   requireKosher?: boolean;
   /** Hard-filter to halalEligible only (empty if none). */
   requireHalal?: boolean;
+  /** Hard-filter veganEligible OR veganAdaptNote. */
+  requireVegan?: boolean;
+  requireVegetarian?: boolean;
+  requirePescatarian?: boolean;
+  softPreferVegan?: boolean;
+  softPreferVegetarian?: boolean;
+  softPreferPescatarian?: boolean;
 };
 
 function findPantryMatch(
@@ -122,6 +133,12 @@ export function scoreRecipe(
     maxMinutes,
     mood,
     softPreferKosher = false,
+    softPreferVegan = false,
+    softPreferVegetarian = false,
+    softPreferPescatarian = false,
+    requireVegan = false,
+    requireVegetarian = false,
+    requirePescatarian = false,
   } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
@@ -178,6 +195,14 @@ export function scoreRecipe(
   if (softPreferKosher && recipe.kosherEligible) {
     dietaryBoost += KOSHER_SOFT_BOOST;
   }
+  dietaryBoost += plantSoftBoost(recipe, {
+    softPreferVegan,
+    softPreferVegetarian,
+    softPreferPescatarian,
+    requireVegan,
+    requireVegetarian,
+    requirePescatarian,
+  });
   score += dietaryBoost;
 
   // Slight boost for creative pairings present
@@ -229,6 +254,12 @@ export function suggestMeals(
     softPreferKosher = false,
     requireKosher = false,
     requireHalal = false,
+    requireVegan = false,
+    requireVegetarian = false,
+    requirePescatarian = false,
+    softPreferVegan = false,
+    softPreferVegetarian = false,
+    softPreferPescatarian = false,
   } = options;
 
   let pool = recipes;
@@ -244,6 +275,16 @@ export function suggestMeals(
   }
   if (requireHalal) {
     pool = pool.filter((r) => r.halalEligible);
+  }
+  // Plant prefs: eligible OR adapt-note path (vegan/vegetarian); pescatarian hard-eligible only
+  if (requireVegan || requireVegetarian || requirePescatarian) {
+    pool = pool.filter((r) =>
+      passesPlantDietaryFilter(r, {
+        requireVegan,
+        requireVegetarian,
+        requirePescatarian,
+      })
+    );
   }
 
   pool = pool.filter((r) => fitsTimeBudget(r, maxMinutes, includeUnknownTime));
@@ -271,6 +312,12 @@ export function suggestMeals(
         softPreferKosher,
         requireKosher,
         requireHalal,
+        requireVegan,
+        requireVegetarian,
+        requirePescatarian,
+        softPreferVegan,
+        softPreferVegetarian,
+        softPreferPescatarian,
       })
     )
     .sort((a, b) => b.score - a.score)

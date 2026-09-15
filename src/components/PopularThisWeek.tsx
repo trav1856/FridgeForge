@@ -26,6 +26,9 @@ type CardRecipe = {
   isStruggleMeal: boolean;
   kosherEligible: boolean;
   halalEligible: boolean;
+  vegetarianEligible: boolean;
+  pescatarianEligible: boolean;
+  veganEligible: boolean;
   imageUrl: string | null;
   servings: number;
   ingredients: { name: string }[];
@@ -42,6 +45,9 @@ function toCard(r: {
   isStruggleMeal: boolean;
   kosherEligible: boolean;
   halalEligible: boolean;
+  vegetarianEligible: boolean;
+  pescatarianEligible: boolean;
+  veganEligible: boolean;
   imageUrl: string | null;
   servings: number;
   householdId: string | null;
@@ -57,6 +63,9 @@ function toCard(r: {
     isStruggleMeal: r.isStruggleMeal,
     kosherEligible: Boolean(r.kosherEligible),
     halalEligible: Boolean(r.halalEligible),
+    vegetarianEligible: Boolean(r.vegetarianEligible),
+    pescatarianEligible: Boolean(r.pescatarianEligible),
+    veganEligible: Boolean(r.veganEligible),
     imageUrl: r.imageUrl,
     servings: r.servings,
     ingredients: r.ingredients,
@@ -190,6 +199,9 @@ export async function PopularThisWeek() {
                   <DietaryBadges
                     kosherEligible={r.kosherEligible}
                     halalEligible={r.halalEligible}
+                    vegetarianEligible={r.vegetarianEligible}
+                    pescatarianEligible={r.pescatarianEligible}
+                    veganEligible={r.veganEligible}
                   />
                 </div>
                 <RecipeIcons

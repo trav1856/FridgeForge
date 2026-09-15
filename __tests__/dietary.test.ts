@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  adaptHintForPrefs,
+  applyPlantPrefToggle,
   effectiveObservant,
+  inferAdaptNotes,
   inferDietaryEligibility,
+  normalizePlantPrefs,
+  passesPlantDietaryFilter,
   resolveDietarySuggestOptions,
   showHalalSection,
   showKosherSection,
@@ -36,6 +41,11 @@ const recipe = (
   isStruggleMeal: partial.isStruggleMeal ?? false,
   kosherEligible: partial.kosherEligible ?? false,
   halalEligible: partial.halalEligible ?? false,
+  vegetarianEligible: partial.vegetarianEligible ?? false,
+  pescatarianEligible: partial.pescatarianEligible ?? false,
+  veganEligible: partial.veganEligible ?? false,
+  veganAdaptNote: partial.veganAdaptNote ?? null,
+  vegetarianAdaptNote: partial.vegetarianAdaptNote ?? null,
   techniqueTips: partial.techniqueTips ?? [],
   flavorBoosters: partial.flavorBoosters ?? [],
   ingredients: partial.ingredients,
@@ -57,7 +67,7 @@ describe("dietary prefs resolve", () => {
         isJewish: true,
         isObservant: false,
       })
-    ).toEqual({
+    ).toMatchObject({
       softPreferKosher: true,
       requireKosher: false,
       requireHalal: false,
@@ -70,7 +80,7 @@ describe("dietary prefs resolve", () => {
   it("hard-filters kosher when observant Jewish", () => {
     expect(
       resolveDietarySuggestOptions({ isJewish: true, isObservant: true })
-    ).toEqual({
+    ).toMatchObject({
       softPreferKosher: false,
       requireKosher: true,
       requireHalal: false,
@@ -78,7 +88,7 @@ describe("dietary prefs resolve", () => {
   });
 
   it("hard-filters halal when preferHalal", () => {
-    expect(resolveDietarySuggestOptions({ preferHalal: true })).toEqual({
+    expect(resolveDietarySuggestOptions({ preferHalal: true })).toMatchObject({
       softPreferKosher: false,
       requireKosher: false,
       requireHalal: true,
@@ -92,7 +102,7 @@ describe("dietary prefs resolve", () => {
         isObservant: true,
         preferHalal: true,
       })
-    ).toEqual({
+    ).toMatchObject({
       softPreferKosher: false,
       requireKosher: true,
       requireHalal: true,
@@ -108,13 +118,67 @@ describe("dietary prefs resolve", () => {
   });
 });
 
+describe("plant prefs priority", () => {
+  it("normalizes vegan > vegetarian > pescatarian", () => {
+    expect(normalizePlantPrefs({ preferVegan: true, preferPescatarian: true })).toEqual({
+      preferVegan: true,
+      preferVegetarian: true,
+      preferPescatarian: false,
+      primary: "vegan",
+    });
+    expect(normalizePlantPrefs({ preferVegetarian: true, preferPescatarian: true })).toEqual({
+      preferVegan: false,
+      preferVegetarian: true,
+      preferPescatarian: false,
+      primary: "vegetarian",
+    });
+  });
+
+  it("applyPlantPrefToggle enforces exclusivity", () => {
+    expect(applyPlantPrefToggle({}, "preferVegan", true)).toEqual({
+      preferVegan: true,
+      preferVegetarian: true,
+      preferPescatarian: false,
+    });
+    expect(
+      applyPlantPrefToggle({ preferVegan: true }, "preferPescatarian", true)
+    ).toEqual({
+      preferVegan: false,
+      preferVegetarian: false,
+      preferPescatarian: true,
+    });
+  });
+
+  it("resolveDietarySuggestOptions sets plant require flags", () => {
+    expect(resolveDietarySuggestOptions({ preferVegan: true })).toMatchObject({
+      requireVegan: true,
+      softPreferVegan: true,
+      requireVegetarian: false,
+      requirePescatarian: false,
+    });
+    expect(
+      resolveDietarySuggestOptions({ preferVegetarian: true })
+    ).toMatchObject({
+      requireVegetarian: true,
+      softPreferVegetarian: true,
+      requireVegan: false,
+    });
+  });
+});
+
 describe("inferDietaryEligibility heuristics", () => {
-  it("marks vegetarian staples eligible for both", () => {
+  it("marks vegetarian staples eligible for plant + kosher/halal", () => {
     const r = inferDietaryEligibility({
       title: "Rice and Beans",
       ingredients: [{ name: "rice" }, { name: "black beans" }],
     });
-    expect(r).toEqual({ kosherEligible: true, halalEligible: true });
+    expect(r).toEqual({
+      kosherEligible: true,
+      halalEligible: true,
+      vegetarianEligible: true,
+      pescatarianEligible: true,
+      veganEligible: true,
+    });
   });
 
   it("excludes pork from kosher and halal", () => {
@@ -124,6 +188,9 @@ describe("inferDietaryEligibility heuristics", () => {
     });
     expect(r.kosherEligible).toBe(false);
     expect(r.halalEligible).toBe(false);
+    expect(r.vegetarianEligible).toBe(false);
+    expect(r.veganEligible).toBe(false);
+    expect(r.pescatarianEligible).toBe(false);
   });
 
   it("excludes shellfish from kosher but not necessarily alcohol rules", () => {
@@ -133,6 +200,9 @@ describe("inferDietaryEligibility heuristics", () => {
     });
     expect(r.kosherEligible).toBe(false);
     expect(r.halalEligible).toBe(true);
+    expect(r.vegetarianEligible).toBe(false);
+    expect(r.pescatarianEligible).toBe(true);
+    expect(r.veganEligible).toBe(false);
   });
 
   it("excludes alcohol-heavy from halal", () => {
@@ -143,6 +213,24 @@ describe("inferDietaryEligibility heuristics", () => {
     expect(r.halalEligible).toBe(false);
     expect(r.kosherEligible).toBe(true);
   });
+
+  it("dairy is vegetarian but not vegan", () => {
+    const r = inferDietaryEligibility({
+      title: "Mac and Cheese",
+      ingredients: [{ name: "pasta" }, { name: "cheese" }, { name: "butter" }],
+    });
+    expect(r.vegetarianEligible).toBe(true);
+    expect(r.veganEligible).toBe(false);
+    expect(r.pescatarianEligible).toBe(true);
+  });
+
+  it("infers vegan adapt note for dairy dishes", () => {
+    const notes = inferAdaptNotes({
+      title: "Mac and Cheese",
+      ingredients: [{ name: "pasta" }, { name: "cheese" }],
+    });
+    expect(notes.veganAdaptNote).toMatch(/plant/i);
+  });
 });
 
 describe("suggestMeals dietary filters/boost", () => {
@@ -151,6 +239,9 @@ describe("suggestMeals dietary filters/boost", () => {
     title: "Kosher Rice",
     kosherEligible: true,
     halalEligible: true,
+    vegetarianEligible: true,
+    pescatarianEligible: true,
+    veganEligible: true,
     ingredients: [
       { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
     ],
@@ -169,6 +260,30 @@ describe("suggestMeals dietary filters/boost", () => {
     title: "Shrimp Bowl",
     kosherEligible: false,
     halalEligible: true,
+    pescatarianEligible: true,
+    ingredients: [
+      { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+    ],
+  });
+  const dairyVeg = recipe({
+    id: "d",
+    title: "Cheese Pasta",
+    vegetarianEligible: true,
+    pescatarianEligible: true,
+    veganEligible: false,
+    veganAdaptNote: "Use vegan cheese",
+    ingredients: [
+      { id: "1", name: "pasta", quantity: 1, unit: "cups", optional: false },
+    ],
+  });
+  const meatOnly = recipe({
+    id: "m",
+    title: "Chicken Bowl",
+    vegetarianEligible: false,
+    pescatarianEligible: false,
+    veganEligible: false,
+    vegetarianAdaptNote: "Swap chicken for chickpeas",
+    veganAdaptNote: "Swap chicken for tofu",
     ingredients: [
       { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
     ],
@@ -245,14 +360,81 @@ describe("suggestMeals dietary filters/boost", () => {
     const results = suggestMeals([treyf], stock, { requireKosher: true });
     expect(results).toEqual([]);
   });
+
+  it("preferVegan hard-filters eligible OR adapt note", () => {
+    expect(
+      passesPlantDietaryFilter(dairyVeg, { requireVegan: true })
+    ).toBe(true);
+    expect(
+      passesPlantDietaryFilter(meatOnly, { requireVegan: true })
+    ).toBe(true);
+    expect(
+      passesPlantDietaryFilter(treyf, { requireVegan: true })
+    ).toBe(false);
+
+    const results = suggestMeals([kosher, dairyVeg, meatOnly, treyf], stock, {
+      requireVegan: true,
+      softPreferVegan: true,
+    });
+    const ids = results.map((r) => r.recipe.id);
+    expect(ids).toContain("k");
+    expect(ids).toContain("d");
+    expect(ids).toContain("m");
+    expect(ids).not.toContain("t");
+    // true vegan ranks above adapt-only
+    expect(ids.indexOf("k")).toBeLessThan(ids.indexOf("d"));
+  });
+
+  it("preferVegetarian includes adapt path", () => {
+    const results = suggestMeals([kosher, meatOnly, treyf], stock, {
+      requireVegetarian: true,
+    });
+    expect(results.map((r) => r.recipe.id).sort()).toEqual(["k", "m"]);
+  });
+
+  it("preferPescatarian hard-filters pescatarianEligible only", () => {
+    const results = suggestMeals([kosher, halalOnly, meatOnly], stock, {
+      requirePescatarian: true,
+    });
+    expect(results.map((r) => r.recipe.id).sort()).toEqual(["h", "k"]);
+  });
+});
+
+describe("adapt hints", () => {
+  it("shows vegan adapt when preferVegan and not eligible", () => {
+    const hint = adaptHintForPrefs(
+      {
+        veganEligible: false,
+        veganAdaptNote: "Use oat milk",
+      },
+      { preferVegan: true }
+    );
+    expect(hint).toEqual({
+      kind: "vegan",
+      label: "Make it vegan",
+      note: "Use oat milk",
+    });
+  });
+
+  it("hides hint when already veganEligible", () => {
+    expect(
+      adaptHintForPrefs(
+        { veganEligible: true, veganAdaptNote: "n/a" },
+        { preferVegan: true }
+      )
+    ).toBeNull();
+  });
 });
 
 describe("DietaryBadges markup", () => {
-  it("renders Kosher* / Halal* labels in component source", async () => {
+  it("renders Kosher* / Halal* / plant labels in component source", async () => {
     const fs = await import("fs");
     const src = fs.readFileSync("src/components/DietaryBadges.tsx", "utf8");
     expect(src).toMatch(/Kosher\*/);
     expect(src).toMatch(/Halal\*/);
+    expect(src).toMatch(/Vegan/);
+    expect(src).toMatch(/Vegetarian/);
+    expect(src).toMatch(/Pescatarian/);
     expect(src).toMatch(/certified/);
   });
 });

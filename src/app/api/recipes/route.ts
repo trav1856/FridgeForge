@@ -47,6 +47,11 @@ const createSchema = z.object({
   isStruggleMeal: z.boolean().optional(),
   kosherEligible: z.boolean().optional(),
   halalEligible: z.boolean().optional(),
+  vegetarianEligible: z.boolean().optional(),
+  pescatarianEligible: z.boolean().optional(),
+  veganEligible: z.boolean().optional(),
+  veganAdaptNote: z.string().max(500).optional().nullable(),
+  vegetarianAdaptNote: z.string().max(500).optional().nullable(),
   techniqueTips: z.array(z.string()).optional(),
   flavorBoosters: z.array(z.string()).optional(),
   visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
@@ -66,9 +71,12 @@ export async function GET(req: NextRequest) {
   const origin =
     req.nextUrl.searchParams.get("origin") ||
     req.nextUrl.searchParams.get("ethnicity");
-  const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal
+  const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal | vegan | vegetarian | pescatarian
   const kosherOnly = dietary === "kosher" || req.nextUrl.searchParams.get("kosher") === "1";
   const halalOnly = dietary === "halal" || req.nextUrl.searchParams.get("halal") === "1";
+  const veganOnly = dietary === "vegan" || req.nextUrl.searchParams.get("vegan") === "1";
+  const vegetarianOnly = dietary === "vegetarian" || req.nextUrl.searchParams.get("vegetarian") === "1";
+  const pescatarianOnly = dietary === "pescatarian" || req.nextUrl.searchParams.get("pescatarian") === "1";
 
   const accessWhere = recipeListAccessWhere({
     userId: user?.id ?? null,
@@ -81,6 +89,9 @@ export async function GET(req: NextRequest) {
   if (struggle === "1") dietaryFilters.push({ isStruggleMeal: true });
   if (kosherOnly) dietaryFilters.push({ kosherEligible: true });
   if (halalOnly) dietaryFilters.push({ halalEligible: true });
+  if (veganOnly) dietaryFilters.push({ veganEligible: true });
+  if (vegetarianOnly) dietaryFilters.push({ vegetarianEligible: true });
+  if (pescatarianOnly) dietaryFilters.push({ pescatarianEligible: true });
 
   let where: Record<string, unknown> = {
     AND: [accessWhere, ...dietaryFilters],
@@ -191,6 +202,11 @@ export async function POST(req: NextRequest) {
         isStruggleMeal: data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
         kosherEligible: data.kosherEligible ?? false,
         halalEligible: data.halalEligible ?? false,
+        vegetarianEligible: data.vegetarianEligible ?? false,
+        pescatarianEligible: data.pescatarianEligible ?? false,
+        veganEligible: data.veganEligible ?? false,
+        veganAdaptNote: data.veganAdaptNote?.trim() || null,
+        vegetarianAdaptNote: data.vegetarianAdaptNote?.trim() || null,
         techniqueTips: stringifyArray(data.techniqueTips),
         flavorBoosters: stringifyArray(data.flavorBoosters),
         visibility: data.visibility

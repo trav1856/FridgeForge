@@ -349,6 +349,9 @@ function SlotCard({
               <DietaryBadges
                 kosherEligible={pick.kosherEligible}
                 halalEligible={pick.halalEligible}
+                vegetarianEligible={pick.vegetarianEligible}
+                pescatarianEligible={pick.pescatarianEligible}
+                veganEligible={pick.veganEligible}
               />
             </div>
           </Link>

@@ -11,7 +11,10 @@ import { inferRecipeTaxonomy } from "../src/lib/recipe-taxonomy";
 import { STAPLE_ORIGIN_STORIES } from "../src/lib/recipe-origin-stories";
 import { dishKeyForTitle } from "../src/lib/dish-key";
 import { parseStringArray } from "../src/lib/json";
-import { inferDietaryEligibility } from "../src/lib/dietary";
+import {
+  inferAdaptNotes,
+  inferDietaryEligibility,
+} from "../src/lib/dietary";
 
 const prisma = new PrismaClient();
 
@@ -852,11 +855,18 @@ async function main() {
         tags: rest.tags,
         ingredients,
       });
+      const adapt = inferAdaptNotes({
+        title: rest.title,
+        description: rest.description,
+        tags: rest.tags,
+        ingredients,
+      });
       await prisma.recipe.create({
         data: {
           ...rest,
           ...tax,
           ...diet,
+          ...adapt,
           originStory: story,
           dishKey: dishKeyForTitle(rest.title),
           visibility: "public",
@@ -884,6 +894,11 @@ async function main() {
         dishKey?: string;
         kosherEligible?: boolean;
         halalEligible?: boolean;
+        vegetarianEligible?: boolean;
+        pescatarianEligible?: boolean;
+        veganEligible?: boolean;
+        veganAdaptNote?: string | null;
+        vegetarianAdaptNote?: string | null;
       } = {};
       const tax = taxonomyFields({ ...rest, ingredients });
       // Always refresh taxonomy for seed staples (corrects heuristic mistakes).
@@ -900,6 +915,17 @@ async function main() {
       });
       data.kosherEligible = diet.kosherEligible;
       data.halalEligible = diet.halalEligible;
+      data.vegetarianEligible = diet.vegetarianEligible;
+      data.pescatarianEligible = diet.pescatarianEligible;
+      data.veganEligible = diet.veganEligible;
+      const adapt = inferAdaptNotes({
+        title: rest.title,
+        description: rest.description,
+        tags: rest.tags,
+        ingredients,
+      });
+      data.veganAdaptNote = adapt.veganAdaptNote;
+      data.vegetarianAdaptNote = adapt.vegetarianAdaptNote;
       recipesTaxonomied += 1;
       const story = STAPLE_ORIGIN_STORIES[rest.title];
       // Refresh catalog staple stories (links / embeds) when defined.

@@ -138,6 +138,9 @@ export function publicUser(user: AuthUser) {
     isObservant: Boolean(user.isObservant),
     preferKosher: Boolean(user.preferKosher),
     preferHalal: Boolean(user.preferHalal),
+    preferVegetarian: Boolean(user.preferVegetarian),
+    preferPescatarian: Boolean(user.preferPescatarian),
+    preferVegan: Boolean(user.preferVegan),
     createdAt: user.createdAt.toISOString(),
     households: user.memberships.map((m) => ({
       id: m.household.id,

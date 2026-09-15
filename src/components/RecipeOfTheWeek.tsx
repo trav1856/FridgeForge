@@ -44,6 +44,9 @@ export async function RecipeOfTheWeek() {
     isStruggleMeal: r.isStruggleMeal,
     kosherEligible: Boolean(r.kosherEligible),
     halalEligible: Boolean(r.halalEligible),
+    vegetarianEligible: Boolean(r.vegetarianEligible),
+    pescatarianEligible: Boolean(r.pescatarianEligible),
+    veganEligible: Boolean(r.veganEligible),
     imageUrl: r.imageUrl,
     servings: r.servings,
     ingredients: r.ingredients,
@@ -100,6 +103,9 @@ export async function RecipeOfTheWeek() {
                   <DietaryBadges
                     kosherEligible={r.kosherEligible}
                     halalEligible={r.halalEligible}
+                    vegetarianEligible={r.vegetarianEligible}
+                    pescatarianEligible={r.pescatarianEligible}
+                    veganEligible={r.veganEligible}
                   />
                   {r.tags
                     .filter((t) => t !== "struggle")

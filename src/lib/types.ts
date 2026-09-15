@@ -37,6 +37,11 @@ export type RecipeInput = {
   isStruggleMeal?: boolean;
   kosherEligible?: boolean;
   halalEligible?: boolean;
+  vegetarianEligible?: boolean;
+  pescatarianEligible?: boolean;
+  veganEligible?: boolean;
+  veganAdaptNote?: string | null;
+  vegetarianAdaptNote?: string | null;
   techniqueTips?: string[];
   flavorBoosters?: string[];
   ingredients: RecipeIngredientInput[];
@@ -72,6 +77,11 @@ export type RecipeForMatch = {
   isStruggleMeal: boolean;
   kosherEligible: boolean;
   halalEligible: boolean;
+  vegetarianEligible: boolean;
+  pescatarianEligible: boolean;
+  veganEligible: boolean;
+  veganAdaptNote?: string | null;
+  vegetarianAdaptNote?: string | null;
   techniqueTips: string[];
   flavorBoosters: string[];
   ingredients: {

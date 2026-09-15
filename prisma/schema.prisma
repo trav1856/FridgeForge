@@ -26,6 +26,10 @@ model User {
   preferKosher Boolean           @default(false)
   /** Show Halal section + hard-filter halalEligible when on. */
   preferHalal  Boolean           @default(false)
+  /** Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary). */
+  preferVegetarian Boolean       @default(false)
+  preferPescatarian Boolean      @default(false)
+  preferVegan Boolean            @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -138,6 +142,16 @@ model Recipe {
   kosherEligible   Boolean            @default(false)
   /** Eligible if prepared with certified halal ingredients (not a certification claim). */
   halalEligible    Boolean            @default(false)
+  /** No meat/fish (dairy/eggs OK). */
+  vegetarianEligible Boolean          @default(false)
+  /** Fish/seafood OK; no land meat. */
+  pescatarianEligible Boolean         @default(false)
+  /** No animal products. */
+  veganEligible    Boolean            @default(false)
+  /** Short note: how to adapt this recipe to vegan when not veganEligible. */
+  veganAdaptNote   String?
+  /** Short note: how to adapt this recipe to vegetarian when not vegetarianEligible. */
+  vegetarianAdaptNote String?
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
   /** global | household | shared  (legacy aliases: public→global, private→household) */

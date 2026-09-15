@@ -78,6 +78,11 @@ export function RecipeForm() {
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
   const [kosherEligible, setKosherEligible] = useState(true);
   const [halalEligible, setHalalEligible] = useState(true);
+  const [vegetarianEligible, setVegetarianEligible] = useState(true);
+  const [pescatarianEligible, setPescatarianEligible] = useState(true);
+  const [veganEligible, setVeganEligible] = useState(false);
+  const [veganAdaptNote, setVeganAdaptNote] = useState("");
+  const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
   const [stepsText, setStepsText] = useState("");
   const [tipsText, setTipsText] = useState("");
   const [boostersText, setBoostersText] = useState("");
@@ -205,6 +210,11 @@ export function RecipeForm() {
       isStruggleMeal,
       kosherEligible,
       halalEligible,
+      vegetarianEligible,
+      pescatarianEligible,
+      veganEligible,
+      veganAdaptNote: veganAdaptNote.trim() || null,
+      vegetarianAdaptNote: vegetarianAdaptNote.trim() || null,
       steps,
       techniqueTips: tipsText
         .split("\n")
@@ -480,11 +490,57 @@ export function RecipeForm() {
               />
               Halal* eligible
             </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={veganEligible}
+                onChange={(e) => setVeganEligible(e.target.checked)}
+              />
+              Vegan
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={vegetarianEligible}
+                onChange={(e) => setVegetarianEligible(e.target.checked)}
+              />
+              Vegetarian
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={pescatarianEligible}
+                onChange={(e) => setPescatarianEligible(e.target.checked)}
+              />
+              Pescatarian
+            </label>
           </div>
           <p className="text-[10px] text-sage-500 sm:col-span-2">
             * Eligible if prepared with certified kosher/halal ingredients — not a
             certification claim.
           </p>
+          <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="label">Vegan adapt note</label>
+              <input
+                className="input"
+                value={veganAdaptNote}
+                onChange={(e) => setVeganAdaptNote(e.target.value)}
+                placeholder="e.g. Swap butter for plant margarine"
+                maxLength={500}
+              />
+            </div>
+            <div>
+              <label className="label">Vegetarian adapt note</label>
+              <input
+                className="input"
+                value={vegetarianAdaptNote}
+                onChange={(e) => setVegetarianAdaptNote(e.target.value)}
+                placeholder="e.g. Replace chicken with chickpeas"
+                maxLength={500}
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label className="label">Tags (comma-separated)</label>

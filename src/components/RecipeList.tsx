@@ -32,6 +32,11 @@ type Recipe = {
   isStruggleMeal: boolean;
   kosherEligible?: boolean;
   halalEligible?: boolean;
+  vegetarianEligible?: boolean;
+  pescatarianEligible?: boolean;
+  veganEligible?: boolean;
+  veganAdaptNote?: string | null;
+  vegetarianAdaptNote?: string | null;
   ingredients: { name: string }[];
   imageUrl?: string | null;
   favorited?: boolean;
@@ -462,6 +467,9 @@ export function RecipeList() {
                     <DietaryBadges
                       kosherEligible={r.kosherEligible}
                       halalEligible={r.halalEligible}
+                      vegetarianEligible={r.vegetarianEligible}
+                      pescatarianEligible={r.pescatarianEligible}
+                      veganEligible={r.veganEligible}
                     />
                     {r.cuisine && (
                       <span className="badge bg-sage-200 text-sage-900">

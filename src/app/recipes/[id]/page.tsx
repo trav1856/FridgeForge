@@ -17,6 +17,11 @@ import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
 import { RecipeVariants } from "@/components/RecipeVariants";
 import { DietaryBadges } from "@/components/DietaryBadges";
+import { DietaryAdaptNote } from "@/components/DietaryAdaptNote";
+import {
+  adaptHintForPrefs,
+  matchesPlantPreference,
+} from "@/lib/dietary";
 import { dishKeyForTitle } from "@/lib/dish-key";
 import { pickDishVariantHighlights } from "@/lib/dish-variant-picks";
 import {
@@ -149,6 +154,9 @@ export default async function RecipeDetailPage({ params }: Props) {
         imageUrl: true,
         dishKey: true,
         createdAt: true,
+        vegetarianEligible: true,
+        pescatarianEligible: true,
+        veganEligible: true,
       },
       take: 48,
       orderBy: { createdAt: "asc" },
@@ -175,10 +183,15 @@ export default async function RecipeDetailPage({ params }: Props) {
         createdAt: r.createdAt,
         averageStars: stats.averageStars,
         reviewCount: stats.reviewCount,
+        vegetarianEligible: Boolean(r.vegetarianEligible),
+        pescatarianEligible: Boolean(r.pescatarianEligible),
+        veganEligible: Boolean(r.veganEligible),
       };
     });
 
-    const picks = pickDishVariantHighlights(candidates);
+    const picks = pickDishVariantHighlights(candidates, {
+      preferMatch: (v) => matchesPlantPreference(v, user),
+    });
     featuredVariants = picks.featured;
     restVariants = picks.rest.map((r) => ({
       id: r.id,
@@ -205,6 +218,9 @@ export default async function RecipeDetailPage({ params }: Props) {
           <DietaryBadges
             kosherEligible={recipe.kosherEligible}
             halalEligible={recipe.halalEligible}
+            vegetarianEligible={recipe.vegetarianEligible}
+            pescatarianEligible={recipe.pescatarianEligible}
+            veganEligible={recipe.veganEligible}
             showFootnote
           />
           {recipe.cuisine && (
@@ -238,6 +254,11 @@ export default async function RecipeDetailPage({ params }: Props) {
             </span>
           ))}
         </div>
+        {adaptHint ? (
+          <div className="mt-3 max-w-2xl">
+            <DietaryAdaptNote hint={adaptHint} />
+          </div>
+        ) : null}
         <div className="mt-3 max-w-2xl space-y-3">
           <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
           {canEditPhoto && (

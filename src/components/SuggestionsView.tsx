@@ -33,6 +33,11 @@ type Suggestion = {
     isStruggleMeal: boolean;
     kosherEligible?: boolean;
     halalEligible?: boolean;
+    vegetarianEligible?: boolean;
+    pescatarianEligible?: boolean;
+    veganEligible?: boolean;
+    veganAdaptNote?: string | null;
+    vegetarianAdaptNote?: string | null;
     tags: string[];
     servings: number;
     cookTimeMinutes?: number | null;
@@ -448,6 +453,9 @@ function Section({
                       <DietaryBadges
                         kosherEligible={s.recipe.kosherEligible}
                         halalEligible={s.recipe.halalEligible}
+                        vegetarianEligible={s.recipe.vegetarianEligible}
+                        pescatarianEligible={s.recipe.pescatarianEligible}
+                        veganEligible={s.recipe.veganEligible}
                       />
                     </div>
                     <RecipeIcons

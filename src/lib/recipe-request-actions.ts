@@ -24,6 +24,11 @@ type RequestWithRecipe = {
     isStruggleMeal: boolean;
     kosherEligible: boolean;
     halalEligible: boolean;
+    vegetarianEligible: boolean;
+    pescatarianEligible: boolean;
+    veganEligible: boolean;
+    veganAdaptNote: string | null;
+    vegetarianAdaptNote: string | null;
     techniqueTips: string | null;
     flavorBoosters: string | null;
     ingredients: {
@@ -96,6 +101,11 @@ async function cloneRecipeForRequester(request: RequestWithRecipe) {
       isStruggleMeal: r.isStruggleMeal,
       kosherEligible: r.kosherEligible,
       halalEligible: r.halalEligible,
+      vegetarianEligible: r.vegetarianEligible,
+      pescatarianEligible: r.pescatarianEligible,
+      veganEligible: r.veganEligible,
+      veganAdaptNote: r.veganAdaptNote ?? null,
+      vegetarianAdaptNote: r.vegetarianAdaptNote ?? null,
       techniqueTips: r.techniqueTips,
       flavorBoosters: r.flavorBoosters,
       visibility: "household",

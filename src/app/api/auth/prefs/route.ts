@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, getCurrentUser, publicUser, requireUser } from "@/lib/auth";
-import { effectiveObservant } from "@/lib/dietary";
+import {
+  applyPlantPrefToggle,
+  effectiveObservant,
+  normalizePlantPrefs,
+} from "@/lib/dietary";
 
 const prefsSchema = z.object({
   isJewish: z.boolean().optional(),
   isObservant: z.boolean().optional(),
   preferKosher: z.boolean().optional(),
   preferHalal: z.boolean().optional(),
+  preferVegetarian: z.boolean().optional(),
+  preferPescatarian: z.boolean().optional(),
+  preferVegan: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -25,6 +32,30 @@ export async function PATCH(req: NextRequest) {
     // Observant without Jewish → treat as off
     if (!isJewish) isObservant = false;
 
+    let plant = {
+      preferVegan: Boolean(user.preferVegan),
+      preferVegetarian: Boolean(user.preferVegetarian),
+      preferPescatarian: Boolean(user.preferPescatarian),
+    };
+    // Apply plant toggles in priority order if multiple sent
+    if (body.preferVegan !== undefined) {
+      plant = applyPlantPrefToggle(plant, "preferVegan", body.preferVegan);
+    } else if (body.preferVegetarian !== undefined) {
+      plant = applyPlantPrefToggle(
+        plant,
+        "preferVegetarian",
+        body.preferVegetarian
+      );
+    } else if (body.preferPescatarian !== undefined) {
+      plant = applyPlantPrefToggle(
+        plant,
+        "preferPescatarian",
+        body.preferPescatarian
+      );
+    } else {
+      plant = normalizePlantPrefs(plant);
+    }
+
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -36,6 +67,9 @@ export async function PATCH(req: NextRequest) {
         ...(body.preferHalal !== undefined
           ? { preferHalal: body.preferHalal }
           : {}),
+        preferVegan: plant.preferVegan,
+        preferVegetarian: plant.preferVegetarian,
+        preferPescatarian: plant.preferPescatarian,
       },
       include: {
         memberships: {
@@ -49,7 +83,6 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    // Mirror effective observant into response shape (already enforced in DB write)
     void effectiveObservant(updated);
 
     return NextResponse.json({ user: publicUser(updated as typeof user) });
@@ -68,12 +101,16 @@ export async function PATCH(req: NextRequest) {
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ user: null });
+  const plant = normalizePlantPrefs(user);
   return NextResponse.json({
     prefs: {
       isJewish: Boolean(user.isJewish),
       isObservant: Boolean(user.isObservant),
       preferKosher: Boolean(user.preferKosher),
       preferHalal: Boolean(user.preferHalal),
+      preferVegetarian: plant.preferVegetarian,
+      preferPescatarian: plant.preferPescatarian,
+      preferVegan: plant.preferVegan,
     },
   });
 }

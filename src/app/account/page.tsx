@@ -4,6 +4,10 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
 import { HowToBadgesPanel } from "@/components/HowToBadgesPanel";
+import {
+  PLANT_PREF_HELP,
+  applyPlantPrefToggle,
+} from "@/lib/dietary";
 
 type Household = {
   id: string;
@@ -23,6 +27,9 @@ type MeUser = {
   isObservant?: boolean;
   preferKosher?: boolean;
   preferHalal?: boolean;
+  preferVegetarian?: boolean;
+  preferPescatarian?: boolean;
+  preferVegan?: boolean;
   households: Household[];
 };
 
@@ -106,6 +113,9 @@ export default function AccountPage() {
     isObservant: boolean;
     preferKosher: boolean;
     preferHalal: boolean;
+    preferVegetarian: boolean;
+    preferPescatarian: boolean;
+    preferVegan: boolean;
   }>) {
     if (!user) return;
     setBusy(true);
@@ -346,7 +356,7 @@ export default function AccountPage() {
                 Kosher* / Halal* on recipes mean “eligible if you use certified
                 ingredients” — not a certification claim. Observant Jewish mode
                 hard-filters Cook Now and Weekly menu to kosher-eligible only;
-                Prefer Halal hard-filters to halal-eligible only.
+                Prefer Halal hard-filters to halal-eligible only. {PLANT_PREF_HELP}
               </p>
             </div>
             <label className="flex items-start gap-2 text-sm text-sage-800">
@@ -418,6 +428,78 @@ export default function AccountPage() {
                 </span>
               </span>
             </label>
+
+            <div className="border-t border-cream-300 pt-3 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+                Plant-based
+              </p>
+              <label className="flex items-start gap-2 text-sm text-sage-800">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={Boolean(user.preferVegan)}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const next = applyPlantPrefToggle(user, "preferVegan", e.target.checked);
+                    void savePrefs(next);
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">Vegan</span>
+                  <span className="block text-xs text-sage-600">
+                    Highest priority. Implies vegetarian. Hard-filters to vegan-eligible
+                    (or recipes with a vegan adapt note).
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-sage-800">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={Boolean(user.preferVegetarian) && !user.preferVegan}
+                  disabled={busy || Boolean(user.preferVegan)}
+                  onChange={(e) => {
+                    const next = applyPlantPrefToggle(
+                      user,
+                      "preferVegetarian",
+                      e.target.checked
+                    );
+                    void savePrefs(next);
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">Vegetarian</span>
+                  <span className="block text-xs text-sage-600">
+                    {user.preferVegan
+                      ? "Implied by vegan (checked automatically)."
+                      : "No meat or fish. Incompatible with pescatarian. Adapt notes shown when present."}
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-sage-800">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={Boolean(user.preferPescatarian)}
+                  disabled={busy || Boolean(user.preferVegan) || Boolean(user.preferVegetarian && !user.preferVegan)}
+                  onChange={(e) => {
+                    const next = applyPlantPrefToggle(
+                      user,
+                      "preferPescatarian",
+                      e.target.checked
+                    );
+                    void savePrefs(next);
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">Pescatarian</span>
+                  <span className="block text-xs text-sage-600">
+                    Fish OK, no land meat. Disabled while vegan or vegetarian is on.
+                  </span>
+                </span>
+              </label>
+            </div>
+
           </div>
 
           <div className="card p-5 space-y-4">

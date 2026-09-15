@@ -37,6 +37,11 @@ export function toRecipeForMatch(
     isStruggleMeal: recipe.isStruggleMeal,
     kosherEligible: Boolean(recipe.kosherEligible),
     halalEligible: Boolean(recipe.halalEligible),
+    vegetarianEligible: Boolean(recipe.vegetarianEligible),
+    pescatarianEligible: Boolean(recipe.pescatarianEligible),
+    veganEligible: Boolean(recipe.veganEligible),
+    veganAdaptNote: recipe.veganAdaptNote ?? null,
+    vegetarianAdaptNote: recipe.vegetarianAdaptNote ?? null,
     techniqueTips: parseStringArray(recipe.techniqueTips),
     flavorBoosters: parseStringArray(recipe.flavorBoosters),
     ingredients: recipe.ingredients.map((i) => ({
