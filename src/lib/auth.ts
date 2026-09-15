@@ -137,6 +137,7 @@ export function publicUser(user: AuthUser) {
     isJewish: Boolean(user.isJewish),
     isObservant: Boolean(user.isObservant),
     preferKosher: Boolean(user.preferKosher),
+    isMuslim: Boolean(user.isMuslim),
     preferHalal: Boolean(user.preferHalal),
     preferVegetarian: Boolean(user.preferVegetarian),
     preferPescatarian: Boolean(user.preferPescatarian),

@@ -19,12 +19,15 @@ model User {
   role         String            @default("user")
   /** Soft-disable: blocked from sign-in when true */
   disabled     Boolean           @default(false)
-  /** Dietary identity / prefs (Account). Observant only meaningful when isJewish. */
+  /** Dietary identity / prefs (Account). Observant only meaningful when isJewish.
+   *  Jewish supersedes Muslim/Halal (kosher without alcohol covers halal needs). */
   isJewish     Boolean           @default(false)
   isObservant  Boolean           @default(false)
   /** Soft prefer kosher + show Kosher section; observant ⇒ hard-filter kosherEligible. */
   preferKosher Boolean           @default(false)
-  /** Show Halal section + hard-filter halalEligible when on. */
+  /** Soft prefer + show Halal section (like Jewish→kosher); cleared/disabled when isJewish. */
+  isMuslim     Boolean           @default(false)
+  /** Show Halal section + hard-filter halalEligible when on (ignored when isJewish). */
   preferHalal  Boolean           @default(false)
   /** Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary). */
   preferVegetarian Boolean       @default(false)

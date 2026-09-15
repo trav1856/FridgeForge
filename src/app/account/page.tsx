@@ -26,6 +26,7 @@ type MeUser = {
   isJewish?: boolean;
   isObservant?: boolean;
   preferKosher?: boolean;
+  isMuslim?: boolean;
   preferHalal?: boolean;
   preferVegetarian?: boolean;
   preferPescatarian?: boolean;
@@ -112,6 +113,7 @@ export default function AccountPage() {
     isJewish: boolean;
     isObservant: boolean;
     preferKosher: boolean;
+    isMuslim: boolean;
     preferHalal: boolean;
     preferVegetarian: boolean;
     preferPescatarian: boolean;
@@ -354,9 +356,12 @@ export default function AccountPage() {
               </h2>
               <p className="mt-1 text-xs text-sage-600">
                 Kosher* / Halal* on recipes mean “eligible if you use certified
-                ingredients” — not a certification claim. Observant Jewish mode
-                hard-filters Cook Now and Weekly menu to kosher-eligible only;
-                Prefer Halal hard-filters to halal-eligible only. {PLANT_PREF_HELP}
+                ingredients” — not a certification claim. Jewish / Muslim stack
+                freely with plant prefs (vegan / vegetarian / pescatarian).
+                Observant Jewish hard-filters to kosher-eligible only. Muslim
+                soft-prefers halal; Prefer Halal hard-filters. Jewish supersedes
+                Halal (kosher without alcohol covers halal — Muslim / Prefer Halal
+                are cleared while Jewish is on). {PLANT_PREF_HELP}
               </p>
             </div>
             <label className="flex items-start gap-2 text-sm text-sage-800">
@@ -368,7 +373,9 @@ export default function AccountPage() {
                 onChange={(e) =>
                   void savePrefs({
                     isJewish: e.target.checked,
-                    ...(e.target.checked ? {} : { isObservant: false }),
+                    ...(e.target.checked
+                      ? { isMuslim: false, preferHalal: false }
+                      : { isObservant: false }),
                   })
                 }
               />
@@ -416,15 +423,33 @@ export default function AccountPage() {
               <input
                 type="checkbox"
                 className="mt-0.5"
-                checked={Boolean(user.preferHalal)}
-                disabled={busy}
+                checked={Boolean(user.isMuslim) && !user.isJewish}
+                disabled={busy || Boolean(user.isJewish)}
+                onChange={(e) => void savePrefs({ isMuslim: e.target.checked })}
+              />
+              <span>
+                <span className="font-semibold">Muslim</span>
+                <span className="block text-xs text-sage-600">
+                  Shows Halal section and soft-prefers halal-eligible recipes.
+                  Prefer Halal still hard-filters. Disabled while Jewish is on
+                  (kosher without alcohol supersedes / covers halal).
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-sage-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(user.preferHalal) && !user.isJewish}
+                disabled={busy || Boolean(user.isJewish)}
                 onChange={(e) => void savePrefs({ preferHalal: e.target.checked })}
               />
               <span>
                 <span className="font-semibold">Prefer Halal</span>
                 <span className="block text-xs text-sage-600">
                   Shows Halal section and hard-filters Cook Now / Weekly menu to
-                  halal-eligible only.
+                  halal-eligible only. Disabled while Jewish is on (kosher covers
+                  halal).
                 </span>
               </span>
             </label>

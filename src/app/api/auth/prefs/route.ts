@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, getCurrentUser, publicUser, requireUser } from "@/lib/auth";
 import {
+  applyJewishHalalSupersede,
   applyPlantPrefToggle,
   effectiveObservant,
   normalizePlantPrefs,
@@ -12,6 +13,7 @@ const prefsSchema = z.object({
   isJewish: z.boolean().optional(),
   isObservant: z.boolean().optional(),
   preferKosher: z.boolean().optional(),
+  isMuslim: z.boolean().optional(),
   preferHalal: z.boolean().optional(),
   preferVegetarian: z.boolean().optional(),
   preferPescatarian: z.boolean().optional(),
@@ -31,6 +33,18 @@ export async function PATCH(req: NextRequest) {
         : Boolean(user.isObservant);
     // Observant without Jewish → treat as off
     if (!isJewish) isObservant = false;
+
+    let isMuslim =
+      body.isMuslim !== undefined ? body.isMuslim : Boolean(user.isMuslim);
+    let preferHalal =
+      body.preferHalal !== undefined
+        ? body.preferHalal
+        : Boolean(user.preferHalal);
+    // Jewish supersedes Muslim/Halal — force clear when Jewish
+    if (isJewish) {
+      isMuslim = false;
+      preferHalal = false;
+    }
 
     let plant = {
       preferVegan: Boolean(user.preferVegan),
@@ -64,9 +78,8 @@ export async function PATCH(req: NextRequest) {
         ...(body.preferKosher !== undefined
           ? { preferKosher: body.preferKosher }
           : {}),
-        ...(body.preferHalal !== undefined
-          ? { preferHalal: body.preferHalal }
-          : {}),
+        isMuslim,
+        preferHalal,
         preferVegan: plant.preferVegan,
         preferVegetarian: plant.preferVegetarian,
         preferPescatarian: plant.preferPescatarian,
@@ -84,6 +97,7 @@ export async function PATCH(req: NextRequest) {
     });
 
     void effectiveObservant(updated);
+    void applyJewishHalalSupersede(updated);
 
     return NextResponse.json({ user: publicUser(updated as typeof user) });
   } catch (err) {
@@ -107,6 +121,7 @@ export async function GET() {
       isJewish: Boolean(user.isJewish),
       isObservant: Boolean(user.isObservant),
       preferKosher: Boolean(user.preferKosher),
+      isMuslim: Boolean(user.isMuslim),
       preferHalal: Boolean(user.preferHalal),
       preferVegetarian: plant.preferVegetarian,
       preferPescatarian: plant.preferPescatarian,

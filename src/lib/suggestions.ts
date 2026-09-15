@@ -6,9 +6,11 @@ import type {
   SuggestionResult,
 } from "./types";
 import {
+  HALAL_SOFT_BOOST,
   KOSHER_SOFT_BOOST,
   passesPlantDietaryFilter,
   plantSoftBoost,
+  satisfiesHalal,
 } from "./dietary";
 
 const CHEAP_STAPLES = new Set([
@@ -70,7 +72,9 @@ export type SuggestOptions = {
   softPreferKosher?: boolean;
   /** Hard-filter to kosherEligible only (empty if none). */
   requireKosher?: boolean;
-  /** Hard-filter to halalEligible only (empty if none). */
+  /** Soft-boost recipes that satisfyHalal (halalEligible or kosher-no-alcohol). */
+  softPreferHalal?: boolean;
+  /** Hard-filter to satisfiesHalal only (empty if none). */
   requireHalal?: boolean;
   /** Hard-filter veganEligible OR veganAdaptNote. */
   requireVegan?: boolean;
@@ -133,6 +137,7 @@ export function scoreRecipe(
     maxMinutes,
     mood,
     softPreferKosher = false,
+    softPreferHalal = false,
     softPreferVegan = false,
     softPreferVegetarian = false,
     softPreferPescatarian = false,
@@ -195,6 +200,9 @@ export function scoreRecipe(
   if (softPreferKosher && recipe.kosherEligible) {
     dietaryBoost += KOSHER_SOFT_BOOST;
   }
+  if (softPreferHalal && satisfiesHalal(recipe)) {
+    dietaryBoost += HALAL_SOFT_BOOST;
+  }
   dietaryBoost += plantSoftBoost(recipe, {
     softPreferVegan,
     softPreferVegetarian,
@@ -253,6 +261,7 @@ export function suggestMeals(
     q,
     softPreferKosher = false,
     requireKosher = false,
+    softPreferHalal = false,
     requireHalal = false,
     requireVegan = false,
     requireVegetarian = false,
@@ -274,7 +283,7 @@ export function suggestMeals(
     pool = pool.filter((r) => r.kosherEligible);
   }
   if (requireHalal) {
-    pool = pool.filter((r) => r.halalEligible);
+    pool = pool.filter((r) => satisfiesHalal(r));
   }
   // Plant prefs: eligible OR adapt-note path (vegan/vegetarian); pescatarian hard-eligible only
   if (requireVegan || requireVegetarian || requirePescatarian) {
@@ -311,6 +320,7 @@ export function suggestMeals(
         mood,
         softPreferKosher,
         requireKosher,
+        softPreferHalal,
         requireHalal,
         requireVegan,
         requireVegetarian,

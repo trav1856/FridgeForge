@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   adaptHintForPrefs,
+  applyJewishHalalSupersede,
   applyPlantPrefToggle,
   effectiveObservant,
   inferAdaptNotes,
   inferDietaryEligibility,
   normalizePlantPrefs,
   passesPlantDietaryFilter,
+  recipeContainsAlcohol,
   resolveDietarySuggestOptions,
+  satisfiesHalal,
   showHalalSection,
   showKosherSection,
 } from "@/lib/dietary";
@@ -91,22 +94,68 @@ describe("dietary prefs resolve", () => {
     expect(resolveDietarySuggestOptions({ preferHalal: true })).toMatchObject({
       softPreferKosher: false,
       requireKosher: false,
+      softPreferHalal: false,
       requireHalal: true,
     });
   });
 
-  it("requires both when observant + preferHalal", () => {
+  it("Jewish supersedes preferHalal / isMuslim in resolve", () => {
     expect(
       resolveDietarySuggestOptions({
         isJewish: true,
         isObservant: true,
         preferHalal: true,
+        isMuslim: true,
       })
     ).toMatchObject({
       softPreferKosher: false,
       requireKosher: true,
+      softPreferHalal: false,
+      requireHalal: false,
+    });
+  });
+
+  it("soft-prefers halal when Muslim (not preferHalal, not Jewish)", () => {
+    expect(resolveDietarySuggestOptions({ isMuslim: true })).toMatchObject({
+      softPreferHalal: true,
+      requireHalal: false,
+    });
+    expect(
+      resolveDietarySuggestOptions({ isMuslim: true, preferHalal: true })
+    ).toMatchObject({
+      softPreferHalal: false,
       requireHalal: true,
     });
+  });
+
+  it("stacks Jewish or Muslim with plant prefs", () => {
+    expect(
+      resolveDietarySuggestOptions({ isJewish: true, preferVegan: true })
+    ).toMatchObject({
+      softPreferKosher: true,
+      requireVegan: true,
+      softPreferVegan: true,
+    });
+    expect(
+      resolveDietarySuggestOptions({ isMuslim: true, preferVegetarian: true })
+    ).toMatchObject({
+      softPreferHalal: true,
+      requireVegetarian: true,
+      softPreferVegetarian: true,
+    });
+  });
+
+  it("applyJewishHalalSupersede clears Muslim/Halal when Jewish", () => {
+    expect(
+      applyJewishHalalSupersede({
+        isJewish: true,
+        isMuslim: true,
+        preferHalal: true,
+      })
+    ).toMatchObject({ isMuslim: false, preferHalal: false, isJewish: true });
+    expect(
+      applyJewishHalalSupersede({ isMuslim: true, preferHalal: true })
+    ).toMatchObject({ isMuslim: true, preferHalal: true });
   });
 
   it("shows sections from flags", () => {
@@ -114,7 +163,57 @@ describe("dietary prefs resolve", () => {
     expect(showKosherSection({ preferKosher: true })).toBe(true);
     expect(showKosherSection({})).toBe(false);
     expect(showHalalSection({ preferHalal: true })).toBe(true);
+    expect(showHalalSection({ isMuslim: true })).toBe(true);
     expect(showHalalSection({})).toBe(false);
+    expect(
+      showHalalSection({ isJewish: true, isMuslim: true, preferHalal: true })
+    ).toBe(false);
+  });
+});
+
+describe("satisfiesHalal", () => {
+  it("accepts halalEligible", () => {
+    expect(satisfiesHalal({ halalEligible: true, kosherEligible: false })).toBe(
+      true
+    );
+  });
+
+  it("accepts kosherEligible without alcohol", () => {
+    expect(
+      satisfiesHalal({
+        halalEligible: false,
+        kosherEligible: true,
+        title: "Chicken Rice",
+        ingredients: [{ name: "chicken" }, { name: "rice" }],
+      })
+    ).toBe(true);
+  });
+
+  it("rejects kosherEligible with alcohol", () => {
+    expect(
+      satisfiesHalal({
+        halalEligible: false,
+        kosherEligible: true,
+        title: "Wine Braised Chicken",
+        ingredients: [{ name: "chicken" }, { name: "red wine" }],
+      })
+    ).toBe(false);
+    expect(
+      recipeContainsAlcohol({
+        title: "Wine Braised Chicken",
+        ingredients: [{ name: "red wine" }],
+      })
+    ).toBe(true);
+  });
+
+  it("rejects neither flag", () => {
+    expect(
+      satisfiesHalal({
+        halalEligible: false,
+        kosherEligible: false,
+        title: "Bacon",
+      })
+    ).toBe(false);
   });
 });
 
@@ -297,6 +396,40 @@ describe("suggestMeals dietary filters/boost", () => {
     expect(boosted.score).toBeGreaterThan(plain.score);
   });
 
+  it("soft-boosts satisfiesHalal when softPreferHalal", () => {
+    const kosherNoAlcohol = recipe({
+      id: "kna",
+      title: "Kosher Chicken",
+      kosherEligible: true,
+      halalEligible: false,
+      ingredients: [
+        { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+        { id: "2", name: "rice", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const boosted = scoreRecipe(kosherNoAlcohol, stock, {
+      softPreferHalal: true,
+    });
+    const plain = scoreRecipe(kosherNoAlcohol, stock, {});
+    expect(boosted.dietaryBoost).toBeGreaterThan(0);
+    expect(boosted.score).toBeGreaterThan(plain.score);
+
+    const wineKosher = recipe({
+      id: "wk",
+      title: "Wine Chicken",
+      kosherEligible: true,
+      halalEligible: false,
+      ingredients: [
+        { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+        { id: "2", name: "red wine", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const wineBoosted = scoreRecipe(wineKosher, stock, {
+      softPreferHalal: true,
+    });
+    expect(wineBoosted.dietaryBoost).toBe(0);
+  });
+
   it("hard-filters to kosherEligible when requireKosher", () => {
     const results = suggestMeals([kosher, treyf, halalOnly], stock, {
       requireKosher: true,
@@ -304,15 +437,37 @@ describe("suggestMeals dietary filters/boost", () => {
     expect(results.map((r) => r.recipe.id)).toEqual(["k"]);
   });
 
-  it("hard-filters to halalEligible when requireHalal", () => {
-    const results = suggestMeals([kosher, treyf, halalOnly], stock, {
-      requireHalal: true,
+  it("hard-filters to satisfiesHalal when requireHalal", () => {
+    const kosherNoAlcohol = recipe({
+      id: "kna",
+      title: "Kosher Chicken",
+      kosherEligible: true,
+      halalEligible: false,
+      ingredients: [
+        { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+      ],
     });
-    expect(results.every((r) => r.recipe.halalEligible)).toBe(true);
-    expect(results.map((r) => r.recipe.id).sort()).toEqual(["h", "k"]);
+    const wineKosher = recipe({
+      id: "wk",
+      title: "Wine Chicken",
+      kosherEligible: true,
+      halalEligible: false,
+      ingredients: [
+        { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+        { id: "2", name: "wine", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const results = suggestMeals(
+      [kosher, treyf, halalOnly, kosherNoAlcohol, wineKosher],
+      stock,
+      { requireHalal: true }
+    );
+    const ids = results.map((r) => r.recipe.id).sort();
+    expect(ids).toEqual(["h", "k", "kna"]);
+    expect(results.every((r) => satisfiesHalal(r.recipe))).toBe(true);
   });
 
-  it("ANDs observant kosher + preferHalal", () => {
+  it("ANDs observant kosher + requireHalal at engine level", () => {
     const results = suggestMeals([kosher, treyf, halalOnly], stock, {
       requireKosher: true,
       requireHalal: true,

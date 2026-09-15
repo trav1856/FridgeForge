@@ -21,6 +21,7 @@ import {
   normalizeFoodCategories,
   normalizeOrigins,
 } from "@/lib/recipe-taxonomy";
+import { satisfiesHalal } from "@/lib/dietary";
 
 const ingredientSchema = z.object({
   name: z.string().min(1),
@@ -88,7 +89,12 @@ export async function GET(req: NextRequest) {
   const dietaryFilters: Record<string, unknown>[] = [];
   if (struggle === "1") dietaryFilters.push({ isStruggleMeal: true });
   if (kosherOnly) dietaryFilters.push({ kosherEligible: true });
-  if (halalOnly) dietaryFilters.push({ halalEligible: true });
+  // Broaden SQL to halal OR kosher; refine with satisfiesHalal (kosher-no-alcohol) in JS
+  if (halalOnly) {
+    dietaryFilters.push({
+      OR: [{ halalEligible: true }, { kosherEligible: true }],
+    });
+  }
   if (veganOnly) dietaryFilters.push({ veganEligible: true });
   if (vegetarianOnly) dietaryFilters.push({ vegetarianEligible: true });
   if (pescatarianOnly) dietaryFilters.push({ pescatarianEligible: true });
@@ -139,6 +145,20 @@ export async function GET(req: NextRequest) {
   const recipes = dedupeRecipesByTitle(recipesRaw, householdId);
   const filtered = recipes.filter((r) => {
     const serialized = serializeRecipe(r);
+    if (
+      halalOnly &&
+      !satisfiesHalal({
+        halalEligible: serialized.halalEligible,
+        kosherEligible: serialized.kosherEligible,
+        title: serialized.title,
+        description: serialized.description,
+        tags: serialized.tags,
+        ingredients: serialized.ingredients,
+        steps: serialized.steps,
+      })
+    ) {
+      return false;
+    }
     return matchesTaxonomyFilters(
       {
         title: serialized.title,

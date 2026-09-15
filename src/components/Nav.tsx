@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import clsx from "clsx";
 import { RECIPE_REQUESTS_CHANGED_EVENT } from "@/lib/recipe-request";
+import { showHalalSection, showKosherSection } from "@/lib/dietary";
 
 const baseLinks = [
   { href: "/", label: "Home" },
@@ -52,8 +53,8 @@ export function Nav() {
         else setPlanLabel(null);
         setIsAdminUser(data?.user?.role === "admin");
         const u = data?.user;
-        setShowKosher(Boolean(u?.isJewish || u?.preferKosher));
-        setShowHalal(Boolean(u?.preferHalal));
+        setShowKosher(showKosherSection(u));
+        setShowHalal(showHalalSection(u));
         if (data?.user) {
           refreshPendingCount();
         } else {
