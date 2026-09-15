@@ -1,13 +1,11 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
 import { HowToBadgesPanel } from "@/components/HowToBadgesPanel";
-import {
-  PLANT_PREF_HELP,
-  applyPlantPrefToggle,
-} from "@/lib/dietary";
+import { applyPlantPrefToggle } from "@/lib/dietary";
 
 type Household = {
   id: string;
@@ -33,6 +31,46 @@ type MeUser = {
   preferVegan?: boolean;
   households: Household[];
 };
+
+
+function PrefChip({
+  label,
+  checked,
+  disabled,
+  helper,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  helper?: string;
+  onToggle: (next: boolean) => void;
+}) {
+  return (
+    <div className="min-w-0">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={checked}
+        onClick={() => onToggle(!checked)}
+        className={clsx(
+          "rounded-full px-3.5 py-2 text-sm transition",
+          checked
+            ? "bg-ember-600 font-semibold text-white shadow-sm"
+            : "border border-sage-200 bg-cream-50 font-medium text-sage-800 hover:border-sage-300 hover:bg-white",
+          disabled && "cursor-not-allowed opacity-50 hover:border-sage-200 hover:bg-cream-50"
+        )}
+      >
+        {label}
+      </button>
+      {helper ? (
+        <p className="mt-1 max-w-[11rem] text-[11px] leading-snug text-sage-500">
+          {helper}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export default function AccountPage() {
   const [user, setUser] = useState<MeUser | null>(null);
@@ -350,207 +388,150 @@ export default function AccountPage() {
           <HowToBadgesPanel />
 
           <div className="card p-5 space-y-4">
-            <div>
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <h2 className="font-display text-xl font-bold text-sage-900">
                 Dietary preferences
               </h2>
-              <p className="mt-1 text-xs text-sage-600">
-                Jewish and Muslim are religions; Prefer Kosher and Prefer Halal
-                are food preferences. Kosher* / Halal* on recipes mean “eligible
-                if you use certified ingredients” — not a certification claim.
-                Jewish cuisine/origin is not the same as kosherEligible (and
-                vice versa). Religions stack freely with plant prefs. Observant
-                hard-filters to kosher-eligible or recipes with a Make it kosher
-                note. Muslim soft-prefers Halal; Prefer Halal hard-filters.
-                Kosher (food) supersedes Halal (food): Prefer Kosher or Observant
-                clears Prefer Halal; Muslim (religion) can stay checked. Kosher
-                without alcohol still covers Halal satisfaction on the Halal
-                path. {PLANT_PREF_HELP}
-              </p>
+              <Link
+                href="/account/dietary"
+                className="text-xs font-semibold text-ember-700 hover:underline"
+              >
+                Learn more about dietary restrictions
+              </Link>
             </div>
-            <label className="flex items-start gap-2 text-sm text-sage-800">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={Boolean(user.isJewish)}
-                disabled={busy}
-                onChange={(e) =>
-                  void savePrefs({
-                    isJewish: e.target.checked,
-                    ...(e.target.checked ? {} : { isObservant: false }),
-                  })
-                }
-              />
-              <span>
-                <span className="font-semibold">Jewish</span>
-                <span className="block text-xs text-sage-600">
-                  Religion/culture — not the same as Prefer Kosher. Soft-boosts
-                  kosher-eligible recipes when not Observant; unlocks Kosher
-                  section. Does not clear Muslim or Prefer Halal.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm text-sage-800">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={Boolean(user.isJewish && user.isObservant)}
-                disabled={busy || !user.isJewish}
-                onChange={(e) =>
-                  void savePrefs({
-                    isObservant: e.target.checked,
-                    ...(e.target.checked ? { preferHalal: false } : {}),
-                  })
-                }
-              />
-              <span>
-                <span className="font-semibold">Observant</span>
-                <span className="block text-xs text-sage-600">
-                  Requires Jewish. Hard-filters to kosher-eligible or recipes
-                  with a Make it kosher note. Clears Prefer Halal (Kosher food
-                  supersedes Halal).
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm text-sage-800">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={Boolean(user.preferKosher)}
-                disabled={busy}
-                onChange={(e) =>
-                  void savePrefs({
-                    preferKosher: e.target.checked,
-                    ...(e.target.checked ? { preferHalal: false } : {}),
-                  })
-                }
-              />
-              <span>
-                <span className="font-semibold">Prefer kosher</span>
-                <span className="block text-xs text-sage-600">
-                  Food preference — soft prefer + show Kosher section (does not
-                  hard-filter unless Observant). Kosher (food) supersedes Halal;
-                  turning this on clears Prefer Halal.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm text-sage-800">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={Boolean(user.isMuslim)}
-                disabled={busy}
-                onChange={(e) => void savePrefs({ isMuslim: e.target.checked })}
-              />
-              <span>
-                <span className="font-semibold">Muslim</span>
-                <span className="block text-xs text-sage-600">
-                  Religion — not the same as Prefer Halal. Shows Halal section and
-                  soft-prefers Halal when Kosher food prefs are off. Not disabled
-                  by Jewish; Kosher (food) supersedes Halal (food), not Muslim.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm text-sage-800">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={
-                  Boolean(user.preferHalal) &&
-                  !(
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+                Religion
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <PrefChip
+                  label="Jewish"
+                  checked={Boolean(user.isJewish)}
+                  disabled={busy}
+                  onToggle={(next) =>
+                    void savePrefs({
+                      isJewish: next,
+                      ...(next ? {} : { isObservant: false }),
+                    })
+                  }
+                />
+                <PrefChip
+                  label="Muslim"
+                  checked={Boolean(user.isMuslim)}
+                  disabled={busy}
+                  onToggle={(next) => void savePrefs({ isMuslim: next })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+                Food preferences
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <PrefChip
+                  label="Observant"
+                  checked={Boolean(user.isJewish && user.isObservant)}
+                  disabled={busy || !user.isJewish}
+                  helper={!user.isJewish ? "Requires Jewish" : undefined}
+                  onToggle={(next) =>
+                    void savePrefs({
+                      isObservant: next,
+                      ...(next ? { preferHalal: false } : {}),
+                    })
+                  }
+                />
+                <PrefChip
+                  label="Prefer kosher"
+                  checked={Boolean(user.preferKosher)}
+                  disabled={busy}
+                  onToggle={(next) =>
+                    void savePrefs({
+                      preferKosher: next,
+                      ...(next ? { preferHalal: false } : {}),
+                    })
+                  }
+                />
+                <PrefChip
+                  label="Prefer Halal"
+                  checked={
+                    Boolean(user.preferHalal) &&
+                    !(
+                      Boolean(user.preferKosher) ||
+                      (Boolean(user.isJewish) && Boolean(user.isObservant))
+                    )
+                  }
+                  disabled={
+                    busy ||
                     Boolean(user.preferKosher) ||
                     (Boolean(user.isJewish) && Boolean(user.isObservant))
-                  )
-                }
-                disabled={
-                  busy ||
-                  Boolean(user.preferKosher) ||
-                  (Boolean(user.isJewish) && Boolean(user.isObservant))
-                }
-                onChange={(e) => void savePrefs({ preferHalal: e.target.checked })}
-              />
-              <span>
-                <span className="font-semibold">Prefer Halal</span>
-                <span className="block text-xs text-sage-600">
-                  Food preference — shows Halal section and hard-filters Cook Now
-                  / Weekly menu. Disabled when Prefer Kosher or Observant is on
-                  (Kosher food supersedes Halal). Kosher without alcohol still
-                  satisfies Halal on the Halal path.
-                </span>
-              </span>
-            </label>
+                  }
+                  helper={
+                    Boolean(user.preferKosher) ||
+                    (Boolean(user.isJewish) && Boolean(user.isObservant))
+                      ? "Cleared while Kosher food is on"
+                      : undefined
+                  }
+                  onToggle={(next) => void savePrefs({ preferHalal: next })}
+                />
+              </div>
+            </div>
 
-            <div className="border-t border-cream-300 pt-3 space-y-3">
+            <div className="space-y-2 border-t border-cream-300 pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
                 Plant-based
               </p>
-              <label className="flex items-start gap-2 text-sm text-sage-800">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
+              <div className="flex flex-wrap gap-2">
+                <PrefChip
+                  label="Vegan"
                   checked={Boolean(user.preferVegan)}
                   disabled={busy}
-                  onChange={(e) => {
-                    const next = applyPlantPrefToggle(user, "preferVegan", e.target.checked);
-                    void savePrefs(next);
+                  onToggle={(next) => {
+                    const patch = applyPlantPrefToggle(user, "preferVegan", next);
+                    void savePrefs(patch);
                   }}
                 />
-                <span>
-                  <span className="font-semibold">Vegan</span>
-                  <span className="block text-xs text-sage-600">
-                    Highest priority. Implies vegetarian. Hard-filters to vegan-eligible
-                    (or recipes with a vegan adapt note).
-                  </span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-sage-800">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
+                <PrefChip
+                  label="Vegetarian"
                   checked={Boolean(user.preferVegetarian)}
                   disabled={busy || Boolean(user.preferVegan)}
-                  onChange={(e) => {
-                    const next = applyPlantPrefToggle(
+                  helper={
+                    user.preferVegan ? "Implied by vegan" : undefined
+                  }
+                  onToggle={(next) => {
+                    const patch = applyPlantPrefToggle(
                       user,
                       "preferVegetarian",
-                      e.target.checked
+                      next
                     );
-                    void savePrefs(next);
+                    void savePrefs(patch);
                   }}
                 />
-                <span>
-                  <span className="font-semibold">Vegetarian</span>
-                  <span className="block text-xs text-sage-600">
-                    {user.preferVegan
-                      ? "Implied by vegan (checked automatically)."
-                      : "No meat or fish. Incompatible with pescatarian. Adapt notes shown when present."}
-                  </span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-sage-800">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
+                <PrefChip
+                  label="Pescatarian"
                   checked={Boolean(user.preferPescatarian)}
-                  disabled={busy || Boolean(user.preferVegan) || Boolean(user.preferVegetarian)}
-                  onChange={(e) => {
-                    const next = applyPlantPrefToggle(
+                  disabled={
+                    busy ||
+                    Boolean(user.preferVegan) ||
+                    Boolean(user.preferVegetarian)
+                  }
+                  helper={
+                    user.preferVegan || user.preferVegetarian
+                      ? "Off while vegan/vegetarian is on"
+                      : undefined
+                  }
+                  onToggle={(next) => {
+                    const patch = applyPlantPrefToggle(
                       user,
                       "preferPescatarian",
-                      e.target.checked
+                      next
                     );
-                    void savePrefs(next);
+                    void savePrefs(patch);
                   }}
                 />
-                <span>
-                  <span className="font-semibold">Pescatarian</span>
-                  <span className="block text-xs text-sage-600">
-                    Fish OK, no land meat. Disabled while vegan or vegetarian is on.
-                  </span>
-                </span>
-              </label>
+              </div>
             </div>
-
           </div>
 
           <div className="card p-5 space-y-4">
