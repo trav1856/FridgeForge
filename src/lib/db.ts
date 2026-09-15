@@ -17,13 +17,15 @@ function clientIsCurrent(client: PrismaClient): boolean {
     howToCourse?: unknown;
     howToLessonProgress?: unknown;
     struggleResource?: unknown;
+    weeklyMenuPlan?: unknown;
   };
   return (
     typeof c.recipeCookSession !== "undefined" &&
     typeof c.recipeCookStat !== "undefined" &&
     typeof c.howToCourse !== "undefined" &&
     typeof c.howToLessonProgress !== "undefined" &&
-    typeof c.struggleResource !== "undefined"
+    typeof c.struggleResource !== "undefined" &&
+    typeof c.weeklyMenuPlan !== "undefined"
   );
 }
 
