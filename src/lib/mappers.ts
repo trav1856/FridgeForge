@@ -40,6 +40,7 @@ export function toRecipeForMatch(
     vegetarianEligible: Boolean(recipe.vegetarianEligible),
     pescatarianEligible: Boolean(recipe.pescatarianEligible),
     veganEligible: Boolean(recipe.veganEligible),
+    kosherAdaptNote: recipe.kosherAdaptNote ?? null,
     veganAdaptNote: recipe.veganAdaptNote ?? null,
     vegetarianAdaptNote: recipe.vegetarianAdaptNote ?? null,
     techniqueTips: parseStringArray(recipe.techniqueTips),

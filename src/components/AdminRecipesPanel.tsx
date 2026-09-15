@@ -28,6 +28,7 @@ type RecipeRow = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   reviewCount: number;
@@ -108,6 +109,7 @@ export function AdminRecipesPanel({ initial }: Props) {
                 vegetarianEligible: data.vegetarianEligible ?? r.vegetarianEligible,
                 pescatarianEligible: data.pescatarianEligible ?? r.pescatarianEligible,
                 veganEligible: data.veganEligible ?? r.veganEligible,
+                kosherAdaptNote: data.kosherAdaptNote !== undefined ? data.kosherAdaptNote : r.kosherAdaptNote,
                 veganAdaptNote: data.veganAdaptNote !== undefined ? data.veganAdaptNote : r.veganAdaptNote,
                 vegetarianAdaptNote: data.vegetarianAdaptNote !== undefined ? data.vegetarianAdaptNote : r.vegetarianAdaptNote,
                 cuisine: data.cuisine ?? r.cuisine,

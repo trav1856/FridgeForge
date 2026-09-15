@@ -8,8 +8,11 @@ import type {
 import {
   HALAL_SOFT_BOOST,
   KOSHER_SOFT_BOOST,
+  passesKosherDietaryFilter,
   passesPlantDietaryFilter,
   plantSoftBoost,
+  hasAdaptNote,
+  ADAPT_SOFT_BOOST,
   satisfiesHalal,
 } from "./dietary";
 
@@ -68,9 +71,9 @@ export type SuggestOptions = {
   mood?: MoodParam;
   /** Free-text craving search (title/tags/ingredients). */
   q?: string;
-  /** Soft-boost kosherEligible recipes. */
+  /** Soft-boost kosherEligible (adapt-note path gets a smaller boost). */
   softPreferKosher?: boolean;
-  /** Hard-filter to kosherEligible only (empty if none). */
+  /** Hard-filter to kosherEligible OR kosherAdaptNote (empty if none). */
   requireKosher?: boolean;
   /** Soft-boost recipes that satisfyHalal (halalEligible or kosher-no-alcohol). */
   softPreferHalal?: boolean;
@@ -199,6 +202,12 @@ export function scoreRecipe(
   let dietaryBoost = 0;
   if (softPreferKosher && recipe.kosherEligible) {
     dietaryBoost += KOSHER_SOFT_BOOST;
+  } else if (
+    softPreferKosher &&
+    !recipe.kosherEligible &&
+    hasAdaptNote(recipe.kosherAdaptNote)
+  ) {
+    dietaryBoost += ADAPT_SOFT_BOOST;
   }
   if (softPreferHalal && satisfiesHalal(recipe)) {
     dietaryBoost += HALAL_SOFT_BOOST;
@@ -280,7 +289,7 @@ export function suggestMeals(
 
   // Dietary hard filters (AND with struggle / each other). Empty if none match.
   if (requireKosher) {
-    pool = pool.filter((r) => r.kosherEligible);
+    pool = pool.filter((r) => passesKosherDietaryFilter(r));
   }
   if (requireHalal) {
     pool = pool.filter((r) => satisfiesHalal(r));

@@ -81,6 +81,7 @@ export function RecipeForm() {
   const [vegetarianEligible, setVegetarianEligible] = useState(true);
   const [pescatarianEligible, setPescatarianEligible] = useState(true);
   const [veganEligible, setVeganEligible] = useState(false);
+  const [kosherAdaptNote, setKosherAdaptNote] = useState("");
   const [veganAdaptNote, setVeganAdaptNote] = useState("");
   const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
   const [stepsText, setStepsText] = useState("");
@@ -213,6 +214,7 @@ export function RecipeForm() {
       vegetarianEligible,
       pescatarianEligible,
       veganEligible,
+      kosherAdaptNote: kosherAdaptNote.trim() || null,
       veganAdaptNote: veganAdaptNote.trim() || null,
       vegetarianAdaptNote: vegetarianAdaptNote.trim() || null,
       steps,
@@ -519,7 +521,17 @@ export function RecipeForm() {
             * Eligible if prepared with certified kosher/halal ingredients — not a
             certification claim.
           </p>
-          <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2">
+          <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="label">Kosher adapt note</label>
+              <input
+                className="input"
+                value={kosherAdaptNote}
+                onChange={(e) => setKosherAdaptNote(e.target.value)}
+                placeholder="e.g. Swap shrimp for kosher fish"
+                maxLength={500}
+              />
+            </div>
             <div>
               <label className="label">Vegan adapt note</label>
               <input

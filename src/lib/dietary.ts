@@ -12,7 +12,7 @@ export type DietaryUserPrefs = {
   isJewish?: boolean | null;
   isObservant?: boolean | null;
   preferKosher?: boolean | null;
-  /** Soft prefer + show Halal; superseded when isJewish. */
+  /** Soft prefer + show Halal; food prefs (preferHalal) superseded by kosher food. */
   isMuslim?: boolean | null;
   preferHalal?: boolean | null;
   preferVegetarian?: boolean | null;
@@ -21,13 +21,13 @@ export type DietaryUserPrefs = {
 };
 
 export type DietarySuggestOptions = {
-  /** Soft-boost kosherEligible (Jewish non-observant and/or preferKosher). */
+  /** Soft-boost kosherEligible (and smaller boost for kosherAdaptNote path). */
   softPreferKosher?: boolean;
-  /** Hard-filter to kosherEligible only (Jewish + observant). */
+  /** Hard-filter to kosherEligible OR kosherAdaptNote (Jewish + observant). */
   requireKosher?: boolean;
-  /** Soft-boost halalEligible (Muslim, when not Jewish and not preferHalal hard-filter). */
+  /** Soft-boost satisfiesHalal (Muslim; suppressed while kosher food prefs active). */
   softPreferHalal?: boolean;
-  /** Hard-filter to halalEligible only (preferHalal; ignored when Jewish). */
+  /** Hard-filter to satisfiesHalal (preferHalal; suppressed while kosher food active). */
   requireHalal?: boolean;
   /** Hard-filter veganEligible OR veganAdaptNote (preferVegan). */
   requireVegan?: boolean;
@@ -54,16 +54,22 @@ export function effectiveObservant(prefs: DietaryUserPrefs): boolean {
 }
 
 /**
- * Jewish supersedes Muslim/Halal: kosher (without alcohol) covers halal needs.
- * Returns prefs with isMuslim/preferHalal forced off when isJewish.
+ * Kosher food supersedes Halal food: preferKosher or Observant clears preferHalal.
+ * Religion flags are independent — isJewish alone does not clear isMuslim/preferHalal;
+ * isMuslim is never forced off by this helper (religion can remain checked).
  * Plant prefs are untouched (stack freely with Jewish/Muslim).
  */
-export function applyJewishHalalSupersede(
+export function kosherFoodActive(prefs: DietaryUserPrefs): boolean {
+  return Boolean(prefs.preferKosher) || effectiveObservant(prefs);
+}
+
+export function applyKosherHalalSupersede(
   prefs: DietaryUserPrefs
 ): DietaryUserPrefs {
-  if (!prefs.isJewish) return prefs;
-  return { ...prefs, isMuslim: false, preferHalal: false };
+  if (!kosherFoodActive(prefs)) return prefs;
+  return { ...prefs, preferHalal: false };
 }
+
 
 /**
  * Normalize plant prefs to a single primary diet.
@@ -162,21 +168,25 @@ export function resolveDietarySuggestOptions(
   prefs: DietaryUserPrefs | null | undefined
 ): DietarySuggestOptions {
   if (!prefs) return {};
-  const effective = applyJewishHalalSupersede(prefs);
+  const effective = applyKosherHalalSupersede(prefs);
   const observant = effectiveObservant(effective);
+  const kosherActive = kosherFoodActive(effective);
   const softPreferKosher =
     !observant &&
     (Boolean(effective.preferKosher) ||
       (Boolean(effective.isJewish) && !Boolean(effective.isObservant)));
-  // Halal path only when not Jewish (superseded). Soft when Muslim; hard when preferHalal.
+  // Halal food path suppressed while kosher food prefs are active.
+  // isMuslim (religion) may still be true; softPreferHalal is still off when kosher food is on.
   const softPreferHalal =
-    Boolean(effective.isMuslim) && !Boolean(effective.preferHalal);
+    !kosherActive &&
+    Boolean(effective.isMuslim) &&
+    !Boolean(effective.preferHalal);
   const plant = normalizePlantPrefs(effective);
   return {
     softPreferKosher,
     requireKosher: observant,
     softPreferHalal,
-    requireHalal: Boolean(effective.preferHalal),
+    requireHalal: !kosherActive && Boolean(effective.preferHalal),
     requireVegan: plant.primary === "vegan",
     requireVegetarian: plant.primary === "vegetarian",
     requirePescatarian: plant.primary === "pescatarian",
@@ -192,10 +202,10 @@ export function showKosherSection(prefs: DietaryUserPrefs | null | undefined): b
   return Boolean(prefs.isJewish) || Boolean(prefs.preferKosher);
 }
 
-/** Show dedicated Halal nav/section when Muslim and/or preferHalal (not when Jewish). */
+/** Show dedicated Halal nav/section when Muslim and/or preferHalal (not when kosher food active). */
 export function showHalalSection(prefs: DietaryUserPrefs | null | undefined): boolean {
   if (!prefs) return false;
-  if (prefs.isJewish) return false; // kosher path covers / supersedes
+  if (kosherFoodActive(prefs)) return false; // kosher food covers / supersedes Halal food
   return Boolean(prefs.isMuslim) || Boolean(prefs.preferHalal);
 }
 
@@ -205,6 +215,7 @@ export type RecipeDietaryFields = {
   vegetarianEligible?: boolean | null;
   pescatarianEligible?: boolean | null;
   veganEligible?: boolean | null;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   /** Optional text used to detect alcohol for kosher-without-alcohol ⇒ halal. */
@@ -217,6 +228,13 @@ export type RecipeDietaryFields = {
 
 export function hasAdaptNote(note: string | null | undefined): boolean {
   return Boolean(note && note.trim());
+}
+
+/** Kosher hard-filter / section match: eligible OR non-empty kosherAdaptNote. */
+export function passesKosherDietaryFilter(recipe: RecipeDietaryFields): boolean {
+  return (
+    Boolean(recipe.kosherEligible) || hasAdaptNote(recipe.kosherAdaptNote)
+  );
 }
 
 /** Pass plant hard-filter (eligible OR adapt-note path when vegan/vegetarian). */
@@ -270,12 +288,17 @@ export function plantSoftBoost(
 }
 
 export type AdaptHint = {
-  kind: "vegan" | "vegetarian";
+  kind: "vegan" | "vegetarian" | "kosher";
   label: string;
   note: string;
 };
 
-/** Prominent adapt hint when recipe doesn't match primary plant pref. */
+/**
+ * Prominent adapt hint when recipe doesn't match active dietary prefs.
+ * Plant (vegan/vegetarian) checked first; then Make it kosher when user has
+ * kosher interest (preferKosher / Jewish / Observant) and a kosherAdaptNote.
+ * Note: Jewish cuisine/origin ≠ kosherEligible — adapt notes are food guidance only.
+ */
 export function adaptHintForPrefs(
   recipe: RecipeDietaryFields,
   prefs: DietaryUserPrefs | null | undefined
@@ -292,6 +315,16 @@ export function adaptHintForPrefs(
     const note = recipe.vegetarianAdaptNote?.trim();
     if (note) {
       return { kind: "vegetarian", label: "Make it vegetarian", note };
+    }
+  }
+  const wantsKosher =
+    Boolean(prefs.preferKosher) ||
+    Boolean(prefs.isJewish) ||
+    effectiveObservant(prefs);
+  if (wantsKosher && !recipe.kosherEligible) {
+    const note = recipe.kosherAdaptNote?.trim();
+    if (note) {
+      return { kind: "kosher", label: "Make it kosher", note };
     }
   }
   return null;
@@ -411,11 +444,34 @@ export function inferAdaptNotes(input: {
   description?: string | null;
   tags?: string[] | string | null;
   ingredients?: { name: string }[] | string[] | null;
-}): { veganAdaptNote: string | null; vegetarianAdaptNote: string | null } {
+}): {
+  veganAdaptNote: string | null;
+  vegetarianAdaptNote: string | null;
+  kosherAdaptNote: string | null;
+} {
   const blob = blobFromInput(input);
   const diet = inferDietaryEligibility(input);
   let veganAdaptNote: string | null = null;
   let vegetarianAdaptNote: string | null = null;
+  let kosherAdaptNote: string | null = null;
+
+  // Light kosher adapt heuristics (not cuisine/origin claims).
+  if (!diet.kosherEligible) {
+    if (/\b(pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami)\b/i.test(blob)) {
+      kosherAdaptNote =
+        "Swap pork/bacon products for kosher-certified beef, turkey, or plant protein.";
+    } else if (
+      /\b(shellfish|shrimp|prawn|crab\b|lobster|clam\b|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish)\b/i.test(
+        blob
+      )
+    ) {
+      kosherAdaptNote =
+        "Swap shellfish for a kosher fish (fins and scales) or a plant alternative.";
+    } else {
+      kosherAdaptNote =
+        "Use kosher-certified ingredients and keep meat/dairy separate if needed.";
+    }
+  }
 
   if (!diet.veganEligible && diet.vegetarianEligible) {
     if (/\b(butter|cheese|cream|milk|yogurt|yoghurt)\b/i.test(blob)) {
@@ -442,7 +498,7 @@ export function inferAdaptNotes(input: {
     }
   }
 
-  return { veganAdaptNote, vegetarianAdaptNote };
+  return { veganAdaptNote, vegetarianAdaptNote, kosherAdaptNote };
 }
 
 export const KOSHER_SOFT_BOOST = 20;

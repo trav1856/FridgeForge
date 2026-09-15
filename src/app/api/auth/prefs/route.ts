@@ -3,9 +3,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, getCurrentUser, publicUser, requireUser } from "@/lib/auth";
 import {
-  applyJewishHalalSupersede,
+  applyKosherHalalSupersede,
   applyPlantPrefToggle,
   effectiveObservant,
+  kosherFoodActive,
   normalizePlantPrefs,
 } from "@/lib/dietary";
 
@@ -34,15 +35,20 @@ export async function PATCH(req: NextRequest) {
     // Observant without Jewish → treat as off
     if (!isJewish) isObservant = false;
 
-    let isMuslim =
+    const preferKosher =
+      body.preferKosher !== undefined
+        ? body.preferKosher
+        : Boolean(user.preferKosher);
+
+    const isMuslim =
       body.isMuslim !== undefined ? body.isMuslim : Boolean(user.isMuslim);
     let preferHalal =
       body.preferHalal !== undefined
         ? body.preferHalal
         : Boolean(user.preferHalal);
-    // Jewish supersedes Muslim/Halal — force clear when Jewish
-    if (isJewish) {
-      isMuslim = false;
+    // Kosher food supersedes Halal food — clear preferHalal when preferKosher or Observant.
+    // Do not force isMuslim off for isJewish (religion ≠ food).
+    if (preferKosher || (isJewish && isObservant)) {
       preferHalal = false;
     }
 
@@ -75,9 +81,7 @@ export async function PATCH(req: NextRequest) {
       data: {
         isJewish,
         isObservant,
-        ...(body.preferKosher !== undefined
-          ? { preferKosher: body.preferKosher }
-          : {}),
+        preferKosher,
         isMuslim,
         preferHalal,
         preferVegan: plant.preferVegan,
@@ -97,7 +101,8 @@ export async function PATCH(req: NextRequest) {
     });
 
     void effectiveObservant(updated);
-    void applyJewishHalalSupersede(updated);
+    void applyKosherHalalSupersede(updated);
+    void kosherFoodActive(updated);
 
     return NextResponse.json({ user: publicUser(updated as typeof user) });
   } catch (err) {

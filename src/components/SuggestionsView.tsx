@@ -36,6 +36,7 @@ type Suggestion = {
     vegetarianEligible?: boolean;
     pescatarianEligible?: boolean;
     veganEligible?: boolean;
+    kosherAdaptNote?: string | null;
     veganAdaptNote?: string | null;
     vegetarianAdaptNote?: string | null;
     tags: string[];

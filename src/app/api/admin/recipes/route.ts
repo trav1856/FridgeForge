@@ -59,6 +59,7 @@ const patchSchema = z.object({
   vegetarianEligible: z.boolean().optional(),
   pescatarianEligible: z.boolean().optional(),
   veganEligible: z.boolean().optional(),
+  kosherAdaptNote: z.string().max(500).optional().nullable(),
   veganAdaptNote: z.string().max(500).optional().nullable(),
   vegetarianAdaptNote: z.string().max(500).optional().nullable(),
   cuisine: z.string().max(80).optional().nullable(),

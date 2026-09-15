@@ -32,6 +32,7 @@ export type MenuSlotPick = {
   vegetarianEligible: boolean;
   pescatarianEligible: boolean;
   veganEligible: boolean;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   costTier: string;
@@ -174,6 +175,7 @@ export function toSlotPick(s: SuggestionResult): MenuSlotPick {
     vegetarianEligible: Boolean(s.recipe.vegetarianEligible),
     pescatarianEligible: Boolean(s.recipe.pescatarianEligible),
     veganEligible: Boolean(s.recipe.veganEligible),
+    kosherAdaptNote: s.recipe.kosherAdaptNote ?? null,
     veganAdaptNote: s.recipe.veganAdaptNote ?? null,
     vegetarianAdaptNote: s.recipe.vegetarianAdaptNote ?? null,
     costTier: s.recipe.costTier,

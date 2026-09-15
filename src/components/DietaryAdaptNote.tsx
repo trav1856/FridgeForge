@@ -9,7 +9,7 @@ type Props = {
   className?: string;
 };
 
-/** Prominent “Make it vegan/vegetarian: …” when recipe isn’t eligible but has a note. */
+/** Prominent “Make it vegan/vegetarian/kosher: …” when recipe isn’t eligible but has a note. */
 export function DietaryAdaptNote({
   hint,
   compact = false,

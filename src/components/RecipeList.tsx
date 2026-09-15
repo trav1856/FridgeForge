@@ -35,6 +35,7 @@ type Recipe = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   ingredients: { name: string }[];

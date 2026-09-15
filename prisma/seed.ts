@@ -897,6 +897,7 @@ async function main() {
         vegetarianEligible?: boolean;
         pescatarianEligible?: boolean;
         veganEligible?: boolean;
+        kosherAdaptNote?: string | null;
         veganAdaptNote?: string | null;
         vegetarianAdaptNote?: string | null;
       } = {};
@@ -924,6 +925,7 @@ async function main() {
         tags: rest.tags,
         ingredients,
       });
+      data.kosherAdaptNote = adapt.kosherAdaptNote;
       data.veganAdaptNote = adapt.veganAdaptNote;
       data.vegetarianAdaptNote = adapt.vegetarianAdaptNote;
       recipesTaxonomied += 1;

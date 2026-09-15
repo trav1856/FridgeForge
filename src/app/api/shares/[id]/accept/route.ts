@@ -46,6 +46,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
         vegetarianEligible: r.vegetarianEligible,
         pescatarianEligible: r.pescatarianEligible,
         veganEligible: r.veganEligible,
+        kosherAdaptNote: r.kosherAdaptNote,
         veganAdaptNote: r.veganAdaptNote,
         vegetarianAdaptNote: r.vegetarianAdaptNote,
         techniqueTips: r.techniqueTips,

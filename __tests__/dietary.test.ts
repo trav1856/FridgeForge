@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   adaptHintForPrefs,
-  applyJewishHalalSupersede,
+  applyKosherHalalSupersede,
+  kosherFoodActive,
   applyPlantPrefToggle,
   effectiveObservant,
   inferAdaptNotes,
@@ -47,6 +48,7 @@ const recipe = (
   vegetarianEligible: partial.vegetarianEligible ?? false,
   pescatarianEligible: partial.pescatarianEligible ?? false,
   veganEligible: partial.veganEligible ?? false,
+  kosherAdaptNote: partial.kosherAdaptNote ?? null,
   veganAdaptNote: partial.veganAdaptNote ?? null,
   vegetarianAdaptNote: partial.vegetarianAdaptNote ?? null,
   techniqueTips: partial.techniqueTips ?? [],
@@ -99,7 +101,7 @@ describe("dietary prefs resolve", () => {
     });
   });
 
-  it("Jewish supersedes preferHalal / isMuslim in resolve", () => {
+  it("Observant (kosher food) supersedes preferHalal; Muslim religion can remain", () => {
     expect(
       resolveDietarySuggestOptions({
         isJewish: true,
@@ -111,6 +113,35 @@ describe("dietary prefs resolve", () => {
       softPreferKosher: false,
       requireKosher: true,
       softPreferHalal: false,
+      requireHalal: false,
+    });
+  });
+
+  it("preferKosher supersedes preferHalal soft/hard paths", () => {
+    expect(
+      resolveDietarySuggestOptions({
+        preferKosher: true,
+        preferHalal: true,
+        isMuslim: true,
+      })
+    ).toMatchObject({
+      softPreferKosher: true,
+      softPreferHalal: false,
+      requireHalal: false,
+    });
+  });
+
+  it("isJewish alone does NOT suppress Halal soft-prefer", () => {
+    expect(
+      resolveDietarySuggestOptions({
+        isJewish: true,
+        isObservant: false,
+        isMuslim: true,
+        preferHalal: false,
+      })
+    ).toMatchObject({
+      softPreferKosher: true,
+      softPreferHalal: true,
       requireHalal: false,
     });
   });
@@ -145,16 +176,34 @@ describe("dietary prefs resolve", () => {
     });
   });
 
-  it("applyJewishHalalSupersede clears Muslim/Halal when Jewish", () => {
+  it("applyKosherHalalSupersede clears preferHalal for kosher food, leaves isMuslim", () => {
     expect(
-      applyJewishHalalSupersede({
+      applyKosherHalalSupersede({
+        preferKosher: true,
+        isMuslim: true,
+        preferHalal: true,
+      })
+    ).toMatchObject({ isMuslim: true, preferHalal: false, preferKosher: true });
+    expect(
+      applyKosherHalalSupersede({
+        isJewish: true,
+        isObservant: true,
+        isMuslim: true,
+        preferHalal: true,
+      })
+    ).toMatchObject({ isMuslim: true, preferHalal: false });
+    // Jewish alone does not clear Halal food prefs
+    expect(
+      applyKosherHalalSupersede({
         isJewish: true,
         isMuslim: true,
         preferHalal: true,
       })
-    ).toMatchObject({ isMuslim: false, preferHalal: false, isJewish: true });
+    ).toMatchObject({ isMuslim: true, preferHalal: true, isJewish: true });
+    expect(kosherFoodActive({ isJewish: true })).toBe(false);
+    expect(kosherFoodActive({ preferKosher: true })).toBe(true);
     expect(
-      applyJewishHalalSupersede({ isMuslim: true, preferHalal: true })
+      applyKosherHalalSupersede({ isMuslim: true, preferHalal: true })
     ).toMatchObject({ isMuslim: true, preferHalal: true });
   });
 
@@ -165,8 +214,21 @@ describe("dietary prefs resolve", () => {
     expect(showHalalSection({ preferHalal: true })).toBe(true);
     expect(showHalalSection({ isMuslim: true })).toBe(true);
     expect(showHalalSection({})).toBe(false);
+    // Jewish alone does not hide Halal section
     expect(
       showHalalSection({ isJewish: true, isMuslim: true, preferHalal: true })
+    ).toBe(true);
+    // Kosher food prefs hide Halal section
+    expect(
+      showHalalSection({ preferKosher: true, isMuslim: true, preferHalal: true })
+    ).toBe(false);
+    expect(
+      showHalalSection({
+        isJewish: true,
+        isObservant: true,
+        isMuslim: true,
+        preferHalal: true,
+      })
     ).toBe(false);
   });
 });
@@ -330,6 +392,24 @@ describe("inferDietaryEligibility heuristics", () => {
     });
     expect(notes.veganAdaptNote).toMatch(/plant/i);
   });
+
+  it("infers kosher adapt note for pork/shellfish (not a cuisine claim)", () => {
+    const pork = inferAdaptNotes({
+      title: "BLT",
+      ingredients: [{ name: "bacon" }, { name: "bread" }],
+    });
+    expect(pork.kosherAdaptNote).toMatch(/pork|bacon|kosher/i);
+    const shrimp = inferAdaptNotes({
+      title: "Shrimp Pasta",
+      ingredients: [{ name: "shrimp" }, { name: "pasta" }],
+    });
+    expect(shrimp.kosherAdaptNote).toMatch(/shellfish|kosher fish/i);
+    const rice = inferAdaptNotes({
+      title: "Rice and Beans",
+      ingredients: [{ name: "rice" }, { name: "beans" }],
+    });
+    expect(rice.kosherAdaptNote).toBeNull();
+  });
 });
 
 describe("suggestMeals dietary filters/boost", () => {
@@ -430,11 +510,38 @@ describe("suggestMeals dietary filters/boost", () => {
     expect(wineBoosted.dietaryBoost).toBe(0);
   });
 
-  it("hard-filters to kosherEligible when requireKosher", () => {
-    const results = suggestMeals([kosher, treyf, halalOnly], stock, {
+  it("hard-filters to kosherEligible OR kosherAdaptNote when requireKosher", () => {
+    const adaptOnly = recipe({
+      id: "ka",
+      title: "Shellfish Pasta Adapt",
+      kosherEligible: false,
+      kosherAdaptNote: "Swap shrimp for kosher fish",
+      ingredients: [
+        { id: "1", name: "pasta", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const results = suggestMeals([kosher, treyf, halalOnly, adaptOnly], stock, {
       requireKosher: true,
     });
-    expect(results.map((r) => r.recipe.id)).toEqual(["k"]);
+    expect(results.map((r) => r.recipe.id).sort()).toEqual(["k", "ka"]);
+  });
+
+  it("soft-boosts kosherAdaptNote less than kosherEligible", () => {
+    const adaptOnly = recipe({
+      id: "ka",
+      title: "Adapt Pasta",
+      kosherEligible: false,
+      kosherAdaptNote: "Use kosher sausage",
+      ingredients: [
+        { id: "1", name: "pasta", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const eligibleBoost = scoreRecipe(kosher, stock, { softPreferKosher: true });
+    const adaptBoost = scoreRecipe(adaptOnly, stock, { softPreferKosher: true });
+    const plain = scoreRecipe(adaptOnly, stock, {});
+    expect(adaptBoost.dietaryBoost).toBeGreaterThan(0);
+    expect(adaptBoost.score).toBeGreaterThan(plain.score);
+    expect(eligibleBoost.dietaryBoost).toBeGreaterThan(adaptBoost.dietaryBoost);
   });
 
   it("hard-filters to satisfiesHalal when requireHalal", () => {
@@ -576,6 +683,48 @@ describe("adapt hints", () => {
       adaptHintForPrefs(
         { veganEligible: true, veganAdaptNote: "n/a" },
         { preferVegan: true }
+      )
+    ).toBeNull();
+  });
+
+  it("shows Make it kosher when not kosherEligible but note + kosher prefs", () => {
+    expect(
+      adaptHintForPrefs(
+        {
+          kosherEligible: false,
+          kosherAdaptNote: "Swap shrimp for kosher fish",
+        },
+        { preferKosher: true }
+      )
+    ).toEqual({
+      kind: "kosher",
+      label: "Make it kosher",
+      note: "Swap shrimp for kosher fish",
+    });
+    expect(
+      adaptHintForPrefs(
+        {
+          kosherEligible: false,
+          kosherAdaptNote: "Swap shrimp for kosher fish",
+        },
+        { isJewish: true }
+      )
+    ).toMatchObject({ kind: "kosher", label: "Make it kosher" });
+    // no kosher interest → no kosher hint
+    expect(
+      adaptHintForPrefs(
+        {
+          kosherEligible: false,
+          kosherAdaptNote: "Swap shrimp for kosher fish",
+        },
+        { preferHalal: true }
+      )
+    ).toBeNull();
+    // eligible → no hint
+    expect(
+      adaptHintForPrefs(
+        { kosherEligible: true, kosherAdaptNote: "n/a" },
+        { preferKosher: true }
       )
     ).toBeNull();
   });

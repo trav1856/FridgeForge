@@ -27,6 +27,7 @@ type RequestWithRecipe = {
     vegetarianEligible: boolean;
     pescatarianEligible: boolean;
     veganEligible: boolean;
+    kosherAdaptNote: string | null;
     veganAdaptNote: string | null;
     vegetarianAdaptNote: string | null;
     techniqueTips: string | null;
@@ -104,6 +105,7 @@ async function cloneRecipeForRequester(request: RequestWithRecipe) {
       vegetarianEligible: r.vegetarianEligible,
       pescatarianEligible: r.pescatarianEligible,
       veganEligible: r.veganEligible,
+      kosherAdaptNote: r.kosherAdaptNote ?? null,
       veganAdaptNote: r.veganAdaptNote ?? null,
       vegetarianAdaptNote: r.vegetarianAdaptNote ?? null,
       techniqueTips: r.techniqueTips,

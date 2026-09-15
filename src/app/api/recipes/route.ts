@@ -51,6 +51,7 @@ const createSchema = z.object({
   vegetarianEligible: z.boolean().optional(),
   pescatarianEligible: z.boolean().optional(),
   veganEligible: z.boolean().optional(),
+  kosherAdaptNote: z.string().max(500).optional().nullable(),
   veganAdaptNote: z.string().max(500).optional().nullable(),
   vegetarianAdaptNote: z.string().max(500).optional().nullable(),
   techniqueTips: z.array(z.string()).optional(),
@@ -88,7 +89,14 @@ export async function GET(req: NextRequest) {
   // Default "All": global catalog + accessible household/shared recipes
   const dietaryFilters: Record<string, unknown>[] = [];
   if (struggle === "1") dietaryFilters.push({ isStruggleMeal: true });
-  if (kosherOnly) dietaryFilters.push({ kosherEligible: true });
+  if (kosherOnly) {
+    dietaryFilters.push({
+      OR: [
+        { kosherEligible: true },
+        { kosherAdaptNote: { not: null } },
+      ],
+    });
+  }
   // Broaden SQL to halal OR kosher; refine with satisfiesHalal (kosher-no-alcohol) in JS
   if (halalOnly) {
     dietaryFilters.push({
@@ -225,6 +233,7 @@ export async function POST(req: NextRequest) {
         vegetarianEligible: data.vegetarianEligible ?? false,
         pescatarianEligible: data.pescatarianEligible ?? false,
         veganEligible: data.veganEligible ?? false,
+        kosherAdaptNote: data.kosherAdaptNote?.trim() || null,
         veganAdaptNote: data.veganAdaptNote?.trim() || null,
         vegetarianAdaptNote: data.vegetarianAdaptNote?.trim() || null,
         techniqueTips: stringifyArray(data.techniqueTips),

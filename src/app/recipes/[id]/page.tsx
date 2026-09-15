@@ -96,6 +96,8 @@ export default async function RecipeDetailPage({ params }: Props) {
   const hasPlaybook =
     recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0;
 
+  const adaptHint = adaptHintForPrefs(recipe, user);
+
   const dishKey =
     (raw as { dishKey?: string | null }).dishKey ||
     dishKeyForTitle(recipe.title);

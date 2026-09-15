@@ -40,6 +40,7 @@ export type RecipeInput = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   techniqueTips?: string[];
@@ -80,6 +81,7 @@ export type RecipeForMatch = {
   vegetarianEligible: boolean;
   pescatarianEligible: boolean;
   veganEligible: boolean;
+  kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
   techniqueTips: string[];

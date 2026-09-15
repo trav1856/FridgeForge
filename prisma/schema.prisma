@@ -20,14 +20,14 @@ model User {
   /** Soft-disable: blocked from sign-in when true */
   disabled     Boolean           @default(false)
   /** Dietary identity / prefs (Account). Observant only meaningful when isJewish.
-   *  Jewish supersedes Muslim/Halal (kosher without alcohol covers halal needs). */
+   *  Religion (Jewish/Muslim) ≠ food (Kosher/Halal). Kosher food supersedes Halal food. */
   isJewish     Boolean           @default(false)
   isObservant  Boolean           @default(false)
-  /** Soft prefer kosher + show Kosher section; observant ⇒ hard-filter kosherEligible. */
+  /** Soft prefer kosher + show Kosher section; observant ⇒ hard-filter kosherEligible|adapt. */
   preferKosher Boolean           @default(false)
-  /** Soft prefer + show Halal section (like Jewish→kosher); cleared/disabled when isJewish. */
+  /** Soft prefer + show Halal section; religion flag — not cleared by isJewish alone. */
   isMuslim     Boolean           @default(false)
-  /** Show Halal section + hard-filter halalEligible when on (ignored when isJewish). */
+  /** Show Halal section + hard-filter; cleared/disabled when preferKosher or Observant. */
   preferHalal  Boolean           @default(false)
   /** Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary). */
   preferVegetarian Boolean       @default(false)
@@ -141,7 +141,8 @@ model Recipe {
   sourceUrl        String?
   imageUrl         String?            // remote URL or /recipe-images/... path
   isStruggleMeal   Boolean            @default(false)
-  /** Eligible if prepared with certified kosher ingredients (not a certification claim). */
+  /** Eligible if prepared with certified kosher ingredients (not a certification claim).
+   *  Independent of Jewish cuisine/origin — a dish can be Jewish and not kosher, or kosher and not Jewish cuisine. */
   kosherEligible   Boolean            @default(false)
   /** Eligible if prepared with certified halal ingredients (not a certification claim). */
   halalEligible    Boolean            @default(false)
@@ -151,6 +152,8 @@ model Recipe {
   pescatarianEligible Boolean         @default(false)
   /** No animal products. */
   veganEligible    Boolean            @default(false)
+  /** Short note: how to adapt this recipe to kosher when not kosherEligible. */
+  kosherAdaptNote  String?
   /** Short note: how to adapt this recipe to vegan when not veganEligible. */
   veganAdaptNote   String?
   /** Short note: how to adapt this recipe to vegetarian when not vegetarianEligible. */
