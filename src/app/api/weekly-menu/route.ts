@@ -8,6 +8,7 @@ import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 import {
   buildWeeklyMenu,
   collectMissingFromPlan,
+  regenerateMenuDay,
   regenerateMenuSlot,
   type MealSlot,
   type WeeklyMenuPlanData,
@@ -112,6 +113,8 @@ export async function GET(req: NextRequest) {
   const plan = buildWeeklyMenu(recipeData, pantry, {
     struggleMode,
     maxMissing: 3,
+    // First load without regenerate stays stable; ?regenerate=1 must vary
+    randomize: regenerate,
   });
   const row = await upsertPlan(householdId, user?.id ?? null, plan);
 
@@ -124,7 +127,7 @@ export async function GET(req: NextRequest) {
 }
 
 const postSchema = z.object({
-  action: z.enum(["regenerate", "regenerateSlot", "save"]),
+  action: z.enum(["regenerate", "regenerateSlot", "regenerateDay", "save"]),
   struggleMode: z.boolean().optional(),
   dayIndex: z.number().int().min(0).max(6).optional(),
   slot: z.enum(["breakfast", "lunch", "dinner"]).optional(),
@@ -145,6 +148,7 @@ export async function POST(req: NextRequest) {
       plan = buildWeeklyMenu(recipeData, pantry, {
         struggleMode,
         maxMissing: 3,
+        randomize: true,
       });
     } else if (body.action === "regenerateSlot") {
       if (body.dayIndex == null || !body.slot) {
@@ -168,6 +172,7 @@ export async function POST(req: NextRequest) {
         base = buildWeeklyMenu(recipeData, pantry, {
           struggleMode,
           maxMissing: 3,
+          randomize: true,
         });
       }
       plan = regenerateMenuSlot(
@@ -176,7 +181,35 @@ export async function POST(req: NextRequest) {
         slot,
         recipeData,
         pantry,
-        { struggleMode, maxMissing: 3 }
+        { struggleMode, maxMissing: 3, randomize: true }
+      );
+    } else if (body.action === "regenerateDay") {
+      if (body.dayIndex == null) {
+        return NextResponse.json(
+          { error: "dayIndex required" },
+          { status: 400 }
+        );
+      }
+      let base: WeeklyMenuPlanData | null = null;
+      if (body.plan) {
+        base = body.plan as WeeklyMenuPlanData;
+      } else {
+        const saved = await findSavedPlan(householdId, user?.id ?? null);
+        base = saved ? parsePlanJson(saved.planJson) : null;
+      }
+      if (!base) {
+        base = buildWeeklyMenu(recipeData, pantry, {
+          struggleMode,
+          maxMissing: 3,
+          randomize: true,
+        });
+      }
+      plan = regenerateMenuDay(
+        base,
+        body.dayIndex,
+        recipeData,
+        pantry,
+        { struggleMode, maxMissing: 3, randomize: true }
       );
     } else {
       // save

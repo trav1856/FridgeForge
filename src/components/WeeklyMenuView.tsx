@@ -125,6 +125,32 @@ export function WeeklyMenuView() {
     [struggleMode, plan, applyPayload]
   );
 
+  const regenerateDay = useCallback(
+    async (dayIndex: number) => {
+      const key = `day-${dayIndex}`;
+      setBusyKey(key);
+      try {
+        const res = await fetch("/api/weekly-menu", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "regenerateDay",
+            struggleMode,
+            dayIndex,
+            plan,
+          }),
+        });
+        const data = await res.json();
+        applyPayload(data);
+      } catch {
+        setError("Could not regenerate that day");
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [struggleMode, plan, applyPayload]
+  );
+
   const shoppingItems = useMemo(
     () => missing.map((name) => ({ name })),
     [missing]
@@ -225,6 +251,17 @@ export function WeeklyMenuView() {
                     {day.dateISO}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => regenerateDay(day.dayIndex)}
+                  disabled={busyKey === `day-${day.dayIndex}` || busyKey === "week"}
+                  className="rounded-lg bg-cream-50/10 px-2.5 py-1 text-[11px] font-semibold text-cream-50 hover:bg-cream-50/20 disabled:opacity-50"
+                  title="Rebuild breakfast, lunch, and dinner for this day"
+                >
+                  {busyKey === `day-${day.dayIndex}`
+                    ? "Refreshing…"
+                    : "Regenerate day"}
+                </button>
               </div>
               <div className="grid gap-0 sm:grid-cols-3">
                 {MEAL_SLOTS.map((slot) => (
@@ -266,10 +303,24 @@ function SlotCard({
           type="button"
           onClick={onRegenerate}
           disabled={busy}
-          className="text-[11px] font-semibold text-ember-700 hover:underline disabled:opacity-50"
-          title="Pick a different recipe for this slot"
+          className="inline-flex items-center gap-1 rounded-full border border-ember-200 bg-ember-50 px-2 py-0.5 text-[11px] font-semibold text-ember-800 shadow-sm hover:bg-ember-100 disabled:opacity-50"
+          title="Pick a different recipe for this meal"
+          aria-label={`Regenerate ${SLOT_LABEL[slot]}`}
         >
-          {busy ? "…" : "Refresh"}
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-2.6-6.3" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+          {busy ? "…" : "Regenerate"}
         </button>
       </div>
 

@@ -1,7 +1,8 @@
 /**
  * Weekly menu builder — 7-day breakfast / lunch / dinner from pantry + recipes.
  * Reuses Cook Now scoring (suggestMeals / scoreRecipe); adds course pools +
- * anti-repeat preference across the week.
+ * hard unused-first / dishKey diversification, with optional weighted random
+ * among top candidates so regenerate actually changes the week.
  */
 
 import { suggestMeals, type SuggestOptions } from "./suggestions";
@@ -29,6 +30,7 @@ export type MenuSlotPick = {
   costTier: string;
   course?: string | null;
   tags: string[];
+  dishKey?: string | null;
 };
 
 export type MenuDay = {
@@ -47,12 +49,34 @@ export type WeeklyMenuPlanData = {
 export type WeeklyMenuOptions = SuggestOptions & {
   /** Start date for the 7-day window (local calendar). Default: today. */
   startDate?: Date;
+  /**
+   * When true, pick with weighted random among the top unused candidates
+   * instead of always taking #1. Use for regenerate so each click can differ.
+   */
+  randomize?: boolean;
+  /** Optional RNG in [0, 1). Defaults to Math.random when randomize is on. */
+  rng?: () => number;
+  /** How many top-scoring candidates to include in the weighted draw. */
+  topN?: number;
+  /** Soft score penalty per prior use (only matters once unused pool is empty). */
+  repeatPenalty?: number;
 };
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 const BREAKFAST_RE =
   /\b(breakfast|brunch|pancake|waffle|oatmeal|scrambl|omelet|omelette|toast|bagel|cereal|muffin|hash\b|french toast|granola|yogurt)/i;
+
+/** Deterministic PRNG (mulberry32) for seeded regenerate tests. */
+export function createRng(seed: number): () => number {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /** Resolve which meal slots a recipe is a reasonable pick for. */
 export function recipeFitsMealSlot(
@@ -141,34 +165,98 @@ export function toSlotPick(s: SuggestionResult): MenuSlotPick {
     costTier: s.recipe.costTier,
     course: s.recipe.course ?? null,
     tags: s.recipe.tags,
+    dishKey: s.recipe.dishKey ?? null,
   };
 }
 
+function weightedPickFromTop(
+  ranked: { s: SuggestionResult; adj: number }[],
+  topN: number,
+  rng: () => number
+): SuggestionResult | null {
+  const top = ranked.slice(0, Math.max(1, Math.min(topN, ranked.length)));
+  if (top.length === 0) return null;
+  if (top.length === 1) return top[0]!.s;
+
+  // Weights from adjusted score so higher-ranked picks stay likelier
+  const weights = top.map((x) => Math.max(x.adj, 0) + 1);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  let r = rng() * sum;
+  for (let i = 0; i < top.length; i++) {
+    r -= weights[i]!;
+    if (r <= 0) return top[i]!.s;
+  }
+  return top[top.length - 1]!.s;
+}
+
+export type PickForSlotOptions = {
+  excludeIds?: Set<string>;
+  /** Prior dishKey usage across the week (only keys that appeared). */
+  usedDishKeys?: Map<string, number>;
+  /** Soft penalty once reuse is required. Default 35. */
+  repeatPenalty?: number;
+  /** Weighted random among top unused candidates. */
+  randomize?: boolean;
+  rng?: () => number;
+  /** Candidates considered when randomize is on. Default 5. */
+  topN?: number;
+};
+
 /**
- * Prefer higher pantry score; subtract a repeat penalty so the same recipe
- * is avoided across the week when alternatives exist.
+ * Prefer unused recipe ids (hard), then unused dishKeys (hard when present),
+ * then higher pantry score. With randomize, draw among the top N by adj score
+ * instead of always taking #1 — so regenerate can change the plan.
  */
 export function pickForSlot(
   pool: SuggestionResult[],
   usedCounts: Map<string, number>,
-  options: { excludeIds?: Set<string>; repeatPenalty?: number } = {}
+  options: PickForSlotOptions = {}
 ): SuggestionResult | null {
-  const { excludeIds = new Set(), repeatPenalty = 35 } = options;
-  const ranked = pool
-    .filter((s) => !excludeIds.has(s.recipe.id))
+  const {
+    excludeIds = new Set(),
+    usedDishKeys = new Map(),
+    repeatPenalty = 35,
+    randomize = false,
+    rng = Math.random,
+    topN = 5,
+  } = options;
+
+  let candidates = pool.filter((s) => !excludeIds.has(s.recipe.id));
+  if (candidates.length === 0) return null;
+
+  // 1) Hard prefer recipes not yet used this week
+  const unusedById = candidates.filter(
+    (s) => (usedCounts.get(s.recipe.id) || 0) === 0
+  );
+  if (unusedById.length > 0) candidates = unusedById;
+
+  // 2) Hard prefer dishKeys not yet used (when dishKey is set)
+  const freshDishKey = candidates.filter((s) => {
+    const key = s.recipe.dishKey?.trim();
+    if (!key) return true; // no dishKey → treat as fine for this filter
+    return (usedDishKeys.get(key) || 0) === 0;
+  });
+  if (freshDishKey.length > 0) candidates = freshDishKey;
+
+  const ranked = candidates
     .map((s) => {
       const used = usedCounts.get(s.recipe.id) || 0;
-      return { s, adj: s.score - used * repeatPenalty };
+      const dk = s.recipe.dishKey?.trim();
+      const dishUsed = dk ? usedDishKeys.get(dk) || 0 : 0;
+      const adj = s.score - used * repeatPenalty - dishUsed * (repeatPenalty / 2);
+      return { s, adj };
     })
     .sort((a, b) => {
       if (b.adj !== a.adj) return b.adj - a.adj;
-      // Stable tie-break: prefer unused, then title
       const ua = usedCounts.get(a.s.recipe.id) || 0;
       const ub = usedCounts.get(b.s.recipe.id) || 0;
       if (ua !== ub) return ua - ub;
       return a.s.recipe.title.localeCompare(b.s.recipe.title);
     });
 
+  if (randomize) {
+    return weightedPickFromTop(ranked, topN, rng);
+  }
   return ranked[0]?.s ?? null;
 }
 
@@ -204,6 +292,29 @@ function countUsedInPlan(days: MenuDay[]): Map<string, number> {
   return used;
 }
 
+function countDishKeysInPlan(days: MenuDay[]): Map<string, number> {
+  const used = new Map<string, number>();
+  for (const day of days) {
+    for (const slot of MEAL_SLOTS) {
+      const pick = day.slots[slot];
+      const key = pick?.dishKey?.trim();
+      if (!key) continue;
+      used.set(key, (used.get(key) || 0) + 1);
+    }
+  }
+  return used;
+}
+
+function recordPick(
+  pick: SuggestionResult,
+  usedCounts: Map<string, number>,
+  usedDishKeys: Map<string, number>
+) {
+  usedCounts.set(pick.recipe.id, (usedCounts.get(pick.recipe.id) || 0) + 1);
+  const dk = pick.recipe.dishKey?.trim();
+  if (dk) usedDishKeys.set(dk, (usedDishKeys.get(dk) || 0) + 1);
+}
+
 export function buildWeeklyMenu(
   recipes: RecipeForMatch[],
   pantry: PantrySnapshot[],
@@ -226,6 +337,14 @@ export function buildWeeklyMenu(
   }));
 
   const usedCounts = new Map<string, number>();
+  const usedDishKeys = new Map<string, number>();
+  const pickOpts: PickForSlotOptions = {
+    repeatPenalty: options.repeatPenalty,
+    randomize: Boolean(options.randomize),
+    rng: options.rng,
+    topN: options.topN ?? 5,
+    usedDishKeys,
+  };
 
   for (const day of days) {
     for (const slot of MEAL_SLOTS) {
@@ -236,13 +355,13 @@ export function buildWeeklyMenu(
           (id): id is string => Boolean(id)
         )
       );
-      const pick = pickForSlot(pool, usedCounts, { excludeIds: sameDayIds });
+      const pick = pickForSlot(pool, usedCounts, {
+        ...pickOpts,
+        excludeIds: sameDayIds,
+      });
       if (pick) {
         day.slots[slot] = toSlotPick(pick);
-        usedCounts.set(
-          pick.recipe.id,
-          (usedCounts.get(pick.recipe.id) || 0) + 1
-        );
+        recordPick(pick, usedCounts, usedDishKeys);
       }
     }
   }
@@ -288,6 +407,7 @@ export function regenerateMenuSlot(
   // Count usage excluding the slot we're replacing
   day.slots[slot] = null;
   const usedCounts = countUsedInPlan(days);
+  const usedDishKeys = countDishKeysInPlan(days);
   const sameDayIds = new Set(
     MEAL_SLOTS.map((s) => day.slots[s]?.recipeId).filter(
       (id): id is string => Boolean(id)
@@ -296,19 +416,126 @@ export function regenerateMenuSlot(
   if (previousId) sameDayIds.add(previousId);
 
   const pool = poolForSlot(scored, slot);
-  const pick = pickForSlot(pool, usedCounts, { excludeIds: sameDayIds });
+  const pickOpts: PickForSlotOptions = {
+    excludeIds: sameDayIds,
+    usedDishKeys,
+    repeatPenalty: options.repeatPenalty,
+    // Slot regen should vary when alternatives exist
+    randomize: options.randomize !== false,
+    rng: options.rng,
+    topN: options.topN ?? 5,
+  };
+  const pick = pickForSlot(pool, usedCounts, pickOpts);
   // If nothing else fits, allow re-picking previous rather than leaving blank
   const fallback =
     pick ??
     pickForSlot(pool, usedCounts, {
+      ...pickOpts,
       excludeIds: new Set(
         MEAL_SLOTS.map((s) => day.slots[s]?.recipeId).filter(
           (id): id is string => Boolean(id)
         )
       ),
+      randomize: false,
     });
 
   day.slots[slot] = fallback ? toSlotPick(fallback) : null;
+
+  return {
+    days,
+    struggleMode,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Rebuild breakfast/lunch/dinner for one day. Prefer unused recipes across the
+ * rest of the week, avoid the day's previous three recipe ids when alternatives
+ * exist, and randomize among top candidates (same variety path as week regen).
+ */
+export function regenerateMenuDay(
+  plan: WeeklyMenuPlanData,
+  dayIndex: number,
+  recipes: RecipeForMatch[],
+  pantry: PantrySnapshot[],
+  options: WeeklyMenuOptions = {}
+): WeeklyMenuPlanData {
+  const struggleMode =
+    options.struggleMode !== undefined
+      ? Boolean(options.struggleMode)
+      : plan.struggleMode;
+
+  const scored = suggestMeals(recipes, pantry, {
+    struggleMode,
+    maxMissing: options.maxMissing ?? 3,
+    maxMinutes: options.maxMinutes,
+    includeUnknownTime: options.includeUnknownTime,
+    mood: options.mood,
+    q: options.q,
+  });
+
+  const days = plan.days.map((d) => ({
+    ...d,
+    slots: { ...d.slots },
+  }));
+  const day = days.find((d) => d.dayIndex === dayIndex);
+  if (!day) return plan;
+
+  const previousIds = new Set(
+    MEAL_SLOTS.map((s) => day.slots[s]?.recipeId).filter(
+      (id): id is string => Boolean(id)
+    )
+  );
+
+  // Clear the day so usage counts exclude its old picks
+  day.slots = { breakfast: null, lunch: null, dinner: null };
+  const usedCounts = countUsedInPlan(days);
+  const usedDishKeys = countDishKeysInPlan(days);
+
+  const pickOpts: PickForSlotOptions = {
+    usedDishKeys,
+    repeatPenalty: options.repeatPenalty,
+    randomize: options.randomize !== false,
+    rng: options.rng,
+    topN: options.topN ?? 5,
+  };
+
+  for (const slot of MEAL_SLOTS) {
+    const pool = poolForSlot(scored, slot);
+    const sameDayIds = new Set(
+      MEAL_SLOTS.map((s) => day.slots[s]?.recipeId).filter(
+        (id): id is string => Boolean(id)
+      )
+    );
+    // Prefer not reusing this day's previous trio when alternatives exist
+    const exclude = new Set([...sameDayIds, ...previousIds]);
+    let pick = pickForSlot(pool, usedCounts, {
+      ...pickOpts,
+      excludeIds: exclude,
+    });
+    if (!pick) {
+      // Soften: still avoid same-day duplicates, allow previous day's ids
+      pick = pickForSlot(pool, usedCounts, {
+        ...pickOpts,
+        excludeIds: sameDayIds,
+      });
+    }
+    if (!pick) {
+      pick = pickForSlot(pool, usedCounts, {
+        ...pickOpts,
+        excludeIds: new Set(
+          MEAL_SLOTS.map((s) => day.slots[s]?.recipeId).filter(
+            (id): id is string => Boolean(id)
+          )
+        ),
+        randomize: false,
+      });
+    }
+    if (pick) {
+      day.slots[slot] = toSlotPick(pick);
+      recordPick(pick, usedCounts, usedDishKeys);
+    }
+  }
 
   return {
     days,
