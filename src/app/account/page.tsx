@@ -456,7 +456,7 @@ export default function AccountPage() {
                 <input
                   type="checkbox"
                   className="mt-0.5"
-                  checked={Boolean(user.preferVegetarian) && !user.preferVegan}
+                  checked={Boolean(user.preferVegetarian)}
                   disabled={busy || Boolean(user.preferVegan)}
                   onChange={(e) => {
                     const next = applyPlantPrefToggle(
@@ -481,7 +481,7 @@ export default function AccountPage() {
                   type="checkbox"
                   className="mt-0.5"
                   checked={Boolean(user.preferPescatarian)}
-                  disabled={busy || Boolean(user.preferVegan) || Boolean(user.preferVegetarian && !user.preferVegan)}
+                  disabled={busy || Boolean(user.preferVegan) || Boolean(user.preferVegetarian)}
                   onChange={(e) => {
                     const next = applyPlantPrefToggle(
                       user,
