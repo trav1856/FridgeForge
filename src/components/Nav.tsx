@@ -18,7 +18,7 @@ const baseLinks = [
   { href: "/howto", label: "How-to" },
 ];
 
-const struggleLink = { href: "/struggle", label: "Struggle" };
+const struggleLink = { href: "/struggle", label: "Struggle hub" };
 
 export function Nav() {
   const pathname = usePathname();
