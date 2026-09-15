@@ -11,6 +11,7 @@ import { FavoriteButton } from "./FavoriteButton";
 import { ShareRecipe } from "./ShareRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
 import { RecipeCardRating } from "./RecipeCardRating";
+import { DietaryBadges } from "./DietaryBadges";
 import type { DealCouponSummary } from "@/lib/deals";
 import { buildMoodChips, pickSurprise, type MoodDef } from "@/lib/moods";
 
@@ -30,6 +31,8 @@ type Suggestion = {
     description: string | null;
     costTier: string;
     isStruggleMeal: boolean;
+    kosherEligible?: boolean;
+    halalEligible?: boolean;
     tags: string[];
     servings: number;
     cookTimeMinutes?: number | null;
@@ -442,6 +445,10 @@ function Section({
                           struggle
                         </span>
                       )}
+                      <DietaryBadges
+                        kosherEligible={s.recipe.kosherEligible}
+                        halalEligible={s.recipe.halalEligible}
+                      />
                     </div>
                     <RecipeIcons
                       title={s.recipe.title}

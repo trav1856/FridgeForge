@@ -27,6 +27,8 @@ export type MenuSlotPick = {
   imageUrl?: string | null;
   cookTimeMinutes?: number | null;
   isStruggleMeal: boolean;
+  kosherEligible: boolean;
+  halalEligible: boolean;
   costTier: string;
   course?: string | null;
   tags: string[];
@@ -162,6 +164,8 @@ export function toSlotPick(s: SuggestionResult): MenuSlotPick {
     imageUrl: s.recipe.imageUrl ?? null,
     cookTimeMinutes: s.recipe.cookTimeMinutes ?? null,
     isStruggleMeal: s.recipe.isStruggleMeal,
+    kosherEligible: Boolean(s.recipe.kosherEligible),
+    halalEligible: Boolean(s.recipe.halalEligible),
     costTier: s.recipe.costTier,
     course: s.recipe.course ?? null,
     tags: s.recipe.tags,

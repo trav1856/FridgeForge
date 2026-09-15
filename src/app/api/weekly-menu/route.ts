@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { resolveDietarySuggestOptions } from "@/lib/dietary";
 import { householdWhere, recipeScopeWhere } from "@/lib/household";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
@@ -87,6 +88,7 @@ function parsePlanJson(raw: string): WeeklyMenuPlanData | null {
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
   const user = await getCurrentUser();
+  const dietary = resolveDietarySuggestOptions(user);
   const struggleMode = req.nextUrl.searchParams.get("struggle") === "1";
   const regenerate = req.nextUrl.searchParams.get("regenerate") === "1";
 
@@ -112,6 +114,7 @@ export async function GET(req: NextRequest) {
 
   const plan = buildWeeklyMenu(recipeData, pantry, {
     struggleMode,
+    ...dietary,
     maxMissing: 3,
     // First load without regenerate stays stable; ?regenerate=1 must vary
     randomize: regenerate,
@@ -138,6 +141,7 @@ export async function POST(req: NextRequest) {
   try {
     const householdId = await resolveHouseholdId();
     const user = await getCurrentUser();
+    const dietary = resolveDietarySuggestOptions(user);
     const body = postSchema.parse(await req.json());
     const { pantry, recipeData } = await loadMatchData(householdId);
     const struggleMode = Boolean(body.struggleMode);
@@ -147,6 +151,7 @@ export async function POST(req: NextRequest) {
     if (body.action === "regenerate") {
       plan = buildWeeklyMenu(recipeData, pantry, {
         struggleMode,
+        ...dietary,
         maxMissing: 3,
         randomize: true,
       });
@@ -171,6 +176,7 @@ export async function POST(req: NextRequest) {
       if (!base) {
         base = buildWeeklyMenu(recipeData, pantry, {
           struggleMode,
+          ...dietary,
           maxMissing: 3,
           randomize: true,
         });
@@ -181,7 +187,7 @@ export async function POST(req: NextRequest) {
         slot,
         recipeData,
         pantry,
-        { struggleMode, maxMissing: 3, randomize: true }
+        { struggleMode, ...dietary, maxMissing: 3, randomize: true }
       );
     } else if (body.action === "regenerateDay") {
       if (body.dayIndex == null) {
@@ -200,6 +206,7 @@ export async function POST(req: NextRequest) {
       if (!base) {
         base = buildWeeklyMenu(recipeData, pantry, {
           struggleMode,
+          ...dietary,
           maxMissing: 3,
           randomize: true,
         });
@@ -209,7 +216,7 @@ export async function POST(req: NextRequest) {
         body.dayIndex,
         recipeData,
         pantry,
-        { struggleMode, maxMissing: 3, randomize: true }
+        { struggleMode, ...dietary, maxMissing: 3, randomize: true }
       );
     } else {
       // save

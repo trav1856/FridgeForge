@@ -54,6 +54,8 @@ const patchSchema = z.object({
   visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
   title: z.string().min(1).max(200).optional(),
   isStruggleMeal: z.boolean().optional(),
+  kosherEligible: z.boolean().optional(),
+  halalEligible: z.boolean().optional(),
   cuisine: z.string().max(80).optional().nullable(),
   course: z.string().max(40).optional().nullable(),
   foodCategories: z.array(z.string()).optional(),

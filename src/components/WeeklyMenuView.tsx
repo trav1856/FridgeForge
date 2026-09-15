@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import { StruggleBanner } from "./StruggleBanner";
 import { RecipeImage } from "./RecipeImage";
+import { DietaryBadges } from "./DietaryBadges";
 import { AddToShoppingList } from "./AddToShoppingList";
 import type {
   MealSlot,
@@ -344,6 +345,12 @@ function SlotCard({
                 : ""}
               {pick.isStruggleMeal ? " · struggle" : ""}
             </p>
+            <div className="mt-1">
+              <DietaryBadges
+                kosherEligible={pick.kosherEligible}
+                halalEligible={pick.halalEligible}
+              />
+            </div>
           </Link>
           {pick.missingIngredients.length > 0 && (
             <p className="mt-2 text-xs text-sage-500">

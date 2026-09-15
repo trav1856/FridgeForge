@@ -22,6 +22,8 @@ type RequestWithRecipe = {
     sourceUrl: string | null;
     imageUrl: string | null;
     isStruggleMeal: boolean;
+    kosherEligible: boolean;
+    halalEligible: boolean;
     techniqueTips: string | null;
     flavorBoosters: string | null;
     ingredients: {
@@ -92,6 +94,8 @@ async function cloneRecipeForRequester(request: RequestWithRecipe) {
       sourceUrl: r.sourceUrl,
       imageUrl: r.imageUrl,
       isStruggleMeal: r.isStruggleMeal,
+      kosherEligible: r.kosherEligible,
+      halalEligible: r.halalEligible,
       techniqueTips: r.techniqueTips,
       flavorBoosters: r.flavorBoosters,
       visibility: "household",

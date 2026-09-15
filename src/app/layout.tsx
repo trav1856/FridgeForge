@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
 import { Nav } from "@/components/Nav";
 import { StruggleModeProvider } from "@/components/StruggleModeProvider";
@@ -35,7 +36,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${display.variable} ${sans.variable} font-sans antialiased`}>
         <StruggleModeProvider>
-          <Nav />
+          <Suspense fallback={<header className="h-24 border-b border-cream-300/70 bg-cream-50/90" />}>
+            <Nav />
+          </Suspense>
           <main className="mx-auto max-w-5xl px-4 py-6 pb-16">{children}</main>
         </StruggleModeProvider>
       </body>

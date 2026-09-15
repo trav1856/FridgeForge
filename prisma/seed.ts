@@ -11,6 +11,7 @@ import { inferRecipeTaxonomy } from "../src/lib/recipe-taxonomy";
 import { STAPLE_ORIGIN_STORIES } from "../src/lib/recipe-origin-stories";
 import { dishKeyForTitle } from "../src/lib/dish-key";
 import { parseStringArray } from "../src/lib/json";
+import { inferDietaryEligibility } from "../src/lib/dietary";
 
 const prisma = new PrismaClient();
 
@@ -845,10 +846,17 @@ async function main() {
       });
       const tax = taxonomyFields({ ...rest, ingredients });
       const story = STAPLE_ORIGIN_STORIES[rest.title] ?? null;
+      const diet = inferDietaryEligibility({
+        title: rest.title,
+        description: rest.description,
+        tags: rest.tags,
+        ingredients,
+      });
       await prisma.recipe.create({
         data: {
           ...rest,
           ...tax,
+          ...diet,
           originStory: story,
           dishKey: dishKeyForTitle(rest.title),
           visibility: "public",
@@ -874,6 +882,8 @@ async function main() {
         origins?: string;
         originStory?: string;
         dishKey?: string;
+        kosherEligible?: boolean;
+        halalEligible?: boolean;
       } = {};
       const tax = taxonomyFields({ ...rest, ingredients });
       // Always refresh taxonomy for seed staples (corrects heuristic mistakes).
@@ -882,6 +892,14 @@ async function main() {
       data.foodCategories = tax.foodCategories;
       data.origins = tax.origins;
       data.dishKey = dishKeyForTitle(rest.title);
+      const diet = inferDietaryEligibility({
+        title: rest.title,
+        description: rest.description,
+        tags: rest.tags,
+        ingredients,
+      });
+      data.kosherEligible = diet.kosherEligible;
+      data.halalEligible = diet.halalEligible;
       recipesTaxonomied += 1;
       const story = STAPLE_ORIGIN_STORIES[rest.title];
       // Refresh catalog staple stories (links / embeds) when defined.

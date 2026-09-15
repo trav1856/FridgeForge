@@ -76,6 +76,8 @@ export function RecipeForm() {
   const [servings, setServings] = useState("2");
   const [cookTimeMinutes, setCookTimeMinutes] = useState("");
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
+  const [kosherEligible, setKosherEligible] = useState(true);
+  const [halalEligible, setHalalEligible] = useState(true);
   const [stepsText, setStepsText] = useState("");
   const [tipsText, setTipsText] = useState("");
   const [boostersText, setBoostersText] = useState("");
@@ -201,6 +203,8 @@ export function RecipeForm() {
         ? Number(cookTimeMinutes) || null
         : null,
       isStruggleMeal,
+      kosherEligible,
+      halalEligible,
       steps,
       techniqueTips: tipsText
         .split("\n")
@@ -451,7 +455,7 @@ export function RecipeForm() {
               onChange={(e) => setCookTimeMinutes(e.target.value)}
             />
           </div>
-          <div className="flex items-end pb-1">
+          <div className="flex flex-wrap items-end gap-4 pb-1">
             <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
               <input
                 type="checkbox"
@@ -460,7 +464,27 @@ export function RecipeForm() {
               />
               Struggle meal
             </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={kosherEligible}
+                onChange={(e) => setKosherEligible(e.target.checked)}
+              />
+              Kosher* eligible
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={halalEligible}
+                onChange={(e) => setHalalEligible(e.target.checked)}
+              />
+              Halal* eligible
+            </label>
           </div>
+          <p className="text-[10px] text-sage-500 sm:col-span-2">
+            * Eligible if prepared with certified kosher/halal ingredients — not a
+            certification claim.
+          </p>
         </div>
         <div>
           <label className="label">Tags (comma-separated)</label>

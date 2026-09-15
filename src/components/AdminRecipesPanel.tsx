@@ -23,6 +23,8 @@ type RecipeRow = {
   visibility: string;
   costTier: string;
   isStruggleMeal: boolean;
+  kosherEligible?: boolean;
+  halalEligible?: boolean;
   reviewCount: number;
   householdId?: string | null;
   cuisine?: string | null;
@@ -96,6 +98,8 @@ export function AdminRecipesPanel({ initial }: Props) {
                 visibility: data.visibility ?? r.visibility,
                 title: data.title ?? r.title,
                 isStruggleMeal: data.isStruggleMeal ?? r.isStruggleMeal,
+                kosherEligible: data.kosherEligible ?? r.kosherEligible,
+                halalEligible: data.halalEligible ?? r.halalEligible,
                 cuisine: data.cuisine ?? r.cuisine,
                 course: data.course ?? r.course,
                 foodCategories: data.foodCategories ?? r.foodCategories,
@@ -260,6 +264,8 @@ export function AdminRecipesPanel({ initial }: Props) {
                   <span>
                   {r.costTier}
                   {r.isStruggleMeal ? " · struggle" : ""}
+                  {r.kosherEligible ? " · kosher*" : ""}
+                  {r.halalEligible ? " · halal*" : ""}
                   {r.householdId ? "" : " · shared catalog"}
                   {" · "}
                   {r.reviewCount} reviews
@@ -294,6 +300,26 @@ export function AdminRecipesPanel({ initial }: Props) {
                 }
               >
                 {r.isStruggleMeal ? "Unflag struggle" : "Flag struggle"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { kosherEligible: !r.kosherEligible })
+                }
+              >
+                {r.kosherEligible ? "Unflag kosher*" : "Flag kosher*"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { halalEligible: !r.halalEligible })
+                }
+              >
+                {r.halalEligible ? "Unflag halal*" : "Flag halal*"}
               </button>
               <button
                 type="button"

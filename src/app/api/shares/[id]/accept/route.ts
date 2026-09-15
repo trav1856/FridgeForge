@@ -41,6 +41,8 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
         sourceUrl: r.sourceUrl,
         imageUrl: r.imageUrl,
         isStruggleMeal: r.isStruggleMeal,
+        kosherEligible: r.kosherEligible,
+        halalEligible: r.halalEligible,
         techniqueTips: r.techniqueTips,
         flavorBoosters: r.flavorBoosters,
         visibility: "private",

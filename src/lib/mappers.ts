@@ -35,6 +35,8 @@ export function toRecipeForMatch(
     cookTimeMinutes: recipe.cookTimeMinutes,
     imageUrl: recipe.imageUrl,
     isStruggleMeal: recipe.isStruggleMeal,
+    kosherEligible: Boolean(recipe.kosherEligible),
+    halalEligible: Boolean(recipe.halalEligible),
     techniqueTips: parseStringArray(recipe.techniqueTips),
     flavorBoosters: parseStringArray(recipe.flavorBoosters),
     ingredients: recipe.ingredients.map((i) => ({

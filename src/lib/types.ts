@@ -35,6 +35,8 @@ export type RecipeInput = {
   sourceUrl?: string | null;
   imageUrl?: string | null;
   isStruggleMeal?: boolean;
+  kosherEligible?: boolean;
+  halalEligible?: boolean;
   techniqueTips?: string[];
   flavorBoosters?: string[];
   ingredients: RecipeIngredientInput[];
@@ -68,6 +70,8 @@ export type RecipeForMatch = {
   cookTimeMinutes?: number | null;
   imageUrl?: string | null;
   isStruggleMeal: boolean;
+  kosherEligible: boolean;
+  halalEligible: boolean;
   techniqueTips: string[];
   flavorBoosters: string[];
   ingredients: {
@@ -90,5 +94,6 @@ export type SuggestionResult = {
   nearMiss: boolean;
   affordabilityBoost: number;
   struggleBoost: number;
+  dietaryBoost: number;
   creativeNote?: string;
 };

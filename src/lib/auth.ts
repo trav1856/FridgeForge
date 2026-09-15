@@ -134,6 +134,10 @@ export function publicUser(user: AuthUser) {
     plan: user.plan,
     role: user.role === "admin" ? "admin" : "user",
     disabled: Boolean(user.disabled),
+    isJewish: Boolean(user.isJewish),
+    isObservant: Boolean(user.isObservant),
+    preferKosher: Boolean(user.preferKosher),
+    preferHalal: Boolean(user.preferHalal),
     createdAt: user.createdAt.toISOString(),
     households: user.memberships.map((m) => ({
       id: m.household.id,

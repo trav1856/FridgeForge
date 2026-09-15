@@ -19,6 +19,10 @@ type MeUser = {
   name: string | null;
   profileSlug: string | null;
   plan: string;
+  isJewish?: boolean;
+  isObservant?: boolean;
+  preferKosher?: boolean;
+  preferHalal?: boolean;
   households: Household[];
 };
 
@@ -95,6 +99,36 @@ export default function AccountPage() {
     setUser(null);
     setMessage("Signed out. Guest / Community Edition mode is active.");
     setBusy(false);
+  }
+
+  async function savePrefs(patch: Partial<{
+    isJewish: boolean;
+    isObservant: boolean;
+    preferKosher: boolean;
+    preferHalal: boolean;
+  }>) {
+    if (!user) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/auth/prefs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not save prefs");
+        return;
+      }
+      if (data.user) setUser(data.user);
+      setMessage("Dietary preferences saved.");
+    } catch {
+      setError("Network error");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function onCreateHousehold(e: FormEvent) {

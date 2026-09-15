@@ -16,6 +16,7 @@ import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
 import { RecipeVariants } from "@/components/RecipeVariants";
+import { DietaryBadges } from "@/components/DietaryBadges";
 import { dishKeyForTitle } from "@/lib/dish-key";
 import { pickDishVariantHighlights } from "@/lib/dish-variant-picks";
 import {
@@ -201,6 +202,11 @@ export default async function RecipeDetailPage({ params }: Props) {
           {recipe.isStruggleMeal && (
             <span className="badge bg-ember-600 text-white">struggle meal</span>
           )}
+          <DietaryBadges
+            kosherEligible={recipe.kosherEligible}
+            halalEligible={recipe.halalEligible}
+            showFootnote
+          />
           {recipe.cuisine && (
             <span className="badge bg-sage-200 text-sage-900">{recipe.cuisine}</span>
           )}

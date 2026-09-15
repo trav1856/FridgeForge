@@ -5,6 +5,7 @@ import type {
   RecipeForMatch,
   SuggestionResult,
 } from "./types";
+import { KOSHER_SOFT_BOOST } from "./dietary";
 
 const CHEAP_STAPLES = new Set([
   "rice",
@@ -61,6 +62,12 @@ export type SuggestOptions = {
   mood?: MoodParam;
   /** Free-text craving search (title/tags/ingredients). */
   q?: string;
+  /** Soft-boost kosherEligible recipes. */
+  softPreferKosher?: boolean;
+  /** Hard-filter to kosherEligible only (empty if none). */
+  requireKosher?: boolean;
+  /** Hard-filter to halalEligible only (empty if none). */
+  requireHalal?: boolean;
 };
 
 function findPantryMatch(
@@ -109,7 +116,13 @@ export function scoreRecipe(
   pantry: PantrySnapshot[],
   options: SuggestOptions = {}
 ): SuggestionResult {
-  const { struggleMode = false, maxMissing = 2, maxMinutes, mood } = options;
+  const {
+    struggleMode = false,
+    maxMissing = 2,
+    maxMinutes,
+    mood,
+    softPreferKosher = false,
+  } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
   const missingIngredients: string[] = [];
@@ -161,6 +174,12 @@ export function scoreRecipe(
   }
   score += struggleBoost;
 
+  let dietaryBoost = 0;
+  if (softPreferKosher && recipe.kosherEligible) {
+    dietaryBoost += KOSHER_SOFT_BOOST;
+  }
+  score += dietaryBoost;
+
   // Slight boost for creative pairings present
   const note = creativeNoteFor(matchedIngredients, missingIngredients);
   if (note) score += 5;
@@ -179,6 +198,7 @@ export function scoreRecipe(
     nearMiss,
     affordabilityBoost,
     struggleBoost,
+    dietaryBoost,
     creativeNote: note,
   };
 }
@@ -206,6 +226,9 @@ export function suggestMeals(
     includeUnknownTime = false,
     mood,
     q,
+    softPreferKosher = false,
+    requireKosher = false,
+    requireHalal = false,
   } = options;
 
   let pool = recipes;
@@ -213,6 +236,14 @@ export function suggestMeals(
     // Hard filter: Struggle Mode shows only flagged struggle meals — never
     // fall back to cheap-or-all recipes when the pool is empty.
     pool = recipes.filter((r) => r.isStruggleMeal);
+  }
+
+  // Dietary hard filters (AND with struggle / each other). Empty if none match.
+  if (requireKosher) {
+    pool = pool.filter((r) => r.kosherEligible);
+  }
+  if (requireHalal) {
+    pool = pool.filter((r) => r.halalEligible);
   }
 
   pool = pool.filter((r) => fitsTimeBudget(r, maxMinutes, includeUnknownTime));
@@ -237,6 +268,9 @@ export function suggestMeals(
         maxMissing,
         maxMinutes,
         mood,
+        softPreferKosher,
+        requireKosher,
+        requireHalal,
       })
     )
     .sort((a, b) => b.score - a.score)

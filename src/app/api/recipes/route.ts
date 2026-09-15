@@ -45,6 +45,8 @@ const createSchema = z.object({
   sourceUrl: z.string().url().optional().nullable(),
   imageUrl: z.string().max(2000).optional().nullable(),
   isStruggleMeal: z.boolean().optional(),
+  kosherEligible: z.boolean().optional(),
+  halalEligible: z.boolean().optional(),
   techniqueTips: z.array(z.string()).optional(),
   flavorBoosters: z.array(z.string()).optional(),
   visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
@@ -64,6 +66,9 @@ export async function GET(req: NextRequest) {
   const origin =
     req.nextUrl.searchParams.get("origin") ||
     req.nextUrl.searchParams.get("ethnicity");
+  const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal
+  const kosherOnly = dietary === "kosher" || req.nextUrl.searchParams.get("kosher") === "1";
+  const halalOnly = dietary === "halal" || req.nextUrl.searchParams.get("halal") === "1";
 
   const accessWhere = recipeListAccessWhere({
     userId: user?.id ?? null,
@@ -72,8 +77,13 @@ export async function GET(req: NextRequest) {
   });
 
   // Default "All": global catalog + accessible household/shared recipes
+  const dietaryFilters: Record<string, unknown>[] = [];
+  if (struggle === "1") dietaryFilters.push({ isStruggleMeal: true });
+  if (kosherOnly) dietaryFilters.push({ kosherEligible: true });
+  if (halalOnly) dietaryFilters.push({ halalEligible: true });
+
   let where: Record<string, unknown> = {
-    AND: [accessWhere, ...(struggle === "1" ? [{ isStruggleMeal: true }] : [])],
+    AND: [accessWhere, ...dietaryFilters],
   };
 
   if (scope === "mine" && user) {
@@ -179,6 +189,8 @@ export async function POST(req: NextRequest) {
         sourceUrl: data.sourceUrl ?? null,
         imageUrl: data.imageUrl ?? null,
         isStruggleMeal: data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
+        kosherEligible: data.kosherEligible ?? false,
+        halalEligible: data.halalEligible ?? false,
         techniqueTips: stringifyArray(data.techniqueTips),
         flavorBoosters: stringifyArray(data.flavorBoosters),
         visibility: data.visibility

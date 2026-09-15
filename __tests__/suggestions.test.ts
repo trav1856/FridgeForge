@@ -28,6 +28,8 @@ const recipe = (
   servings: partial.servings ?? 2,
   cookTimeMinutes: partial.cookTimeMinutes ?? null,
   isStruggleMeal: partial.isStruggleMeal ?? false,
+  kosherEligible: partial.kosherEligible ?? true,
+  halalEligible: partial.halalEligible ?? true,
   techniqueTips: partial.techniqueTips ?? [],
   flavorBoosters: partial.flavorBoosters ?? [],
   ingredients: partial.ingredients,

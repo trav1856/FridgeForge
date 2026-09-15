@@ -9,6 +9,7 @@ import {
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeCardRating } from "@/components/RecipeCardRating";
+import { DietaryBadges } from "@/components/DietaryBadges";
 import {
   getReviewStatsByRecipeIds,
   reviewStatsFor,
@@ -23,6 +24,8 @@ type CardRecipe = {
   tags: string[];
   costTier: string;
   isStruggleMeal: boolean;
+  kosherEligible: boolean;
+  halalEligible: boolean;
   imageUrl: string | null;
   servings: number;
   ingredients: { name: string }[];
@@ -37,6 +40,8 @@ function toCard(r: {
   tags: string;
   costTier: string;
   isStruggleMeal: boolean;
+  kosherEligible: boolean;
+  halalEligible: boolean;
   imageUrl: string | null;
   servings: number;
   householdId: string | null;
@@ -50,6 +55,8 @@ function toCard(r: {
     tags: parseStringArray(r.tags),
     costTier: r.costTier,
     isStruggleMeal: r.isStruggleMeal,
+    kosherEligible: Boolean(r.kosherEligible),
+    halalEligible: Boolean(r.halalEligible),
     imageUrl: r.imageUrl,
     servings: r.servings,
     ingredients: r.ingredients,
@@ -180,6 +187,10 @@ export async function PopularThisWeek() {
                       {favoriteCount === 1 ? "favorite" : "favorites"}
                     </span>
                   )}
+                  <DietaryBadges
+                    kosherEligible={r.kosherEligible}
+                    halalEligible={r.halalEligible}
+                  />
                 </div>
                 <RecipeIcons
                   title={r.title}

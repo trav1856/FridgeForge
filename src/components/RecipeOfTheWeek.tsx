@@ -10,6 +10,7 @@ import {
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeCardRating } from "@/components/RecipeCardRating";
+import { DietaryBadges } from "@/components/DietaryBadges";
 import {
   getReviewStatsByRecipeIds,
   reviewStatsFor,
@@ -41,6 +42,8 @@ export async function RecipeOfTheWeek() {
     tags: parseStringArray(r.tags),
     costTier: r.costTier,
     isStruggleMeal: r.isStruggleMeal,
+    kosherEligible: Boolean(r.kosherEligible),
+    halalEligible: Boolean(r.halalEligible),
     imageUrl: r.imageUrl,
     servings: r.servings,
     ingredients: r.ingredients,
@@ -94,6 +97,10 @@ export async function RecipeOfTheWeek() {
                       struggle meal
                     </span>
                   )}
+                  <DietaryBadges
+                    kosherEligible={r.kosherEligible}
+                    halalEligible={r.halalEligible}
+                  />
                   {r.tags
                     .filter((t) => t !== "struggle")
                     .slice(0, 2)

@@ -19,6 +19,13 @@ model User {
   role         String            @default("user")
   /** Soft-disable: blocked from sign-in when true */
   disabled     Boolean           @default(false)
+  /** Dietary identity / prefs (Account). Observant only meaningful when isJewish. */
+  isJewish     Boolean           @default(false)
+  isObservant  Boolean           @default(false)
+  /** Soft prefer kosher + show Kosher section; observant ⇒ hard-filter kosherEligible. */
+  preferKosher Boolean           @default(false)
+  /** Show Halal section + hard-filter halalEligible when on. */
+  preferHalal  Boolean           @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -127,6 +134,10 @@ model Recipe {
   sourceUrl        String?
   imageUrl         String?            // remote URL or /recipe-images/... path
   isStruggleMeal   Boolean            @default(false)
+  /** Eligible if prepared with certified kosher ingredients (not a certification claim). */
+  kosherEligible   Boolean            @default(false)
+  /** Eligible if prepared with certified halal ingredients (not a certification claim). */
+  halalEligible    Boolean            @default(false)
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
   /** global | household | shared  (legacy aliases: public→global, private→household) */

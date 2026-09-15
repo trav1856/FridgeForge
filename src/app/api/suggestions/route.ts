@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { resolveHouseholdId } from "@/lib/auth";
+import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { resolveDietarySuggestOptions } from "@/lib/dietary";
 import { householdWhere, recipeScopeWhere, sharedOrHouseholdWhere } from "@/lib/household";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
@@ -14,6 +15,8 @@ import {
 
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
+  const user = await getCurrentUser();
+  const dietary = resolveDietarySuggestOptions(user);
   const struggleMode = req.nextUrl.searchParams.get("struggle") === "1";
   const maxMissing = Number(req.nextUrl.searchParams.get("maxMissing") || "2");
   const maxMinutesRaw = req.nextUrl.searchParams.get("maxMinutes");
@@ -54,6 +57,7 @@ export async function GET(req: NextRequest) {
     includeUnknownTime,
     mood,
     q,
+    ...dietary,
   });
 
   // Display-only averages — do not affect Cook Now ranking / soft-boost.
@@ -77,6 +81,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     struggleMode,
+    dietary,
     maxMinutes: maxMinutes ?? null,
     mood: mood ?? "any",
     q: q ?? null,

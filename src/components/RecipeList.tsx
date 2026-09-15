@@ -16,6 +16,7 @@ import {
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
+import { DietaryBadges } from "./DietaryBadges";
 
 type Recipe = {
   id: string;
@@ -29,6 +30,8 @@ type Recipe = {
   origins?: string[];
   servings: number;
   isStruggleMeal: boolean;
+  kosherEligible?: boolean;
+  halalEligible?: boolean;
   ingredients: { name: string }[];
   imageUrl?: string | null;
   favorited?: boolean;
@@ -216,6 +219,7 @@ export function RecipeList() {
   const foodCategoryParam = searchParams.get("foodCategory") || "";
   const originParam =
     searchParams.get("origin") || searchParams.get("ethnicity") || "";
+  const dietaryParam = searchParams.get("dietary") || "";
   const scopeParam = (searchParams.get("scope") as Scope) || "all";
   const favoritesParam = searchParams.get("favorites") === "1";
 
@@ -259,6 +263,9 @@ export function RecipeList() {
     if (courseParam) params.set("course", courseParam);
     if (foodCategoryParam) params.set("foodCategory", foodCategoryParam);
     if (originParam) params.set("origin", originParam);
+    if (dietaryParam === "kosher" || dietaryParam === "halal") {
+      params.set("dietary", dietaryParam);
+    }
     const res = await fetch(`/api/recipes?${params.toString()}`);
     const data = await res.json();
     setRecipes(Array.isArray(data) ? data : []);
@@ -270,6 +277,7 @@ export function RecipeList() {
     courseParam,
     foodCategoryParam,
     originParam,
+    dietaryParam,
   ]);
 
   useEffect(() => {
@@ -296,6 +304,12 @@ export function RecipeList() {
     { id: "favorites", label: "Favorites" },
     { id: "mine", label: "My recipes" },
     { id: "household", label: "Household collection" },
+  ];
+
+  const dietaryFilters: { id: string; label: string }[] = [
+    { id: "", label: "Any diet" },
+    { id: "kosher", label: "Kosher*" },
+    { id: "halal", label: "Halal*" },
   ];
 
   const cuisineOptions = CUISINES.map((c) => ({ id: c, label: c }));
@@ -357,6 +371,30 @@ export function RecipeList() {
             {s.label}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+          Diet
+        </span>
+        {dietaryFilters.map((d) => (
+          <button
+            key={d.id || "any"}
+            type="button"
+            onClick={() => setParams({ dietary: d.id || null })}
+            className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+              dietaryParam === d.id
+                ? "bg-sage-800 text-cream-50"
+                : "border border-cream-300 bg-cream-100 text-sage-800"
+            }`}
+            aria-pressed={dietaryParam === d.id}
+          >
+            {d.label}
+          </button>
+        ))}
+        <span className="text-[10px] text-sage-500">
+          * If you use kosher/halal ingredients
+        </span>
       </div>
 
       <div className="card space-y-3 p-3 sm:p-4">
@@ -421,6 +459,10 @@ export function RecipeList() {
                         struggle meal
                       </span>
                     )}
+                    <DietaryBadges
+                      kosherEligible={r.kosherEligible}
+                      halalEligible={r.halalEligible}
+                    />
                     {r.cuisine && (
                       <span className="badge bg-sage-200 text-sage-900">
                         {r.cuisine}
