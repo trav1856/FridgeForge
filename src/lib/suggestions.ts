@@ -210,9 +210,9 @@ export function suggestMeals(
 
   let pool = recipes;
   if (struggleMode) {
-    // Prefer struggle meals but don't hide everything else that's cheap
-    const struggle = recipes.filter((r) => r.isStruggleMeal || r.costTier === "cheap");
-    pool = struggle.length > 0 ? struggle : recipes;
+    // Hard filter: Struggle Mode shows only flagged struggle meals — never
+    // fall back to cheap-or-all recipes when the pool is empty.
+    pool = recipes.filter((r) => r.isStruggleMeal);
   }
 
   pool = pool.filter((r) => fitsTimeBudget(r, maxMinutes, includeUnknownTime));

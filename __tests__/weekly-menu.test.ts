@@ -404,18 +404,19 @@ describe("buildWeeklyMenu", () => {
     expect(ids(a)).not.toEqual(ids(b));
   });
 
-  it("prefers struggle / cheap recipes when Struggle Mode is on", () => {
+  it("only uses isStruggleMeal recipes when Struggle Mode is on", () => {
     const plan = buildWeeklyMenu(catalog, fullPantry, {
       struggleMode: true,
       startDate: new Date("2026-09-15T12:00:00"),
     });
     expect(plan.struggleMode).toBe(true);
     const picks = plan.days.flatMap((d) =>
-      (["breakfast", "lunch", "dinner"] as MealSlot[]).map((s) => d.slots[s]!)
+      (["breakfast", "lunch", "dinner"] as MealSlot[])
+        .map((s) => d.slots[s])
+        .filter((p): p is NonNullable<typeof p> => p != null)
     );
-    const struggleShare =
-      picks.filter((p) => p.isStruggleMeal).length / picks.length;
-    expect(struggleShare).toBeGreaterThan(0.3);
+    expect(picks.length).toBeGreaterThan(0);
+    expect(picks.every((p) => p.isStruggleMeal)).toBe(true);
   });
 
   it("regenerateMenuSlot changes the slot when alternatives exist", () => {

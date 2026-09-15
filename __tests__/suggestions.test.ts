@@ -128,8 +128,8 @@ describe("suggestMeals", () => {
         ],
       }),
     ];
-    // No struggleMode: struggle pool would hide non-cheap recipes; this asserts
-    // Cook Now keeps weak pantry matches instead of dropping matchRatio < 0.5.
+    // No struggleMode: struggle hard-filter is off; this asserts Cook Now keeps
+    // weak pantry matches instead of dropping matchRatio < 0.5.
     const results = suggestMeals(recipes, pantry(["rice", "black beans"]));
     expect(results[0]?.recipe.title).toBe("Rice Bowl");
     const weak = results.find((r) => r.recipe.title === "Needs Everything");
@@ -141,6 +141,60 @@ describe("suggestMeals", () => {
     expect(weak!.missingIngredients).toEqual(
       expect.arrayContaining(["salmon", "asparagus", "cream", "wine"])
     );
+  });
+
+
+  it("hard-filters to isStruggleMeal only when Struggle Mode is on", () => {
+    const struggle = recipe({
+      id: "s",
+      title: "Struggle Rice",
+      isStruggleMeal: true,
+      costTier: "cheap",
+      ingredients: [
+        { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const cheapOnly = recipe({
+      id: "c",
+      title: "Cheap Pasta",
+      isStruggleMeal: false,
+      costTier: "cheap",
+      ingredients: [
+        { id: "1", name: "pasta", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const fancy = recipe({
+      id: "f",
+      title: "Fancy Steak",
+      isStruggleMeal: false,
+      costTier: "pricey",
+      ingredients: [
+        { id: "1", name: "steak", quantity: 1, unit: "lb", optional: false },
+      ],
+    });
+    const stock = pantry(["rice", "pasta", "steak"]);
+    const results = suggestMeals([struggle, cheapOnly, fancy], stock, {
+      struggleMode: true,
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]!.recipe.title).toBe("Struggle Rice");
+    expect(results.every((r) => r.recipe.isStruggleMeal)).toBe(true);
+  });
+
+  it("returns empty suggestions when Struggle Mode is on and no struggle meals exist", () => {
+    const cheapOnly = recipe({
+      id: "c",
+      title: "Cheap Pasta",
+      isStruggleMeal: false,
+      costTier: "cheap",
+      ingredients: [
+        { id: "1", name: "pasta", quantity: 1, unit: "cups", optional: false },
+      ],
+    });
+    const results = suggestMeals([cheapOnly], pantry(["pasta"]), {
+      struggleMode: true,
+    });
+    expect(results).toEqual([]);
   });
 
   it("still lists recipes missing many non-staple ingredients", () => {
