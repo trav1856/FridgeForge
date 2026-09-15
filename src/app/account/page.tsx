@@ -338,6 +338,89 @@ export default function AccountPage() {
           <HowToBadgesPanel />
 
           <div className="card p-5 space-y-4">
+            <div>
+              <h2 className="font-display text-xl font-bold text-sage-900">
+                Dietary preferences
+              </h2>
+              <p className="mt-1 text-xs text-sage-600">
+                Kosher* / Halal* on recipes mean “eligible if you use certified
+                ingredients” — not a certification claim. Observant Jewish mode
+                hard-filters Cook Now and Weekly menu to kosher-eligible only;
+                Prefer Halal hard-filters to halal-eligible only.
+              </p>
+            </div>
+            <label className="flex items-start gap-2 text-sm text-sage-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(user.isJewish)}
+                disabled={busy}
+                onChange={(e) =>
+                  void savePrefs({
+                    isJewish: e.target.checked,
+                    ...(e.target.checked ? {} : { isObservant: false }),
+                  })
+                }
+              />
+              <span>
+                <span className="font-semibold">Jewish</span>
+                <span className="block text-xs text-sage-600">
+                  Soft-boosts kosher-eligible recipes when not observant; unlocks
+                  Kosher section.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-sage-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(user.isJewish && user.isObservant)}
+                disabled={busy || !user.isJewish}
+                onChange={(e) => void savePrefs({ isObservant: e.target.checked })}
+              />
+              <span>
+                <span className="font-semibold">Observant</span>
+                <span className="block text-xs text-sage-600">
+                  Requires Jewish. Hard-filters suggestions to kosher-eligible
+                  only (empty if none).
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-sage-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(user.preferKosher)}
+                disabled={busy}
+                onChange={(e) => void savePrefs({ preferKosher: e.target.checked })}
+              />
+              <span>
+                <span className="font-semibold">Prefer kosher</span>
+                <span className="block text-xs text-sage-600">
+                  Soft prefer + show Kosher recipes section (does not hard-filter
+                  unless Observant is on).
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-sage-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(user.preferHalal)}
+                disabled={busy}
+                onChange={(e) => void savePrefs({ preferHalal: e.target.checked })}
+              />
+              <span>
+                <span className="font-semibold">Prefer Halal</span>
+                <span className="block text-xs text-sage-600">
+                  Shows Halal section and hard-filters Cook Now / Weekly menu to
+                  halal-eligible only.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="card p-5 space-y-4">
             <h2 className="font-display text-xl font-bold text-sage-900">
               Households
             </h2>
