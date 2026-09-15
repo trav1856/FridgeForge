@@ -15,7 +15,7 @@ type Props = {
 
 /**
  * Show small dietary badges when eligible.
- * Kosher*/Halal* footnote: eligibility assumes certified ingredients.
+ * Kosher* / Halal* footnote: eligibility assumes certified ingredients.
  */
 export function DietaryBadges({
   kosherEligible,
