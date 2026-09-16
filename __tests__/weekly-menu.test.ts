@@ -6,8 +6,8 @@ import {
   pickForSlot,
   recipeFitsMealSlot,
   recipeRepeatCounts,
-  regenerateMenuDay,
-  regenerateMenuSlot,
+  remixMenuDay,
+  remixMenuSlot,
   type MealSlot,
 } from "@/lib/weekly-menu";
 import { scoreRecipe } from "@/lib/suggestions";
@@ -170,7 +170,7 @@ describe("pickForSlot unused-first / dishKey / randomize", () => {
     expect(pick?.recipe.id).toBe("only");
   });
 
-  it("two regenerates with different rng can differ among top candidates", () => {
+  it("two remixs with different rng can differ among top candidates", () => {
     const pool: SuggestionResult[] = [];
     const p = pantry(["eggs"]);
     for (let i = 0; i < 5; i++) {
@@ -424,12 +424,12 @@ describe("buildWeeklyMenu", () => {
     expect(picks.every((p) => p.isStruggleMeal)).toBe(true);
   });
 
-  it("regenerateMenuSlot changes the slot when alternatives exist", () => {
+  it("remixMenuSlot changes the slot when alternatives exist", () => {
     const plan = buildWeeklyMenu(catalog, fullPantry, {
       startDate: new Date("2026-09-15T12:00:00"),
     });
     const before = plan.days[0]!.slots.breakfast!.recipeId;
-    const next = regenerateMenuSlot(
+    const next = remixMenuSlot(
       plan,
       0,
       "breakfast",
@@ -446,7 +446,7 @@ describe("buildWeeklyMenu", () => {
     expect(after).not.toBe(before);
   });
 
-  it("regenerateMenuDay changes that day without wiping other days", () => {
+  it("remixMenuDay changes that day without wiping other days", () => {
     const plan = buildWeeklyMenu(largeBreakfastCatalog, fullPantry, {
       startDate: new Date("2026-09-15T12:00:00"),
       randomize: true,
@@ -462,7 +462,7 @@ describe("buildWeeklyMenu", () => {
       l: plan.days[0]!.slots.lunch!.recipeId,
       d: plan.days[0]!.slots.dinner!.recipeId,
     };
-    const next = regenerateMenuDay(plan, 0, largeBreakfastCatalog, fullPantry, {
+    const next = remixMenuDay(plan, 0, largeBreakfastCatalog, fullPantry, {
       randomize: true,
       rng: createRng(21),
     });

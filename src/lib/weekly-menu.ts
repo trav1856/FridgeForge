@@ -2,7 +2,7 @@
  * Weekly menu builder — 7-day breakfast / lunch / dinner from pantry + recipes.
  * Reuses Cook Now scoring (suggestMeals / scoreRecipe); adds course pools +
  * hard unused-first / dishKey diversification, with optional weighted random
- * among top candidates so regenerate actually changes the week.
+ * among top candidates so remix actually changes the week.
  */
 
 import { suggestMeals, type SuggestOptions } from "./suggestions";
@@ -59,7 +59,7 @@ export type WeeklyMenuOptions = SuggestOptions & {
   startDate?: Date;
   /**
    * When true, pick with weighted random among the top unused candidates
-   * instead of always taking #1. Use for regenerate so each click can differ.
+   * instead of always taking #1. Use for remix so each click can differ.
    */
   randomize?: boolean;
   /** Optional RNG in [0, 1). Defaults to Math.random when randomize is on. */
@@ -75,7 +75,7 @@ const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const BREAKFAST_RE =
   /\b(breakfast|brunch|pancake|waffle|oatmeal|scrambl|omelet|omelette|toast|bagel|cereal|muffin|hash\b|french toast|granola|yogurt)/i;
 
-/** Deterministic PRNG (mulberry32) for seeded regenerate tests. */
+/** Deterministic PRNG (mulberry32) for seeded remix tests. */
 export function createRng(seed: number): () => number {
   let t = seed >>> 0;
   return () => {
@@ -221,7 +221,7 @@ export type PickForSlotOptions = {
 /**
  * Prefer unused recipe ids (hard), then unused dishKeys (hard when present),
  * then higher pantry score. With randomize, draw among the top N by adj score
- * instead of always taking #1 — so regenerate can change the plan.
+ * instead of always taking #1 — so remix can change the plan.
  */
 export function pickForSlot(
   pool: SuggestionResult[],
@@ -390,7 +390,7 @@ export function buildWeeklyMenu(
 }
 
 /** Replace a single day/slot pick, avoiding the previous recipe when possible. */
-export function regenerateMenuSlot(
+export function remixMenuSlot(
   plan: WeeklyMenuPlanData,
   dayIndex: number,
   slot: MealSlot,
@@ -469,7 +469,7 @@ export function regenerateMenuSlot(
  * rest of the week, avoid the day's previous three recipe ids when alternatives
  * exist, and randomize among top candidates (same variety path as week regen).
  */
-export function regenerateMenuDay(
+export function remixMenuDay(
   plan: WeeklyMenuPlanData,
   dayIndex: number,
   recipes: RecipeForMatch[],

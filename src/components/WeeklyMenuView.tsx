@@ -54,14 +54,14 @@ export function WeeklyMenuView() {
   );
 
   const load = useCallback(
-    async (opts?: { regenerate?: boolean }) => {
+    async (opts?: { remix?: boolean }) => {
       setLoading(true);
-      setBusyKey(opts?.regenerate ? "week" : null);
+      setBusyKey(opts?.remix ? "week" : null);
       try {
         const params = new URLSearchParams({
           struggle: struggleMode ? "1" : "0",
         });
-        if (opts?.regenerate) params.set("regenerate", "1");
+        if (opts?.remix) params.set("remix", "1");
         const res = await fetch(`/api/weekly-menu?${params.toString()}`);
         const data = await res.json();
         applyPayload(data);
@@ -79,27 +79,27 @@ export function WeeklyMenuView() {
     load();
   }, [load]);
 
-  const regenerateWeek = useCallback(async () => {
+  const remixWeek = useCallback(async () => {
     setBusyKey("week");
     try {
       const res = await fetch("/api/weekly-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "regenerate",
+          action: "remix",
           struggleMode,
         }),
       });
       const data = await res.json();
       applyPayload(data);
     } catch {
-      setError("Could not regenerate week");
+      setError("Could not remix week");
     } finally {
       setBusyKey(null);
     }
   }, [struggleMode, applyPayload]);
 
-  const regenerateSlot = useCallback(
+  const remixSlot = useCallback(
     async (dayIndex: number, slot: MealSlot) => {
       const key = `${dayIndex}-${slot}`;
       setBusyKey(key);
@@ -108,7 +108,7 @@ export function WeeklyMenuView() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: "regenerateSlot",
+            action: "remixSlot",
             struggleMode,
             dayIndex,
             slot,
@@ -126,7 +126,7 @@ export function WeeklyMenuView() {
     [struggleMode, plan, applyPayload]
   );
 
-  const regenerateDay = useCallback(
+  const remixDay = useCallback(
     async (dayIndex: number) => {
       const key = `day-${dayIndex}`;
       setBusyKey(key);
@@ -135,7 +135,7 @@ export function WeeklyMenuView() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: "regenerateDay",
+            action: "remixDay",
             struggleMode,
             dayIndex,
             plan,
@@ -144,7 +144,7 @@ export function WeeklyMenuView() {
         const data = await res.json();
         applyPayload(data);
       } catch {
-        setError("Could not regenerate that day");
+        setError("Could not remix that day");
       } finally {
         setBusyKey(null);
       }
@@ -183,11 +183,11 @@ export function WeeklyMenuView() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={regenerateWeek}
+              onClick={remixWeek}
               disabled={loading || busyKey === "week"}
               className="btn-primary text-sm disabled:opacity-60"
             >
-              {busyKey === "week" ? "Building…" : "Regenerate week"}
+              {busyKey === "week" ? "Building…" : "Remix week"}
             </button>
             <Link href="/suggestions" className="btn-secondary text-sm">
               Cook Now
@@ -198,7 +198,7 @@ export function WeeklyMenuView() {
         {persisted && (
           <p className="text-xs text-sage-500">
             Plan saved for this household — refresh won&apos;t wipe it until you
-            regenerate.
+            remix.
           </p>
         )}
         {!persisted && plan && (
@@ -239,7 +239,7 @@ export function WeeklyMenuView() {
         <p className="text-sm text-sage-600">Building your week…</p>
       ) : !plan ? (
         <p className="text-sm text-sage-600">
-          No plan yet. Add pantry items and recipes, then regenerate.
+          No plan yet. Add pantry items and recipes, then remix.
         </p>
       ) : (
         <div className="space-y-4">
@@ -254,14 +254,14 @@ export function WeeklyMenuView() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => regenerateDay(day.dayIndex)}
+                  onClick={() => remixDay(day.dayIndex)}
                   disabled={busyKey === `day-${day.dayIndex}` || busyKey === "week"}
                   className="rounded-lg bg-cream-50/10 px-2.5 py-1 text-[11px] font-semibold text-cream-50 hover:bg-cream-50/20 disabled:opacity-50"
                   title="Rebuild breakfast, lunch, and dinner for this day"
                 >
                   {busyKey === `day-${day.dayIndex}`
                     ? "Refreshing…"
-                    : "Regenerate day"}
+                    : "Remix day"}
                 </button>
               </div>
               <div className="grid gap-0 sm:grid-cols-3">
@@ -271,7 +271,7 @@ export function WeeklyMenuView() {
                     slot={slot}
                     pick={day.slots[slot]}
                     busy={busyKey === `${day.dayIndex}-${slot}`}
-                    onRegenerate={() => regenerateSlot(day.dayIndex, slot)}
+                    onRemix={() => remixSlot(day.dayIndex, slot)}
                   />
                 ))}
               </div>
@@ -287,12 +287,12 @@ function SlotCard({
   slot,
   pick,
   busy,
-  onRegenerate,
+  onRemix,
 }: {
   slot: MealSlot;
   pick: MenuSlotPick | null;
   busy: boolean;
-  onRegenerate: () => void;
+  onRemix: () => void;
 }) {
   return (
     <div className="flex flex-col border-cream-300/80 p-4 sm:border-r sm:last:border-r-0">
@@ -302,11 +302,11 @@ function SlotCard({
         </span>
         <button
           type="button"
-          onClick={onRegenerate}
+          onClick={onRemix}
           disabled={busy}
           className="inline-flex items-center gap-1 rounded-full border border-ember-200 bg-ember-50 px-2 py-0.5 text-[11px] font-semibold text-ember-800 shadow-sm hover:bg-ember-100 disabled:opacity-50"
           title="Pick a different recipe for this meal"
-          aria-label={`Regenerate ${SLOT_LABEL[slot]}`}
+          aria-label={`Remix ${SLOT_LABEL[slot]}`}
         >
           <svg
             viewBox="0 0 24 24"
@@ -321,7 +321,7 @@ function SlotCard({
             <path d="M21 12a9 9 0 1 1-2.6-6.3" />
             <polyline points="21 3 21 9 15 9" />
           </svg>
-          {busy ? "…" : "Regenerate"}
+          {busy ? "…" : "Remix"}
         </button>
       </div>
 

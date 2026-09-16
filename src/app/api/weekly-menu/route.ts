@@ -9,8 +9,8 @@ import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 import {
   buildWeeklyMenu,
   collectMissingFromPlan,
-  regenerateMenuDay,
-  regenerateMenuSlot,
+  remixMenuDay,
+  remixMenuSlot,
   type MealSlot,
   type WeeklyMenuPlanData,
   MEAL_SLOTS,
@@ -90,11 +90,13 @@ export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   const dietary = resolveDietarySuggestOptions(user);
   const struggleMode = req.nextUrl.searchParams.get("struggle") === "1";
-  const regenerate = req.nextUrl.searchParams.get("regenerate") === "1";
+  const remix =
+    req.nextUrl.searchParams.get("remix") === "1" ||
+    req.nextUrl.searchParams.get("regenerate") === "1";
 
   const { pantry, recipeData } = await loadMatchData(householdId);
 
-  if (!regenerate) {
+  if (!remix) {
     const saved = await findSavedPlan(householdId, user?.id ?? null);
     if (saved) {
       const plan = parsePlanJson(saved.planJson);
@@ -116,8 +118,8 @@ export async function GET(req: NextRequest) {
     struggleMode,
     ...dietary,
     maxMissing: 3,
-    // First load without regenerate stays stable; ?regenerate=1 must vary
-    randomize: regenerate,
+    // First load without remix stays stable; ?remix=1 must vary
+    randomize: remix,
   });
   const row = await upsertPlan(householdId, user?.id ?? null, plan);
 
@@ -130,7 +132,15 @@ export async function GET(req: NextRequest) {
 }
 
 const postSchema = z.object({
-  action: z.enum(["regenerate", "regenerateSlot", "regenerateDay", "save"]),
+  action: z.enum([
+    "remix",
+    "remixSlot",
+    "remixDay",
+    "regenerate",
+    "regenerateSlot",
+    "regenerateDay",
+    "save",
+  ]),
   struggleMode: z.boolean().optional(),
   dayIndex: z.number().int().min(0).max(6).optional(),
   slot: z.enum(["breakfast", "lunch", "dinner"]).optional(),
@@ -148,14 +158,14 @@ export async function POST(req: NextRequest) {
 
     let plan: WeeklyMenuPlanData;
 
-    if (body.action === "regenerate") {
+    if (body.action === "remix" || body.action === "regenerate") {
       plan = buildWeeklyMenu(recipeData, pantry, {
         struggleMode,
         ...dietary,
         maxMissing: 3,
         randomize: true,
       });
-    } else if (body.action === "regenerateSlot") {
+    } else if (body.action === "remixSlot" || body.action === "regenerateSlot") {
       if (body.dayIndex == null || !body.slot) {
         return NextResponse.json(
           { error: "dayIndex and slot required" },
@@ -181,7 +191,7 @@ export async function POST(req: NextRequest) {
           randomize: true,
         });
       }
-      plan = regenerateMenuSlot(
+      plan = remixMenuSlot(
         base,
         body.dayIndex,
         slot,
@@ -189,7 +199,7 @@ export async function POST(req: NextRequest) {
         pantry,
         { struggleMode, ...dietary, maxMissing: 3, randomize: true }
       );
-    } else if (body.action === "regenerateDay") {
+    } else if (body.action === "remixDay" || body.action === "regenerateDay") {
       if (body.dayIndex == null) {
         return NextResponse.json(
           { error: "dayIndex required" },
@@ -211,7 +221,7 @@ export async function POST(req: NextRequest) {
           randomize: true,
         });
       }
-      plan = regenerateMenuDay(
+      plan = remixMenuDay(
         base,
         body.dayIndex,
         recipeData,
