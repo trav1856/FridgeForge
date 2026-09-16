@@ -204,6 +204,12 @@ export function isBrandPantryImage(url: string | null | undefined): boolean {
   return /^https?:\/\//i.test(url) || url.startsWith("/pantry-images/brand/");
 }
 
+/** True when URL is a user-uploaded pantry photo under /pantry-images/user/. */
+export function isUserPantryImage(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /^\/pantry-images\/user\/[A-Za-z0-9._-]+$/.test(url);
+}
+
 /**
  * Curated generic photo for a pantry name (or null if only category
  * fallback would apply and category is unknown — callers may still
@@ -233,8 +239,10 @@ export function genericPantryImageForName(
 }
 
 /**
- * Display URL for a pantry tile: stored brand/generic URL wins;
- * otherwise curated generic from name/category.
+ * Display URL for a pantry tile.
+ * Priority: user custom upload > brand OFF (or other non-generic stored) >
+ * curated generic from name/category.
+ * User / non-generic custom paths are never rewritten to generic.
  */
 export function resolvePantryImageUrl(opts: {
   name: string;
@@ -243,6 +251,10 @@ export function resolvePantryImageUrl(opts: {
 }): string | null {
   const stored = opts.imageUrl?.trim() || null;
   if (stored) {
+    // User custom always wins as-is (never rewrite to generic).
+    if (isUserPantryImage(stored)) {
+      return stored;
+    }
     // Legacy generic SVG paths → WebP photos
     if (
       stored.includes("/pantry-images/generic/") &&
@@ -250,6 +262,7 @@ export function resolvePantryImageUrl(opts: {
     ) {
       return stored.replace(/\.svg$/i, ".webp");
     }
+    // Any other stored URL (OFF brand, brand local, etc.) wins over generic map.
     return stored;
   }
   return genericPantryImageForName(opts.name, opts.category);

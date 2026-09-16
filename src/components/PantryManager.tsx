@@ -41,8 +41,8 @@ export function PantryManager() {
   const [filter, setFilter] = useState("");
   const [tab, setTab] = useState<IntakeTab>("barcode");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true);
     try {
       const res = await fetch("/api/pantry");
       const data = await res.json();
@@ -56,7 +56,7 @@ export function PantryManager() {
       setError("Could not load pantry");
       setItems([]);
     } finally {
-      setLoading(false);
+      if (!opts?.quiet) setLoading(false);
     }
   }, []);
 
@@ -158,6 +158,9 @@ export function PantryManager() {
           editingId={editingId}
           editForm={editForm}
           onCancelEdit={clearEdit}
+          onItemsChanged={() => {
+            void load({ quiet: true });
+          }}
           onSaved={async () => {
             clearEdit();
             setError(null);

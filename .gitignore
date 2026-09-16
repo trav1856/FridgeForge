@@ -36,3 +36,7 @@ next-env.d.ts
 # User-uploaded recipe photos (keep folder)
 /public/recipe-images/user/*
 !/public/recipe-images/user/.gitkeep
+
+# User-uploaded pantry photos (keep folder)
+/public/pantry-images/user/*
+!/public/pantry-images/user/.gitkeep

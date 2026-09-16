@@ -12,7 +12,7 @@ import {
   type CatalogChip,
   type CatalogItem,
 } from "@/lib/pantry-catalog";
-import { resolvePantryImageUrl } from "@/lib/pantry-images";
+import { PantryPhotoUpload } from "./PantryPhotoUpload";
 import {
   defaultUnitForItem,
   unitsForItem,
@@ -39,6 +39,8 @@ type Props = {
   editForm: EditForm | null;
   onCancelEdit: () => void;
   onSaved: () => void;
+  /** Reload pantry list without closing the edit form (e.g. after photo upload). */
+  onItemsChanged?: () => void;
 };
 
 type SelectableItem = CatalogItem & {
@@ -60,6 +62,7 @@ export function ManualPantryIntake({
   editForm,
   onCancelEdit,
   onSaved,
+  onItemsChanged,
 }: Props) {
   const [chipId, setChipId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectableItem | null>(null);
@@ -143,6 +146,7 @@ export function ManualPantryIntake({
         form={editForm}
         onCancel={onCancelEdit}
         onSaved={onSaved}
+        onItemsChanged={onItemsChanged}
       />
     );
   }
@@ -594,11 +598,13 @@ function EditPantryForm({
   form: initial,
   onCancel,
   onSaved,
+  onItemsChanged,
 }: {
   editingId: string;
   form: EditForm;
   onCancel: () => void;
   onSaved: () => void;
+  onItemsChanged?: () => void;
 }) {
   const [form, setForm] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -661,23 +667,16 @@ function EditPantryForm({
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
       <h2 className="font-display text-xl font-bold text-sage-900">Edit item</h2>
-      {(() => {
-        const photo = resolvePantryImageUrl({
-          name: form.name,
-          imageUrl: form.imageUrl,
-          category: form.category,
-        });
-        return photo ? (
-          <div className="aspect-square h-24 w-24 overflow-hidden rounded-xl bg-sage-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo}
-              alt={form.name}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ) : null;
-      })()}
+      <PantryPhotoUpload
+        itemId={editingId}
+        imageUrl={form.imageUrl}
+        name={form.name}
+        category={form.category}
+        onImageUrlChange={(url) => {
+          setForm((f) => ({ ...f, imageUrl: url }));
+          onItemsChanged?.();
+        }}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label">Name</label>

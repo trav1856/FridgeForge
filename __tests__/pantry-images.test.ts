@@ -3,6 +3,7 @@ import {
   genericPantryImageForName,
   isBrandPantryImage,
   isGenericPantryImage,
+  isUserPantryImage,
   prefersGenericPantryImage,
   resolvePantryImageUrl,
 } from "@/lib/pantry-images";
@@ -49,6 +50,53 @@ describe("pantry-images", () => {
     ).toBe("/pantry-images/generic/milk.webp");
   });
 
+  it("priority: user custom > brand OFF > generic", () => {
+    const user = "/pantry-images/user/mynerds.jpg";
+    const brand =
+      "https://images.openfoodfacts.org/images/products/wrong-veg.jpg";
+    expect(
+      resolvePantryImageUrl({
+        name: "Nerds Candy",
+        imageUrl: user,
+        category: "Other",
+      })
+    ).toBe(user);
+    expect(
+      resolvePantryImageUrl({
+        name: "Nerds Candy",
+        imageUrl: brand,
+        category: "Other",
+      })
+    ).toBe(brand);
+    expect(
+      resolvePantryImageUrl({
+        name: "carrot",
+        imageUrl: null,
+        category: "Produce",
+      })
+    ).toBe("/pantry-images/generic/carrot.webp");
+    // Reset (null) after custom → generic again, not brand
+    expect(
+      resolvePantryImageUrl({
+        name: "Nerds Candy",
+        imageUrl: null,
+        category: "Other",
+      })
+    ).toBe("/pantry-images/generic/other.webp");
+  });
+
+  it("never rewrites user uploads to generic", () => {
+    const user = "/pantry-images/user/abc123.webp";
+    expect(isUserPantryImage(user)).toBe(true);
+    expect(
+      resolvePantryImageUrl({
+        name: "milk",
+        imageUrl: user,
+        category: "Dairy",
+      })
+    ).toBe(user);
+  });
+
   it("detects generic vs brand URLs", () => {
     expect(isGenericPantryImage("/pantry-images/generic/milk.webp")).toBe(true);
     expect(
@@ -57,6 +105,7 @@ describe("pantry-images", () => {
       )
     ).toBe(true);
     expect(isBrandPantryImage("/pantry-images/generic/milk.webp")).toBe(false);
+    expect(isBrandPantryImage("/pantry-images/user/x.jpg")).toBe(false);
   });
 
   it("prefers generic for commodities; not for branded multi-word names", () => {
@@ -66,7 +115,6 @@ describe("pantry-images", () => {
     expect(prefersGenericPantryImage("Parkay Margarine")).toBe(false);
     expect(prefersGenericPantryImage("Hellmann's Mayonnaise")).toBe(false);
   });
-});
 
   it("rewrites legacy generic .svg paths to .webp", () => {
     expect(
@@ -76,4 +124,4 @@ describe("pantry-images", () => {
       })
     ).toBe("/pantry-images/generic/milk.webp");
   });
-
+});
