@@ -1,5 +1,8 @@
 "use client";
 
+import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
+import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
+
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -336,6 +339,17 @@ export function RecipeForm({
       setSaving(false);
     }
   }
+
+  const nutritionPreview = estimateRecipeNutrition(
+    ingredients
+      .filter((i) => i.name.trim())
+      .map((i) => ({
+        name: i.name.trim(),
+        quantity: Number(i.quantity) || 0,
+        unit: i.unit || "each",
+      })),
+    Number(servings) || 2
+  );
 
   return (
     <div className="space-y-6">
@@ -939,6 +953,11 @@ export function RecipeForm({
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {nutritionPreview.matchedCount > 0 && (
+          <div id="recipe-nutrition-preview" className="pt-2">
+            <RecipeNutritionCard estimate={nutritionPreview} />
+          </div>
+        )}
         <button type="submit" className="btn-primary" disabled={saving}>
           {saving ? "Saving…" : "Save recipe"}
         </button>

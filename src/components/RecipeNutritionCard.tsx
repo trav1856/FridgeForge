@@ -150,23 +150,27 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
         </div>
       ) : (
         <>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-sage-500">
               {coverageLabel}
-              <span className="text-sage-400"> · default shows per serving</span>
+              <span className="text-sage-400">
+                {" "}
+                · switch Per serving / Whole recipe
+              </span>
             </p>
             <div
-              className="inline-flex overflow-hidden rounded-full border border-sage-200 text-[11px] font-semibold"
+              className="inline-flex overflow-hidden rounded-full border-2 border-sage-300 text-xs font-bold shadow-sm"
               role="group"
               aria-label="Nutrition amount basis"
             >
               <button
                 type="button"
                 onClick={() => setMode("serving")}
+                aria-pressed={mode === "serving"}
                 className={
                   mode === "serving"
-                    ? "bg-sage-800 px-3 py-1 text-cream-50"
-                    : "bg-cream-50 px-3 py-1 text-sage-700 hover:bg-sage-100"
+                    ? "bg-sage-800 px-3.5 py-1.5 text-cream-50"
+                    : "bg-cream-50 px-3.5 py-1.5 text-sage-700 hover:bg-sage-100"
                 }
               >
                 Per serving
@@ -174,10 +178,11 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
               <button
                 type="button"
                 onClick={() => setMode("recipe")}
+                aria-pressed={mode === "recipe"}
                 className={
                   mode === "recipe"
-                    ? "bg-sage-800 px-3 py-1 text-cream-50"
-                    : "bg-cream-50 px-3 py-1 text-sage-700 hover:bg-sage-100"
+                    ? "bg-sage-800 px-3.5 py-1.5 text-cream-50"
+                    : "bg-cream-50 px-3.5 py-1.5 text-sage-700 hover:bg-sage-100"
                 }
               >
                 Whole recipe
@@ -209,7 +214,7 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
 
             <div className="border-b-4 border-sage-800 px-4 py-2">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
-                Amount per serving
+                {mode === "serving" ? "Amount per serving" : "Amount for whole recipe"}
               </div>
               <div className="mt-1 flex items-end justify-between">
                 <span className="font-display text-xl font-bold text-sage-900">

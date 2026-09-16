@@ -458,7 +458,9 @@ export default async function RecipeDetailPage({ params }: Props) {
           }
         >
           {nutritionEstimate.totalCount > 0 && (
-            <RecipeNutritionCard estimate={nutritionEstimate} />
+            <div id="nutrition">
+              <RecipeNutritionCard estimate={nutritionEstimate} />
+            </div>
           )}
 
           {hasPlaybook && (
