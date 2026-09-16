@@ -3,11 +3,13 @@ import {
   adaptHintForPrefs,
   applyKosherHalalSupersede,
   kosherFoodActive,
+  applyMacroPrefToggle,
   applyPlantPrefToggle,
   effectiveObservant,
   inferAdaptNotes,
   inferDietaryEligibility,
   normalizePlantPrefs,
+  passesMacroDietaryFilter,
   passesPlantDietaryFilter,
   recipeContainsAlcohol,
   resolveDietarySuggestOptions,
@@ -48,6 +50,11 @@ const recipe = (
   vegetarianEligible: partial.vegetarianEligible ?? false,
   pescatarianEligible: partial.pescatarianEligible ?? false,
   veganEligible: partial.veganEligible ?? false,
+  carnivoreEligible: partial.carnivoreEligible ?? false,
+  atkinsEligible: partial.atkinsEligible ?? false,
+  lowCarbEligible: partial.lowCarbEligible ?? false,
+  lowSugarEligible: partial.lowSugarEligible ?? false,
+  lowSodiumEligible: partial.lowSodiumEligible ?? false,
   kosherAdaptNote: partial.kosherAdaptNote ?? null,
   veganAdaptNote: partial.veganAdaptNote ?? null,
   vegetarianAdaptNote: partial.vegetarianAdaptNote ?? null,
@@ -300,6 +307,7 @@ describe("plant prefs priority", () => {
       preferVegan: true,
       preferVegetarian: true,
       preferPescatarian: false,
+      preferCarnivore: false,
     });
     expect(
       applyPlantPrefToggle({ preferVegan: true }, "preferPescatarian", true)
@@ -307,6 +315,7 @@ describe("plant prefs priority", () => {
       preferVegan: false,
       preferVegetarian: false,
       preferPescatarian: true,
+      preferCarnivore: false,
     });
   });
 
@@ -333,12 +342,15 @@ describe("inferDietaryEligibility heuristics", () => {
       title: "Rice and Beans",
       ingredients: [{ name: "rice" }, { name: "black beans" }],
     });
-    expect(r).toEqual({
+    expect(r).toMatchObject({
       kosherEligible: true,
       halalEligible: true,
       vegetarianEligible: true,
       pescatarianEligible: true,
       veganEligible: true,
+      carnivoreEligible: false,
+      lowCarbEligible: false, // rice/beans are carb-heavy
+      lowSugarEligible: true,
     });
   });
 
@@ -730,6 +742,190 @@ describe("adapt hints", () => {
   });
 });
 
+
+
+describe("carnivore ↔ plant exclusivity", () => {
+  it("turning carnivore on clears plant prefs", () => {
+    expect(
+      applyMacroPrefToggle(
+        { preferVegan: true, preferVegetarian: true },
+        "preferCarnivore",
+        true
+      )
+    ).toMatchObject({
+      preferCarnivore: true,
+      preferVegan: false,
+      preferVegetarian: false,
+      preferPescatarian: false,
+    });
+  });
+
+  it("turning plant on clears carnivore", () => {
+    expect(
+      applyPlantPrefToggle({ preferCarnivore: true }, "preferVegan", true)
+    ).toEqual({
+      preferVegan: true,
+      preferVegetarian: true,
+      preferPescatarian: false,
+      preferCarnivore: false,
+    });
+  });
+
+  it("Atkins does not auto-force preferLowCarb", () => {
+    expect(
+      resolveDietarySuggestOptions({ preferAtkins: true })
+    ).toMatchObject({
+      requireAtkins: true,
+      requireLowCarb: false,
+      softPreferAtkins: true,
+      softPreferLowCarb: false,
+    });
+    expect(
+      resolveDietarySuggestOptions({
+        preferAtkins: true,
+        preferLowCarb: true,
+        preferLowSugar: true,
+      })
+    ).toMatchObject({
+      requireAtkins: true,
+      requireLowCarb: true,
+      requireLowSugar: true,
+    });
+  });
+
+  it("carnivore stacks with kosher/halal religion prefs", () => {
+    expect(
+      resolveDietarySuggestOptions({
+        isJewish: true,
+        preferCarnivore: true,
+        preferLowSodium: true,
+      })
+    ).toMatchObject({
+      softPreferKosher: true,
+      requireCarnivore: true,
+      requireLowSodium: true,
+      requireVegan: false,
+    });
+  });
+
+  it("carnivore clears plant require flags in resolve", () => {
+    expect(
+      resolveDietarySuggestOptions({
+        preferCarnivore: true,
+        preferVegan: true,
+      })
+    ).toMatchObject({
+      requireCarnivore: true,
+      requireVegan: false,
+      requireVegetarian: false,
+      requirePescatarian: false,
+    });
+  });
+});
+
+describe("macro hard-filter AND behavior", () => {
+  const stock = pantry(["rice", "pasta", "chicken"]);
+  const carnivore = recipe({
+    id: "c",
+    title: "Steak",
+    carnivoreEligible: true,
+    atkinsEligible: true,
+    lowCarbEligible: true,
+    lowSugarEligible: true,
+    lowSodiumEligible: true,
+    ingredients: [
+      { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+    ],
+  });
+  const lowCarbOnly = recipe({
+    id: "lc",
+    title: "Low Carb Bowl",
+    carnivoreEligible: false,
+    atkinsEligible: true,
+    lowCarbEligible: true,
+    lowSugarEligible: true,
+    lowSodiumEligible: false,
+    ingredients: [
+      { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+    ],
+  });
+  const sugary = recipe({
+    id: "s",
+    title: "Sweet Rice",
+    carnivoreEligible: false,
+    atkinsEligible: false,
+    lowCarbEligible: false,
+    lowSugarEligible: false,
+    lowSodiumEligible: true,
+    ingredients: [
+      { id: "1", name: "rice", quantity: 1, unit: "cups", optional: false },
+    ],
+  });
+
+  it("hard-filters carnivoreEligible when requireCarnivore", () => {
+    const results = suggestMeals([carnivore, lowCarbOnly, sugary], stock, {
+      requireCarnivore: true,
+    });
+    expect(results.map((r) => r.recipe.id)).toEqual(["c"]);
+  });
+
+  it("ANDs Atkins + low sugar + low sodium", () => {
+    const results = suggestMeals([carnivore, lowCarbOnly, sugary], stock, {
+      requireAtkins: true,
+      requireLowSugar: true,
+      requireLowSodium: true,
+    });
+    expect(results.map((r) => r.recipe.id)).toEqual(["c"]);
+  });
+
+  it("ANDs carnivore with observant kosher", () => {
+    const kosherCarnivore = recipe({
+      id: "kc",
+      title: "Kosher Steak",
+      kosherEligible: true,
+      carnivoreEligible: true,
+      ingredients: [
+        { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+      ],
+    });
+    const treyfCarnivore = recipe({
+      id: "tc",
+      title: "Bacon Steak",
+      kosherEligible: false,
+      carnivoreEligible: true,
+      ingredients: [
+        { id: "1", name: "chicken", quantity: 1, unit: "lb", optional: false },
+      ],
+    });
+    const results = suggestMeals([kosherCarnivore, treyfCarnivore], stock, {
+      requireKosher: true,
+      requireCarnivore: true,
+    });
+    expect(results.map((r) => r.recipe.id)).toEqual(["kc"]);
+  });
+
+  it("returns empty when prefer macro and none eligible", () => {
+    expect(
+      suggestMeals([sugary], stock, { requireCarnivore: true })
+    ).toEqual([]);
+  });
+
+  it("passesMacroDietaryFilter checks each flag", () => {
+    expect(
+      passesMacroDietaryFilter(carnivore, { requireLowSodium: true })
+    ).toBe(true);
+    expect(
+      passesMacroDietaryFilter(lowCarbOnly, { requireLowSodium: true })
+    ).toBe(false);
+    expect(
+      passesMacroDietaryFilter(lowCarbOnly, {
+        requireAtkins: true,
+        requireLowCarb: true,
+      })
+    ).toBe(true);
+  });
+});
+
 describe("DietaryBadges markup", () => {
   it("renders Kosher* / Halal* / plant labels in component source", async () => {
     const fs = await import("fs");
@@ -739,6 +935,11 @@ describe("DietaryBadges markup", () => {
     expect(src).toMatch(/Vegan/);
     expect(src).toMatch(/Vegetarian/);
     expect(src).toMatch(/Pescatarian/);
+    expect(src).toMatch(/Carnivore/);
+    expect(src).toMatch(/Atkins/);
+    expect(src).toMatch(/Low carb/);
+    expect(src).toMatch(/Low sugar/);
+    expect(src).toMatch(/Low sodium/);
     expect(src).toMatch(/certified/);
   });
 });

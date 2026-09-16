@@ -81,6 +81,11 @@ export function RecipeForm() {
   const [vegetarianEligible, setVegetarianEligible] = useState(true);
   const [pescatarianEligible, setPescatarianEligible] = useState(true);
   const [veganEligible, setVeganEligible] = useState(false);
+  const [carnivoreEligible, setCarnivoreEligible] = useState(false);
+  const [atkinsEligible, setAtkinsEligible] = useState(false);
+  const [lowCarbEligible, setLowCarbEligible] = useState(false);
+  const [lowSugarEligible, setLowSugarEligible] = useState(false);
+  const [lowSodiumEligible, setLowSodiumEligible] = useState(false);
   const [kosherAdaptNote, setKosherAdaptNote] = useState("");
   const [veganAdaptNote, setVeganAdaptNote] = useState("");
   const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
@@ -214,6 +219,11 @@ export function RecipeForm() {
       vegetarianEligible,
       pescatarianEligible,
       veganEligible,
+      carnivoreEligible,
+      atkinsEligible,
+      lowCarbEligible,
+      lowSugarEligible,
+      lowSodiumEligible,
       kosherAdaptNote: kosherAdaptNote.trim() || null,
       veganAdaptNote: veganAdaptNote.trim() || null,
       vegetarianAdaptNote: vegetarianAdaptNote.trim() || null,
@@ -515,6 +525,46 @@ export function RecipeForm() {
                 onChange={(e) => setPescatarianEligible(e.target.checked)}
               />
               Pescatarian
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={carnivoreEligible}
+                onChange={(e) => setCarnivoreEligible(e.target.checked)}
+              />
+              Carnivore
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={atkinsEligible}
+                onChange={(e) => setAtkinsEligible(e.target.checked)}
+              />
+              Atkins
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={lowCarbEligible}
+                onChange={(e) => setLowCarbEligible(e.target.checked)}
+              />
+              Low carb
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={lowSugarEligible}
+                onChange={(e) => setLowSugarEligible(e.target.checked)}
+              />
+              Low sugar
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-800">
+              <input
+                type="checkbox"
+                checked={lowSodiumEligible}
+                onChange={(e) => setLowSodiumEligible(e.target.checked)}
+              />
+              Low sodium
             </label>
           </div>
           <p className="text-[10px] text-sage-500 sm:col-span-2">

@@ -897,6 +897,11 @@ async function main() {
         vegetarianEligible?: boolean;
         pescatarianEligible?: boolean;
         veganEligible?: boolean;
+        carnivoreEligible?: boolean;
+        atkinsEligible?: boolean;
+        lowCarbEligible?: boolean;
+        lowSugarEligible?: boolean;
+        lowSodiumEligible?: boolean;
         kosherAdaptNote?: string | null;
         veganAdaptNote?: string | null;
         vegetarianAdaptNote?: string | null;
@@ -919,6 +924,11 @@ async function main() {
       data.vegetarianEligible = diet.vegetarianEligible;
       data.pescatarianEligible = diet.pescatarianEligible;
       data.veganEligible = diet.veganEligible;
+      data.carnivoreEligible = diet.carnivoreEligible;
+      data.atkinsEligible = diet.atkinsEligible;
+      data.lowCarbEligible = diet.lowCarbEligible;
+      data.lowSugarEligible = diet.lowSugarEligible;
+      data.lowSodiumEligible = diet.lowSodiumEligible;
       const adapt = inferAdaptNotes({
         title: rest.title,
         description: rest.description,

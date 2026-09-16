@@ -8,6 +8,11 @@ type Props = {
   vegetarianEligible?: boolean | null;
   pescatarianEligible?: boolean | null;
   veganEligible?: boolean | null;
+  carnivoreEligible?: boolean | null;
+  atkinsEligible?: boolean | null;
+  lowCarbEligible?: boolean | null;
+  lowSugarEligible?: boolean | null;
+  lowSodiumEligible?: boolean | null;
   /** Show the * footnote under badges (detail pages). */
   showFootnote?: boolean;
   className?: string;
@@ -16,6 +21,7 @@ type Props = {
 /**
  * Show small dietary badges when eligible.
  * Kosher* / Halal* footnote: eligibility assumes certified ingredients.
+ * Macro badges only when eligible — keep concise, don’t flood.
  */
 export function DietaryBadges({
   kosherEligible,
@@ -23,6 +29,11 @@ export function DietaryBadges({
   vegetarianEligible,
   pescatarianEligible,
   veganEligible,
+  carnivoreEligible,
+  atkinsEligible,
+  lowCarbEligible,
+  lowSugarEligible,
+  lowSodiumEligible,
   showFootnote = false,
   className = "",
 }: Props) {
@@ -32,7 +43,26 @@ export function DietaryBadges({
   // Vegetarian implied by vegan — only show vegetarian if not vegan
   const showVeg = Boolean(vegetarianEligible) && !showVegan;
   const showPesc = Boolean(pescatarianEligible) && !showVeg && !showVegan;
-  if (!showK && !showH && !showVegan && !showVeg && !showPesc) return null;
+  // Carnivore mutually exclusive with plant badges for display clarity
+  const showCarnivore = Boolean(carnivoreEligible) && !showVegan && !showVeg && !showPesc;
+  const showAtkins = Boolean(atkinsEligible);
+  const showLowCarb = Boolean(lowCarbEligible);
+  const showLowSugar = Boolean(lowSugarEligible);
+  const showLowSodium = Boolean(lowSodiumEligible);
+  if (
+    !showK &&
+    !showH &&
+    !showVegan &&
+    !showVeg &&
+    !showPesc &&
+    !showCarnivore &&
+    !showAtkins &&
+    !showLowCarb &&
+    !showLowSugar &&
+    !showLowSodium
+  ) {
+    return null;
+  }
 
   return (
     <span className={className}>
@@ -56,6 +86,43 @@ export function DietaryBadges({
             title="Pescatarian"
           >
             Pescatarian
+          </span>
+        )}
+        {showCarnivore && (
+          <span
+            className="badge bg-rose-100 text-rose-900"
+            title="Carnivore"
+          >
+            Carnivore
+          </span>
+        )}
+        {showAtkins && (
+          <span className="badge bg-amber-100 text-amber-900" title="Atkins">
+            Atkins
+          </span>
+        )}
+        {showLowCarb && (
+          <span
+            className="badge bg-orange-100 text-orange-900"
+            title="Low carb"
+          >
+            Low carb
+          </span>
+        )}
+        {showLowSugar && (
+          <span
+            className="badge bg-yellow-100 text-yellow-900"
+            title="Low sugar"
+          >
+            Low sugar
+          </span>
+        )}
+        {showLowSodium && (
+          <span
+            className="badge bg-cyan-100 text-cyan-900"
+            title="Low sodium"
+          >
+            Low sodium
           </span>
         )}
         {showK && (

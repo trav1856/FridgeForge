@@ -35,6 +35,11 @@ type Recipe = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  carnivoreEligible?: boolean;
+  atkinsEligible?: boolean;
+  lowCarbEligible?: boolean;
+  lowSugarEligible?: boolean;
+  lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
@@ -471,6 +476,11 @@ export function RecipeList() {
                       vegetarianEligible={r.vegetarianEligible}
                       pescatarianEligible={r.pescatarianEligible}
                       veganEligible={r.veganEligible}
+                      carnivoreEligible={r.carnivoreEligible}
+                      atkinsEligible={r.atkinsEligible}
+                      lowCarbEligible={r.lowCarbEligible}
+                      lowSugarEligible={r.lowSugarEligible}
+                      lowSodiumEligible={r.lowSodiumEligible}
                     />
                     {r.cuisine && (
                       <span className="badge bg-sage-200 text-sage-900">

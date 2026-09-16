@@ -5,7 +5,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
 import { HowToBadgesPanel } from "@/components/HowToBadgesPanel";
-import { applyPlantPrefToggle } from "@/lib/dietary";
+import { applyMacroPrefToggle, applyPlantPrefToggle } from "@/lib/dietary";
 
 type Household = {
   id: string;
@@ -29,6 +29,11 @@ type MeUser = {
   preferVegetarian?: boolean;
   preferPescatarian?: boolean;
   preferVegan?: boolean;
+  preferCarnivore?: boolean;
+  preferAtkins?: boolean;
+  preferLowCarb?: boolean;
+  preferLowSugar?: boolean;
+  preferLowSodium?: boolean;
   households: Household[];
 };
 
@@ -485,8 +490,13 @@ export default function AccountPage() {
               <div className="flex flex-wrap gap-2">
                 <PrefChip
                   label="Vegan"
-                  checked={Boolean(user.preferVegan)}
-                  disabled={busy}
+                  checked={Boolean(user.preferVegan) && !user.preferCarnivore}
+                  disabled={busy || Boolean(user.preferCarnivore)}
+                  helper={
+                    user.preferCarnivore
+                      ? "Incompatible with carnivore"
+                      : undefined
+                  }
                   onToggle={(next) => {
                     const patch = applyPlantPrefToggle(user, "preferVegan", next);
                     void savePrefs(patch);
@@ -494,10 +504,18 @@ export default function AccountPage() {
                 />
                 <PrefChip
                   label="Vegetarian"
-                  checked={Boolean(user.preferVegetarian)}
-                  disabled={busy || Boolean(user.preferVegan)}
+                  checked={Boolean(user.preferVegetarian) && !user.preferCarnivore}
+                  disabled={
+                    busy ||
+                    Boolean(user.preferCarnivore) ||
+                    Boolean(user.preferVegan)
+                  }
                   helper={
-                    user.preferVegan ? "Implied by vegan" : undefined
+                    user.preferCarnivore
+                      ? "Incompatible with carnivore"
+                      : user.preferVegan
+                      ? "Implied by vegan"
+                      : undefined
                   }
                   onToggle={(next) => {
                     const patch = applyPlantPrefToggle(
@@ -510,14 +528,17 @@ export default function AccountPage() {
                 />
                 <PrefChip
                   label="Pescatarian"
-                  checked={Boolean(user.preferPescatarian)}
+                  checked={Boolean(user.preferPescatarian) && !user.preferCarnivore}
                   disabled={
                     busy ||
+                    Boolean(user.preferCarnivore) ||
                     Boolean(user.preferVegan) ||
                     Boolean(user.preferVegetarian)
                   }
                   helper={
-                    user.preferVegan || user.preferVegetarian
+                    user.preferCarnivore
+                      ? "Incompatible with carnivore"
+                      : user.preferVegan || user.preferVegetarian
                       ? "Off while vegan/vegetarian is on"
                       : undefined
                   }
@@ -525,6 +546,80 @@ export default function AccountPage() {
                     const patch = applyPlantPrefToggle(
                       user,
                       "preferPescatarian",
+                      next
+                    );
+                    void savePrefs(patch);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-cream-300 pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+                Dietary restrictions
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <PrefChip
+                  label="Carnivore"
+                  checked={Boolean(user.preferCarnivore)}
+                  disabled={busy}
+                  helper="Incompatible with plant-based"
+                  onToggle={(next) => {
+                    const patch = applyMacroPrefToggle(
+                      user,
+                      "preferCarnivore",
+                      next
+                    );
+                    void savePrefs(patch);
+                  }}
+                />
+                <PrefChip
+                  label="Atkins"
+                  checked={Boolean(user.preferAtkins)}
+                  disabled={busy}
+                  onToggle={(next) => {
+                    const patch = applyMacroPrefToggle(
+                      user,
+                      "preferAtkins",
+                      next
+                    );
+                    void savePrefs(patch);
+                  }}
+                />
+                <PrefChip
+                  label="Low carb"
+                  checked={Boolean(user.preferLowCarb)}
+                  disabled={busy}
+                  onToggle={(next) => {
+                    const patch = applyMacroPrefToggle(
+                      user,
+                      "preferLowCarb",
+                      next
+                    );
+                    void savePrefs(patch);
+                  }}
+                />
+                <PrefChip
+                  label="Low sugar"
+                  checked={Boolean(user.preferLowSugar)}
+                  disabled={busy}
+                  onToggle={(next) => {
+                    const patch = applyMacroPrefToggle(
+                      user,
+                      "preferLowSugar",
+                      next
+                    );
+                    void savePrefs(patch);
+                  }}
+                />
+                <PrefChip
+                  label="Low sodium"
+                  checked={Boolean(user.preferLowSodium)}
+                  disabled={busy}
+                  onToggle={(next) => {
+                    const patch = applyMacroPrefToggle(
+                      user,
+                      "preferLowSodium",
                       next
                     );
                     void savePrefs(patch);

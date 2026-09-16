@@ -223,6 +223,11 @@ export default async function RecipeDetailPage({ params }: Props) {
             vegetarianEligible={recipe.vegetarianEligible}
             pescatarianEligible={recipe.pescatarianEligible}
             veganEligible={recipe.veganEligible}
+            carnivoreEligible={recipe.carnivoreEligible}
+            atkinsEligible={recipe.atkinsEligible}
+            lowCarbEligible={recipe.lowCarbEligible}
+            lowSugarEligible={recipe.lowSugarEligible}
+            lowSodiumEligible={recipe.lowSodiumEligible}
             showFootnote
           />
           {recipe.cuisine && (

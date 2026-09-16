@@ -33,6 +33,13 @@ model User {
   preferVegetarian Boolean       @default(false)
   preferPescatarian Boolean      @default(false)
   preferVegan Boolean            @default(false)
+  /** Macro / lifestyle prefs (stack with religion/kosher/halal; carnivore mutually exclusive with plant). */
+  preferCarnivore Boolean        @default(false)
+  preferAtkins Boolean           @default(false)
+  preferLowCarb Boolean          @default(false)
+  preferLowSugar Boolean         @default(false)
+  /** Prefer low sodium (not “low salt”). */
+  preferLowSodium Boolean        @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -152,6 +159,14 @@ model Recipe {
   pescatarianEligible Boolean         @default(false)
   /** No animal products. */
   veganEligible    Boolean            @default(false)
+  /** Animal-based (meat/fish/eggs); mutually exclusive with plant prefs for filtering. */
+  carnivoreEligible Boolean           @default(false)
+  /** Atkins-style low-carb friendly (independent of preferLowCarb). */
+  atkinsEligible   Boolean            @default(false)
+  lowCarbEligible  Boolean            @default(false)
+  lowSugarEligible Boolean            @default(false)
+  /** Low sodium (not “low salt”). */
+  lowSodiumEligible Boolean           @default(false)
   /** Short note: how to adapt this recipe to kosher when not kosherEligible. */
   kosherAdaptNote  String?
   /** Short note: how to adapt this recipe to vegan when not veganEligible. */

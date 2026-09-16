@@ -10,7 +10,9 @@ import {
   KOSHER_SOFT_BOOST,
   passesKosherDietaryFilter,
   passesPlantDietaryFilter,
+  passesMacroDietaryFilter,
   plantSoftBoost,
+  macroSoftBoost,
   hasAdaptNote,
   ADAPT_SOFT_BOOST,
   satisfiesHalal,
@@ -86,6 +88,16 @@ export type SuggestOptions = {
   softPreferVegan?: boolean;
   softPreferVegetarian?: boolean;
   softPreferPescatarian?: boolean;
+  requireCarnivore?: boolean;
+  requireAtkins?: boolean;
+  requireLowCarb?: boolean;
+  requireLowSugar?: boolean;
+  requireLowSodium?: boolean;
+  softPreferCarnivore?: boolean;
+  softPreferAtkins?: boolean;
+  softPreferLowCarb?: boolean;
+  softPreferLowSugar?: boolean;
+  softPreferLowSodium?: boolean;
 };
 
 function findPantryMatch(
@@ -147,6 +159,16 @@ export function scoreRecipe(
     requireVegan = false,
     requireVegetarian = false,
     requirePescatarian = false,
+    softPreferCarnivore = false,
+    softPreferAtkins = false,
+    softPreferLowCarb = false,
+    softPreferLowSugar = false,
+    softPreferLowSodium = false,
+    requireCarnivore = false,
+    requireAtkins = false,
+    requireLowCarb = false,
+    requireLowSugar = false,
+    requireLowSodium = false,
   } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
@@ -220,6 +242,18 @@ export function scoreRecipe(
     requireVegetarian,
     requirePescatarian,
   });
+  dietaryBoost += macroSoftBoost(recipe, {
+    softPreferCarnivore,
+    softPreferAtkins,
+    softPreferLowCarb,
+    softPreferLowSugar,
+    softPreferLowSodium,
+    requireCarnivore,
+    requireAtkins,
+    requireLowCarb,
+    requireLowSugar,
+    requireLowSodium,
+  });
   score += dietaryBoost;
 
   // Slight boost for creative pairings present
@@ -278,6 +312,16 @@ export function suggestMeals(
     softPreferVegan = false,
     softPreferVegetarian = false,
     softPreferPescatarian = false,
+    requireCarnivore = false,
+    requireAtkins = false,
+    requireLowCarb = false,
+    requireLowSugar = false,
+    requireLowSodium = false,
+    softPreferCarnivore = false,
+    softPreferAtkins = false,
+    softPreferLowCarb = false,
+    softPreferLowSugar = false,
+    softPreferLowSodium = false,
   } = options;
 
   let pool = recipes;
@@ -301,6 +345,23 @@ export function suggestMeals(
         requireVegan,
         requireVegetarian,
         requirePescatarian,
+      })
+    );
+  }
+  if (
+    requireCarnivore ||
+    requireAtkins ||
+    requireLowCarb ||
+    requireLowSugar ||
+    requireLowSodium
+  ) {
+    pool = pool.filter((r) =>
+      passesMacroDietaryFilter(r, {
+        requireCarnivore,
+        requireAtkins,
+        requireLowCarb,
+        requireLowSugar,
+        requireLowSodium,
       })
     );
   }
@@ -337,6 +398,16 @@ export function suggestMeals(
         softPreferVegan,
         softPreferVegetarian,
         softPreferPescatarian,
+        requireCarnivore,
+        requireAtkins,
+        requireLowCarb,
+        requireLowSugar,
+        requireLowSodium,
+        softPreferCarnivore,
+        softPreferAtkins,
+        softPreferLowCarb,
+        softPreferLowSugar,
+        softPreferLowSodium,
       })
     )
     .sort((a, b) => b.score - a.score)

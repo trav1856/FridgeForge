@@ -6,6 +6,10 @@
  *
  * Plant prefs priority (mutually exclusive primary): vegan > vegetarian > pescatarian.
  * Vegan implies vegetarian for display; pescatarian is incompatible with vegan/vegetarian.
+ *
+ * Macro / lifestyle prefs (carnivore, Atkins, low carb, low sugar, low sodium) stack with
+ * Jewish/Muslim/Kosher/Halal and with each other. Carnivore is mutually exclusive with
+ * plant prefs. Atkins does NOT auto-force preferLowCarb.
  */
 
 export type DietaryUserPrefs = {
@@ -18,6 +22,11 @@ export type DietaryUserPrefs = {
   preferVegetarian?: boolean | null;
   preferPescatarian?: boolean | null;
   preferVegan?: boolean | null;
+  preferCarnivore?: boolean | null;
+  preferAtkins?: boolean | null;
+  preferLowCarb?: boolean | null;
+  preferLowSugar?: boolean | null;
+  preferLowSodium?: boolean | null;
 };
 
 export type DietarySuggestOptions = {
@@ -38,6 +47,17 @@ export type DietarySuggestOptions = {
   softPreferVegan?: boolean;
   softPreferVegetarian?: boolean;
   softPreferPescatarian?: boolean;
+  /** Hard-filter carnivoreEligible (preferCarnivore). */
+  requireCarnivore?: boolean;
+  requireAtkins?: boolean;
+  requireLowCarb?: boolean;
+  requireLowSugar?: boolean;
+  requireLowSodium?: boolean;
+  softPreferCarnivore?: boolean;
+  softPreferAtkins?: boolean;
+  softPreferLowCarb?: boolean;
+  softPreferLowSugar?: boolean;
+  softPreferLowSodium?: boolean;
 };
 
 export type PlantDiet = "vegan" | "vegetarian" | "pescatarian" | null;
@@ -47,6 +67,9 @@ export const DIETARY_BADGE_FOOTNOTE =
 
 export const PLANT_PREF_HELP =
   "Priority: vegan > vegetarian > pescatarian (one primary). Vegan implies vegetarian. Lists prefer matching recipes; non-matching may still appear when an adapt note exists.";
+
+export const MACRO_PREF_HELP =
+  "Carnivore, Atkins, low carb, low sugar, and low sodium stack with each other and with religion/kosher/halal. Carnivore is incompatible with plant-based. Atkins does not auto-enable low carb.";
 
 /** Observant is only meaningful when Jewish; otherwise treat as off. */
 export function effectiveObservant(prefs: DietaryUserPrefs): boolean {
@@ -117,12 +140,21 @@ export function normalizePlantPrefs(prefs: {
   };
 }
 
-/** Apply a single plant-pref toggle with exclusivity + vegan⇒vegetarian implication. */
+export type MacroPrefKey =
+  | "preferCarnivore"
+  | "preferAtkins"
+  | "preferLowCarb"
+  | "preferLowSugar"
+  | "preferLowSodium";
+
+/** Apply a single plant-pref toggle with exclusivity + vegan⇒vegetarian implication.
+ *  Turning any plant primary on clears preferCarnivore. */
 export function applyPlantPrefToggle(
   current: {
     preferVegan?: boolean | null;
     preferVegetarian?: boolean | null;
     preferPescatarian?: boolean | null;
+    preferCarnivore?: boolean | null;
   },
   key: "preferVegan" | "preferVegetarian" | "preferPescatarian",
   checked: boolean
@@ -130,6 +162,7 @@ export function applyPlantPrefToggle(
   preferVegan: boolean;
   preferVegetarian: boolean;
   preferPescatarian: boolean;
+  preferCarnivore: boolean;
 } {
   if (!checked) {
     const next = {
@@ -147,6 +180,7 @@ export function applyPlantPrefToggle(
       preferVegan: n.preferVegan,
       preferVegetarian: n.preferVegetarian,
       preferPescatarian: n.preferPescatarian,
+      preferCarnivore: Boolean(current.preferCarnivore),
     };
   }
   let normalized;
@@ -161,7 +195,47 @@ export function applyPlantPrefToggle(
     preferVegan: normalized.preferVegan,
     preferVegetarian: normalized.preferVegetarian,
     preferPescatarian: normalized.preferPescatarian,
+    preferCarnivore: false, // plant primary clears carnivore
   };
+}
+
+/**
+ * Apply a macro/lifestyle pref toggle.
+ * Turning carnivore on clears plant prefs; other macros stack freely (Atkins ≠ force low carb).
+ */
+export function applyMacroPrefToggle(
+  current: DietaryUserPrefs,
+  key: MacroPrefKey,
+  checked: boolean
+): {
+  preferCarnivore: boolean;
+  preferAtkins: boolean;
+  preferLowCarb: boolean;
+  preferLowSugar: boolean;
+  preferLowSodium: boolean;
+  preferVegan: boolean;
+  preferVegetarian: boolean;
+  preferPescatarian: boolean;
+} {
+  const next = {
+    preferCarnivore: Boolean(current.preferCarnivore),
+    preferAtkins: Boolean(current.preferAtkins),
+    preferLowCarb: Boolean(current.preferLowCarb),
+    preferLowSugar: Boolean(current.preferLowSugar),
+    preferLowSodium: Boolean(current.preferLowSodium),
+    preferVegan: Boolean(current.preferVegan),
+    preferVegetarian: Boolean(current.preferVegetarian),
+    preferPescatarian: Boolean(current.preferPescatarian),
+  };
+  next[key] = checked;
+  if (key === "preferCarnivore" && checked) {
+    next.preferVegan = false;
+    next.preferVegetarian = false;
+    next.preferPescatarian = false;
+  }
+  // If carnivore somehow still on with plant, plant wins when plant was already set
+  // and we're only toggling a non-carnivore macro — leave as-is.
+  return next;
 }
 
 export function resolveDietarySuggestOptions(
@@ -181,7 +255,20 @@ export function resolveDietarySuggestOptions(
     !kosherActive &&
     Boolean(effective.isMuslim) &&
     !Boolean(effective.preferHalal);
-  const plant = normalizePlantPrefs(effective);
+  // Carnivore ↔ plant exclusivity: carnivore clears plant for filtering.
+  const carnivore = Boolean(effective.preferCarnivore);
+  const plant = carnivore
+    ? {
+        preferVegan: false,
+        preferVegetarian: false,
+        preferPescatarian: false,
+        primary: null as PlantDiet,
+      }
+    : normalizePlantPrefs(effective);
+  const preferAtkins = Boolean(effective.preferAtkins);
+  const preferLowCarb = Boolean(effective.preferLowCarb);
+  const preferLowSugar = Boolean(effective.preferLowSugar);
+  const preferLowSodium = Boolean(effective.preferLowSodium);
   return {
     softPreferKosher,
     requireKosher: observant,
@@ -193,6 +280,16 @@ export function resolveDietarySuggestOptions(
     softPreferVegan: plant.primary === "vegan",
     softPreferVegetarian: plant.primary === "vegetarian",
     softPreferPescatarian: plant.primary === "pescatarian",
+    requireCarnivore: carnivore,
+    requireAtkins: preferAtkins,
+    requireLowCarb: preferLowCarb,
+    requireLowSugar: preferLowSugar,
+    requireLowSodium: preferLowSodium,
+    softPreferCarnivore: carnivore,
+    softPreferAtkins: preferAtkins,
+    softPreferLowCarb: preferLowCarb,
+    softPreferLowSugar: preferLowSugar,
+    softPreferLowSodium: preferLowSodium,
   };
 }
 
@@ -215,6 +312,11 @@ export type RecipeDietaryFields = {
   vegetarianEligible?: boolean | null;
   pescatarianEligible?: boolean | null;
   veganEligible?: boolean | null;
+  carnivoreEligible?: boolean | null;
+  atkinsEligible?: boolean | null;
+  lowCarbEligible?: boolean | null;
+  lowSugarEligible?: boolean | null;
+  lowSodiumEligible?: boolean | null;
   kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
@@ -284,6 +386,37 @@ export function plantSoftBoost(
   ) {
     boost += ADAPT_SOFT_BOOST;
   }
+  return boost;
+}
+
+/** Hard-filter macro/lifestyle prefs (AND). Empty pool OK when none match. */
+export function passesMacroDietaryFilter(
+  recipe: RecipeDietaryFields,
+  options: DietarySuggestOptions
+): boolean {
+  if (options.requireCarnivore && !recipe.carnivoreEligible) return false;
+  if (options.requireAtkins && !recipe.atkinsEligible) return false;
+  if (options.requireLowCarb && !recipe.lowCarbEligible) return false;
+  if (options.requireLowSugar && !recipe.lowSugarEligible) return false;
+  if (options.requireLowSodium && !recipe.lowSodiumEligible) return false;
+  return true;
+}
+
+export function macroSoftBoost(
+  recipe: RecipeDietaryFields,
+  options: DietarySuggestOptions
+): number {
+  let boost = 0;
+  if (options.softPreferCarnivore && recipe.carnivoreEligible)
+    boost += CARNIVORE_SOFT_BOOST;
+  if (options.softPreferAtkins && recipe.atkinsEligible)
+    boost += ATKINS_SOFT_BOOST;
+  if (options.softPreferLowCarb && recipe.lowCarbEligible)
+    boost += LOW_CARB_SOFT_BOOST;
+  if (options.softPreferLowSugar && recipe.lowSugarEligible)
+    boost += LOW_SUGAR_SOFT_BOOST;
+  if (options.softPreferLowSodium && recipe.lowSodiumEligible)
+    boost += LOW_SODIUM_SOFT_BOOST;
   return boost;
 }
 
@@ -362,6 +495,19 @@ const FISH_SEAFOOD =
 const ANIMAL_DAIRY_EGG =
   /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|egg\b|eggs\b|mayonnaise|mayo\b|honey)\b/i;
 
+const EGG_ONLY =
+  /\b(egg\b|eggs\b)\b/i;
+
+/** Grains / legumes / starchy staples that typically break carnivore / Atkins / low-carb. */
+const CARB_HEAVY =
+  /\b(rice|pasta|noodle|bread|flour|tortilla|potato|oat|oatmeal|quinoa|bean|beans|lentil|chickpea|corn\b|sugar|honey|syrup|banana|apple|fruit|cereal|couscous|bulgur|bagel|bun\b|roll\b|cracker|waffle|pancake)\b/i;
+
+const SUGAR_HEAVY =
+  /\b(sugar|honey|syrup|maple|agave|candy|dessert|chocolate|sweetened|molasses|frosting|icing|caramel)\b/i;
+
+const SODIUM_HEAVY =
+  /\b(soy sauce|fish sauce|salted|cured|bacon|ham\b|prosciutto|salami|pepperoni|pickled|miso|bouillon|broth cube|msg\b|anchov)\b/i;
+
 function blobFromInput(input: {
   title?: string | null;
   description?: string | null;
@@ -417,6 +563,11 @@ export function inferDietaryEligibility(input: {
   vegetarianEligible: boolean;
   pescatarianEligible: boolean;
   veganEligible: boolean;
+  carnivoreEligible: boolean;
+  atkinsEligible: boolean;
+  lowCarbEligible: boolean;
+  lowSugarEligible: boolean;
+  lowSodiumEligible: boolean;
 } {
   const blob = blobFromInput(input);
   const kosherEligible = !KOSHER_INELIGIBLE.test(blob);
@@ -424,10 +575,23 @@ export function inferDietaryEligibility(input: {
   const hasLandMeat = LAND_MEAT.test(blob);
   const hasFish = FISH_SEAFOOD.test(blob);
   const hasAnimalDairyEgg = ANIMAL_DAIRY_EGG.test(blob);
+  const hasEgg = EGG_ONLY.test(blob);
+  const hasCarbHeavy = CARB_HEAVY.test(blob);
+  const hasSugarHeavy = SUGAR_HEAVY.test(blob);
+  const hasSodiumHeavy = SODIUM_HEAVY.test(blob);
 
   const vegetarianEligible = !hasLandMeat && !hasFish;
   const pescatarianEligible = !hasLandMeat;
   const veganEligible = vegetarianEligible && !hasAnimalDairyEgg;
+
+  // Light heuristics — admin overrides preferred.
+  const hasAnimalProtein = hasLandMeat || hasFish || hasEgg;
+  const carnivoreEligible = hasAnimalProtein && !hasCarbHeavy && !vegetarianEligible;
+  // Atkins ≈ low-carb animal-forward; still independent filter flag from lowCarb.
+  const lowCarbEligible = !hasCarbHeavy;
+  const atkinsEligible = lowCarbEligible && (hasAnimalProtein || !veganEligible);
+  const lowSugarEligible = !hasSugarHeavy;
+  const lowSodiumEligible = !hasSodiumHeavy;
 
   return {
     kosherEligible,
@@ -435,6 +599,11 @@ export function inferDietaryEligibility(input: {
     vegetarianEligible,
     pescatarianEligible,
     veganEligible,
+    carnivoreEligible,
+    atkinsEligible,
+    lowCarbEligible,
+    lowSugarEligible,
+    lowSodiumEligible,
   };
 }
 
@@ -506,4 +675,9 @@ export const HALAL_SOFT_BOOST = 20;
 export const VEGAN_SOFT_BOOST = 22;
 export const VEGETARIAN_SOFT_BOOST = 18;
 export const PESCATARIAN_SOFT_BOOST = 16;
+export const CARNIVORE_SOFT_BOOST = 18;
+export const ATKINS_SOFT_BOOST = 14;
+export const LOW_CARB_SOFT_BOOST = 14;
+export const LOW_SUGAR_SOFT_BOOST = 12;
+export const LOW_SODIUM_SOFT_BOOST = 12;
 export const ADAPT_SOFT_BOOST = 8;

@@ -51,6 +51,11 @@ const createSchema = z.object({
   vegetarianEligible: z.boolean().optional(),
   pescatarianEligible: z.boolean().optional(),
   veganEligible: z.boolean().optional(),
+  carnivoreEligible: z.boolean().optional(),
+  atkinsEligible: z.boolean().optional(),
+  lowCarbEligible: z.boolean().optional(),
+  lowSugarEligible: z.boolean().optional(),
+  lowSodiumEligible: z.boolean().optional(),
   kosherAdaptNote: z.string().max(500).optional().nullable(),
   veganAdaptNote: z.string().max(500).optional().nullable(),
   vegetarianAdaptNote: z.string().max(500).optional().nullable(),
@@ -73,12 +78,17 @@ export async function GET(req: NextRequest) {
   const origin =
     req.nextUrl.searchParams.get("origin") ||
     req.nextUrl.searchParams.get("ethnicity");
-  const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal | vegan | vegetarian | pescatarian
+  const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal | vegan | vegetarian | pescatarian | carnivore | atkins | lowCarb | lowSugar | lowSodium
   const kosherOnly = dietary === "kosher" || req.nextUrl.searchParams.get("kosher") === "1";
   const halalOnly = dietary === "halal" || req.nextUrl.searchParams.get("halal") === "1";
   const veganOnly = dietary === "vegan" || req.nextUrl.searchParams.get("vegan") === "1";
   const vegetarianOnly = dietary === "vegetarian" || req.nextUrl.searchParams.get("vegetarian") === "1";
   const pescatarianOnly = dietary === "pescatarian" || req.nextUrl.searchParams.get("pescatarian") === "1";
+  const carnivoreOnly = dietary === "carnivore" || req.nextUrl.searchParams.get("carnivore") === "1";
+  const atkinsOnly = dietary === "atkins" || req.nextUrl.searchParams.get("atkins") === "1";
+  const lowCarbOnly = dietary === "lowCarb" || dietary === "low-carb" || req.nextUrl.searchParams.get("lowCarb") === "1";
+  const lowSugarOnly = dietary === "lowSugar" || dietary === "low-sugar" || req.nextUrl.searchParams.get("lowSugar") === "1";
+  const lowSodiumOnly = dietary === "lowSodium" || dietary === "low-sodium" || req.nextUrl.searchParams.get("lowSodium") === "1";
 
   const accessWhere = recipeListAccessWhere({
     userId: user?.id ?? null,
@@ -106,6 +116,11 @@ export async function GET(req: NextRequest) {
   if (veganOnly) dietaryFilters.push({ veganEligible: true });
   if (vegetarianOnly) dietaryFilters.push({ vegetarianEligible: true });
   if (pescatarianOnly) dietaryFilters.push({ pescatarianEligible: true });
+  if (carnivoreOnly) dietaryFilters.push({ carnivoreEligible: true });
+  if (atkinsOnly) dietaryFilters.push({ atkinsEligible: true });
+  if (lowCarbOnly) dietaryFilters.push({ lowCarbEligible: true });
+  if (lowSugarOnly) dietaryFilters.push({ lowSugarEligible: true });
+  if (lowSodiumOnly) dietaryFilters.push({ lowSodiumEligible: true });
 
   let where: Record<string, unknown> = {
     AND: [accessWhere, ...dietaryFilters],
@@ -233,6 +248,11 @@ export async function POST(req: NextRequest) {
         vegetarianEligible: data.vegetarianEligible ?? false,
         pescatarianEligible: data.pescatarianEligible ?? false,
         veganEligible: data.veganEligible ?? false,
+        carnivoreEligible: data.carnivoreEligible ?? false,
+        atkinsEligible: data.atkinsEligible ?? false,
+        lowCarbEligible: data.lowCarbEligible ?? false,
+        lowSugarEligible: data.lowSugarEligible ?? false,
+        lowSodiumEligible: data.lowSodiumEligible ?? false,
         kosherAdaptNote: data.kosherAdaptNote?.trim() || null,
         veganAdaptNote: data.veganAdaptNote?.trim() || null,
         vegetarianAdaptNote: data.vegetarianAdaptNote?.trim() || null,

@@ -28,6 +28,11 @@ type RecipeRow = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  carnivoreEligible?: boolean;
+  atkinsEligible?: boolean;
+  lowCarbEligible?: boolean;
+  lowSugarEligible?: boolean;
+  lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
@@ -109,6 +114,11 @@ export function AdminRecipesPanel({ initial }: Props) {
                 vegetarianEligible: data.vegetarianEligible ?? r.vegetarianEligible,
                 pescatarianEligible: data.pescatarianEligible ?? r.pescatarianEligible,
                 veganEligible: data.veganEligible ?? r.veganEligible,
+                carnivoreEligible: data.carnivoreEligible ?? r.carnivoreEligible,
+                atkinsEligible: data.atkinsEligible ?? r.atkinsEligible,
+                lowCarbEligible: data.lowCarbEligible ?? r.lowCarbEligible,
+                lowSugarEligible: data.lowSugarEligible ?? r.lowSugarEligible,
+                lowSodiumEligible: data.lowSodiumEligible ?? r.lowSodiumEligible,
                 kosherAdaptNote: data.kosherAdaptNote !== undefined ? data.kosherAdaptNote : r.kosherAdaptNote,
                 veganAdaptNote: data.veganAdaptNote !== undefined ? data.veganAdaptNote : r.veganAdaptNote,
                 vegetarianAdaptNote: data.vegetarianAdaptNote !== undefined ? data.vegetarianAdaptNote : r.vegetarianAdaptNote,
@@ -281,6 +291,11 @@ export function AdminRecipesPanel({ initial }: Props) {
                   {r.veganEligible ? " · vegan" : ""}
                   {r.vegetarianEligible && !r.veganEligible ? " · vegetarian" : ""}
                   {r.pescatarianEligible && !r.vegetarianEligible && !r.veganEligible ? " · pescatarian" : ""}
+                  {r.carnivoreEligible ? " · carnivore" : ""}
+                  {r.atkinsEligible ? " · atkins" : ""}
+                  {r.lowCarbEligible ? " · low carb" : ""}
+                  {r.lowSugarEligible ? " · low sugar" : ""}
+                  {r.lowSodiumEligible ? " · low sodium" : ""}
                   {r.householdId ? "" : " · shared catalog"}
                   {" · "}
                   {r.reviewCount} reviews
@@ -355,6 +370,56 @@ export function AdminRecipesPanel({ initial }: Props) {
                 }
               >
                 {r.vegetarianEligible ? "Unflag vegetarian" : "Flag vegetarian"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { carnivoreEligible: !r.carnivoreEligible })
+                }
+              >
+                {r.carnivoreEligible ? "Unflag carnivore" : "Flag carnivore"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { atkinsEligible: !r.atkinsEligible })
+                }
+              >
+                {r.atkinsEligible ? "Unflag atkins" : "Flag atkins"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { lowCarbEligible: !r.lowCarbEligible })
+                }
+              >
+                {r.lowCarbEligible ? "Unflag low carb" : "Flag low carb"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { lowSugarEligible: !r.lowSugarEligible })
+                }
+              >
+                {r.lowSugarEligible ? "Unflag low sugar" : "Flag low sugar"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={busyId === r.id}
+                onClick={() =>
+                  patch(r.id, { lowSodiumEligible: !r.lowSodiumEligible })
+                }
+              >
+                {r.lowSodiumEligible ? "Unflag low sodium" : "Flag low sodium"}
               </button>
               <button
                 type="button"

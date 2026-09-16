@@ -99,6 +99,37 @@ export default function DietaryLearnMorePage() {
         </p>
       </div>
 
+      <div className="card space-y-3 p-5">
+        <h2 className="font-display text-lg font-bold text-sage-900">
+          Macro / lifestyle restrictions
+        </h2>
+        <p className="text-sm leading-relaxed text-sage-700">
+          <strong className="text-sage-900">Carnivore</strong>,{" "}
+          <strong className="text-sage-900">Atkins</strong>,{" "}
+          <strong className="text-sage-900">low carb</strong>,{" "}
+          <strong className="text-sage-900">low sugar</strong>, and{" "}
+          <strong className="text-sage-900">low sodium</strong> are stackable
+          food preferences. They combine with Jewish/Muslim and Kosher/Halal,
+          and with each other (for example Atkins + low sugar + low sodium).
+        </p>
+        <p className="text-sm leading-relaxed text-sage-700">
+          <strong className="text-sage-900">Carnivore</strong> is mutually
+          exclusive with plant-based prefs: turning carnivore on clears
+          vegan/vegetarian/pescatarian, and turning any plant primary on clears
+          carnivore.
+        </p>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Atkins does not automatically enable low carb — you can select both,
+          and each filters independently. When a prefer flag is on, Cook Now /
+          Weekly / suggestions hard-filter to matching eligible recipes (empty
+          pool is OK if none match).
+        </p>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Naming: we use <strong className="text-sage-900">low sodium</strong>{" "}
+          (not “low salt”).
+        </p>
+      </div>
+
       <p className="text-center text-sm">
         <Link
           href="/account"

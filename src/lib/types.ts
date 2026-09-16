@@ -40,6 +40,11 @@ export type RecipeInput = {
   vegetarianEligible?: boolean;
   pescatarianEligible?: boolean;
   veganEligible?: boolean;
+  carnivoreEligible?: boolean;
+  atkinsEligible?: boolean;
+  lowCarbEligible?: boolean;
+  lowSugarEligible?: boolean;
+  lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
@@ -81,6 +86,11 @@ export type RecipeForMatch = {
   vegetarianEligible: boolean;
   pescatarianEligible: boolean;
   veganEligible: boolean;
+  carnivoreEligible?: boolean;
+  atkinsEligible?: boolean;
+  lowCarbEligible?: boolean;
+  lowSugarEligible?: boolean;
+  lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
