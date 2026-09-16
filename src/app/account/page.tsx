@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { RecipeRequestsInbox } from "@/components/RecipeRequestsInbox";
 import { HowToBadgesPanel } from "@/components/HowToBadgesPanel";
 import { applyMacroPrefToggle, applyPlantPrefToggle } from "@/lib/dietary";
+import { COMMON_ALLERGENS, parseAllergenList } from "@/lib/allergens";
 
 type Household = {
   id: string;
@@ -34,6 +35,7 @@ type MeUser = {
   preferLowCarb?: boolean;
   preferLowSugar?: boolean;
   preferLowSodium?: boolean;
+  allergenFlags?: string[];
   households: Household[];
 };
 
@@ -152,16 +154,7 @@ export default function AccountPage() {
     setBusy(false);
   }
 
-  async function savePrefs(patch: Partial<{
-    isJewish: boolean;
-    isObservant: boolean;
-    preferKosher: boolean;
-    isMuslim: boolean;
-    preferHalal: boolean;
-    preferVegetarian: boolean;
-    preferPescatarian: boolean;
-    preferVegan: boolean;
-  }>) {
+  async function savePrefs(patch: Record<string, unknown>) {
     if (!user) return;
     setBusy(true);
     setError(null);
@@ -626,6 +619,90 @@ export default function AccountPage() {
                   }}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2 border-t border-cream-300 pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sage-500">
+                Allergies (personal)
+              </p>
+              <p className="text-[11px] leading-snug text-sage-500">
+                Flags are private to you. Conflicting recipes stay visible with a
+                warning — not a public allergen silo.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {COMMON_ALLERGENS.map((a) => {
+                  const flags = parseAllergenList(user.allergenFlags);
+                  const on = flags.includes(a.id);
+                  return (
+                    <PrefChip
+                      key={a.id}
+                      label={a.label}
+                      checked={on}
+                      disabled={busy}
+                      onToggle={(next) => {
+                        const set = new Set(flags);
+                        if (next) set.add(a.id);
+                        else set.delete(a.id);
+                        void savePrefs({ allergenFlags: [...set] });
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <form
+                className="flex flex-wrap items-end gap-2 pt-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const custom = String(fd.get("customAllergen") || "").trim();
+                  if (!custom) return;
+                  const flags = parseAllergenList(user.allergenFlags);
+                  const token = custom.toLowerCase().replace(/\s+/g, "_");
+                  if (!flags.includes(token)) {
+                    void savePrefs({ allergenFlags: [...flags, token] });
+                  }
+                  e.currentTarget.reset();
+                }}
+              >
+                <div className="min-w-[12rem] flex-1">
+                  <label className="label" htmlFor="custom-allergen">
+                    Custom allergen
+                  </label>
+                  <input
+                    id="custom-allergen"
+                    name="customAllergen"
+                    className="input"
+                    placeholder="e.g. cilantro"
+                    maxLength={64}
+                    disabled={busy}
+                  />
+                </div>
+                <button type="submit" className="btn-secondary text-sm" disabled={busy}>
+                  Add
+                </button>
+              </form>
+              {parseAllergenList(user.allergenFlags).filter(
+                (f) => !COMMON_ALLERGENS.some((a) => a.id === f)
+              ).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {parseAllergenList(user.allergenFlags)
+                    .filter((f) => !COMMON_ALLERGENS.some((a) => a.id === f))
+                    .map((f) => (
+                      <PrefChip
+                        key={f}
+                        label={f.replace(/_/g, " ")}
+                        checked
+                        disabled={busy}
+                        onToggle={() => {
+                          const flags = parseAllergenList(user.allergenFlags).filter(
+                            (x) => x !== f
+                          );
+                          void savePrefs({ allergenFlags: flags });
+                        }}
+                      />
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 

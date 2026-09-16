@@ -22,6 +22,7 @@ import {
   normalizeOrigins,
 } from "@/lib/recipe-taxonomy";
 import { satisfiesHalal } from "@/lib/dietary";
+import { inferAllergenTags } from "@/lib/allergens";
 
 const ingredientSchema = z.object({
   name: z.string().min(1),
@@ -57,8 +58,10 @@ const createSchema = z.object({
   lowSugarEligible: z.boolean().optional(),
   lowSodiumEligible: z.boolean().optional(),
   kosherAdaptNote: z.string().max(500).optional().nullable(),
+  halalAdaptNote: z.string().max(500).optional().nullable(),
   veganAdaptNote: z.string().max(500).optional().nullable(),
   vegetarianAdaptNote: z.string().max(500).optional().nullable(),
+  allergenTags: z.array(z.string().max(64)).max(40).optional(),
   techniqueTips: z.array(z.string()).optional(),
   flavorBoosters: z.array(z.string()).optional(),
   visibility: z.enum(["global", "household", "shared", "public", "private"]).optional(),
@@ -254,6 +257,18 @@ export async function POST(req: NextRequest) {
         lowSugarEligible: data.lowSugarEligible ?? false,
         lowSodiumEligible: data.lowSodiumEligible ?? false,
         kosherAdaptNote: data.kosherAdaptNote?.trim() || null,
+        halalAdaptNote: data.halalAdaptNote?.trim() || null,
+        allergenTags: stringifyArray(
+          data.allergenTags && data.allergenTags.length
+            ? data.allergenTags
+            : inferAllergenTags({
+                title: data.title,
+                description: data.description,
+                tags: data.tags,
+                ingredients: data.ingredients,
+                steps: data.steps,
+              })
+        ),
         veganAdaptNote: data.veganAdaptNote?.trim() || null,
         vegetarianAdaptNote: data.vegetarianAdaptNote?.trim() || null,
         techniqueTips: stringifyArray(data.techniqueTips),

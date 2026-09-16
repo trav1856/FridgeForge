@@ -18,10 +18,17 @@ import { RecipeOriginStory } from "@/components/RecipeOriginStory";
 import { RecipeVariants } from "@/components/RecipeVariants";
 import { DietaryBadges } from "@/components/DietaryBadges";
 import { DietaryAdaptNote } from "@/components/DietaryAdaptNote";
+import { PersonalDietChrome } from "@/components/PersonalDietChrome";
 import {
   adaptHintForPrefs,
   matchesPlantPreference,
+  pickSimilarEligibleRecipes,
+  satisfiesHalal,
+  wantsHalalChrome,
+  wantsKosherChrome,
 } from "@/lib/dietary";
+import { parseStringArray } from "@/lib/json";
+import { allergenLabel, parseAllergenList } from "@/lib/allergens";
 import { dishKeyForTitle } from "@/lib/dish-key";
 import { pickDishVariantHighlights } from "@/lib/dish-variant-picks";
 import {
@@ -97,6 +104,90 @@ export default async function RecipeDetailPage({ params }: Props) {
     recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0;
 
   const adaptHint = adaptHintForPrefs(recipe, user);
+
+  let similarEligible: { id: string; title: string }[] = [];
+  const needsSimilar =
+    Boolean(user) &&
+    ((wantsKosherChrome(user) && !recipe.kosherEligible) ||
+      (wantsHalalChrome(user) && !satisfiesHalal(recipe)));
+  if (needsSimilar && user) {
+    const access = recipeListAccessWhere({
+      userId: user.id,
+      userEmail: user.email,
+      householdId,
+    });
+    const orFilters: Record<string, unknown>[] = [];
+    if (recipe.cuisine) orFilters.push({ cuisine: recipe.cuisine });
+    if (recipe.course) orFilters.push({ course: recipe.course });
+    const dkEarly = (raw as { dishKey?: string | null }).dishKey;
+    if (dkEarly) orFilters.push({ dishKey: dkEarly });
+    const similarSelect = {
+      id: true,
+      title: true,
+      cuisine: true,
+      course: true,
+      dishKey: true,
+      kosherEligible: true,
+      halalEligible: true,
+      description: true,
+      tags: true,
+      steps: true,
+      kosherAdaptNote: true,
+      halalAdaptNote: true,
+    } as const;
+    let pool = await prisma.recipe.findMany({
+      where: {
+        AND: [
+          access,
+          { id: { not: recipe.id } },
+          ...(orFilters.length ? [{ OR: orFilters }] : []),
+        ],
+      },
+      select: similarSelect,
+      take: 36,
+      orderBy: { updatedAt: "desc" },
+    });
+    if (!pool.length && orFilters.length) {
+      pool = await prisma.recipe.findMany({
+        where: { AND: [access, { id: { not: recipe.id } }] },
+        select: similarSelect,
+        take: 36,
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+    similarEligible = pickSimilarEligibleRecipes(
+      {
+        id: recipe.id,
+        title: recipe.title,
+        cuisine: recipe.cuisine,
+        course: recipe.course,
+        dishKey: dkEarly ?? null,
+        kosherEligible: recipe.kosherEligible,
+        halalEligible: recipe.halalEligible,
+        description: recipe.description,
+        tags: recipe.tags,
+        steps: recipe.steps,
+        kosherAdaptNote: recipe.kosherAdaptNote ?? null,
+        halalAdaptNote: recipe.halalAdaptNote ?? null,
+      },
+      pool.map((r) => ({
+        id: r.id,
+        title: r.title,
+        cuisine: r.cuisine,
+        course: r.course,
+        dishKey: r.dishKey,
+        kosherEligible: r.kosherEligible,
+        halalEligible: r.halalEligible,
+        description: r.description,
+        tags: parseStringArray(r.tags),
+        steps: parseStringArray(r.steps),
+        kosherAdaptNote: r.kosherAdaptNote,
+        halalAdaptNote: r.halalAdaptNote,
+      })),
+      user,
+      3
+    ).map((r) => ({ id: r.id, title: r.title }));
+  }
 
   const dishKey =
     (raw as { dishKey?: string | null }).dishKey ||
@@ -228,8 +319,14 @@ export default async function RecipeDetailPage({ params }: Props) {
             lowCarbEligible={recipe.lowCarbEligible}
             lowSugarEligible={recipe.lowSugarEligible}
             lowSodiumEligible={recipe.lowSodiumEligible}
+            prefs={user}
             showFootnote
           />
+          {parseAllergenList(recipe.allergenTags).map((a: string) => (
+            <span key={`al-${a}`} className="badge bg-cream-200 text-sage-800">
+              Contains: {allergenLabel(a)}
+            </span>
+          ))}
           {recipe.cuisine && (
             <span className="badge bg-sage-200 text-sage-900">{recipe.cuisine}</span>
           )}
@@ -266,6 +363,13 @@ export default async function RecipeDetailPage({ params }: Props) {
             <DietaryAdaptNote hint={adaptHint} />
           </div>
         ) : null}
+        <div className="mt-3 max-w-2xl">
+          <PersonalDietChrome
+            recipe={recipe}
+            prefs={user}
+            similarEligible={similarEligible}
+          />
+        </div>
         <div className="mt-3 max-w-2xl space-y-3">
           <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
           {canEditPhoto && (

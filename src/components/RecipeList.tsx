@@ -17,6 +17,8 @@ import {
   ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
 import { DietaryBadges } from "./DietaryBadges";
+import { PersonalDietChrome } from "./PersonalDietChrome";
+import type { DietaryUserPrefs } from "@/lib/dietary";
 
 type Recipe = {
   id: string;
@@ -41,8 +43,10 @@ type Recipe = {
   lowSugarEligible?: boolean;
   lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
+  halalAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
+  allergenTags?: string[];
   ingredients: { name: string }[];
   imageUrl?: string | null;
   favorited?: boolean;
@@ -139,12 +143,12 @@ function OriginFilterChips({
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
   const regions = useMemo(() => {
-    if (!needle) return ORIGIN_REGIONS;
     return ORIGIN_REGIONS.map((region) => {
       const opts = ORIGIN_OPTIONS.filter(
         (o) =>
           o.regionId === region.id &&
-          (o.label.toLowerCase().includes(needle) ||
+          (!needle ||
+            o.label.toLowerCase().includes(needle) ||
             o.id.toLowerCase().includes(needle) ||
             region.label.toLowerCase().includes(needle))
       );
@@ -178,13 +182,7 @@ function OriginFilterChips({
         </button>
       </div>
       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-        {(needle
-          ? regions
-          : ORIGIN_REGIONS.map((region) => ({
-              region,
-              opts: ORIGIN_OPTIONS.filter((o) => o.regionId === region.id),
-            }))
-        ).map(({ region, opts }) => (
+        {regions.map(({ region, opts }) => (
           <div key={region.id} className="space-y-1">
             <p className="text-[11px] font-semibold text-sage-600">
               {region.label}
@@ -230,7 +228,6 @@ export function RecipeList() {
   const foodCategoryParam = searchParams.get("foodCategory") || "";
   const originParam =
     searchParams.get("origin") || searchParams.get("ethnicity") || "";
-  const dietaryParam = searchParams.get("dietary") || "";
   const scopeParam = (searchParams.get("scope") as Scope) || "all";
   const favoritesParam = searchParams.get("favorites") === "1";
 
@@ -243,10 +240,27 @@ export function RecipeList() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [qDraft, setQDraft] = useState(qParam);
+  const [dietPrefs, setDietPrefs] = useState<DietaryUserPrefs | null>(null);
 
   useEffect(() => {
     setQDraft(qParam);
   }, [qParam]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setDietPrefs(data?.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setDietPrefs(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -274,9 +288,6 @@ export function RecipeList() {
     if (courseParam) params.set("course", courseParam);
     if (foodCategoryParam) params.set("foodCategory", foodCategoryParam);
     if (originParam) params.set("origin", originParam);
-    if (dietaryParam === "kosher" || dietaryParam === "halal") {
-      params.set("dietary", dietaryParam);
-    }
     const res = await fetch(`/api/recipes?${params.toString()}`);
     const data = await res.json();
     setRecipes(Array.isArray(data) ? data : []);
@@ -288,7 +299,6 @@ export function RecipeList() {
     courseParam,
     foodCategoryParam,
     originParam,
-    dietaryParam,
   ]);
 
   useEffect(() => {
@@ -317,13 +327,32 @@ export function RecipeList() {
     { id: "household", label: "Household collection" },
   ];
 
-  const dietaryFilters: { id: string; label: string }[] = [
-    { id: "", label: "Any diet" },
-    { id: "kosher", label: "Kosher*" },
-    { id: "halal", label: "Halal*" },
-  ];
-
   const cuisineOptions = CUISINES.map((c) => ({ id: c, label: c }));
+
+  const cuisineSections: { key: string; label: string; items: Recipe[] }[] =
+    (() => {
+      if (cuisineParam) {
+        return [{ key: cuisineParam, label: cuisineParam, items: list }];
+      }
+      const order = [...CUISINES, "Uncategorized"];
+      const map = new Map<string, Recipe[]>();
+      for (const r of list) {
+        const key = (r.cuisine || "").trim() || "Uncategorized";
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(r);
+      }
+      const sections: { key: string; label: string; items: Recipe[] }[] = [];
+      for (const c of order) {
+        const items = map.get(c);
+        if (items?.length) sections.push({ key: c, label: c, items });
+      }
+      for (const [k, items] of map) {
+        if (!order.includes(k as (typeof CUISINES)[number] | "Uncategorized")) {
+          sections.push({ key: k, label: k, items });
+        }
+      }
+      return sections;
+    })();
   const courseOptions = COURSES.map((c) => ({
     id: c,
     label: c.charAt(0).toUpperCase() + c.slice(1),
@@ -384,30 +413,6 @@ export function RecipeList() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-sage-500">
-          Diet
-        </span>
-        {dietaryFilters.map((d) => (
-          <button
-            key={d.id || "any"}
-            type="button"
-            onClick={() => setParams({ dietary: d.id || null })}
-            className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-              dietaryParam === d.id
-                ? "bg-sage-800 text-cream-50"
-                : "border border-cream-300 bg-cream-100 text-sage-800"
-            }`}
-            aria-pressed={dietaryParam === d.id}
-          >
-            {d.label}
-          </button>
-        ))}
-        <span className="text-[10px] text-sage-500">
-          * If you use kosher/halal ingredients
-        </span>
-      </div>
-
       <div className="card space-y-3 p-3 sm:p-4">
         <ChipRow
           label="Cuisine"
@@ -441,8 +446,19 @@ export function RecipeList() {
       ) : list.length === 0 ? (
         <p className="card p-6 text-center text-sage-600">No recipes found.</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {list.map((r) => (
+        <div className="space-y-8">
+          {cuisineSections.map((section) => (
+            <section key={section.key} aria-label={`${section.label} cuisine`}>
+              {!cuisineParam && (
+                <h2 className="mb-3 font-display text-xl font-bold text-sage-900">
+                  {section.label}
+                  <span className="ml-2 text-sm font-medium text-sage-500">
+                    ({section.items.length})
+                  </span>
+                </h2>
+              )}
+              <ul className="grid gap-3 sm:grid-cols-2">
+          {section.items.map((r) => (
             <li key={r.id} className="card relative flex flex-col overflow-hidden p-0">
               <Link
                 href={`/recipes/${r.id}`}
@@ -481,6 +497,7 @@ export function RecipeList() {
                       lowCarbEligible={r.lowCarbEligible}
                       lowSugarEligible={r.lowSugarEligible}
                       lowSodiumEligible={r.lowSodiumEligible}
+                      prefs={dietPrefs}
                     />
                     {r.cuisine && (
                       <span className="badge bg-sage-200 text-sage-900">
@@ -521,6 +538,12 @@ export function RecipeList() {
                       {r.description}
                     </p>
                   )}
+                  <PersonalDietChrome
+                    recipe={r}
+                    prefs={dietPrefs}
+                    compact
+                    className="mt-2"
+                  />
                   <p className="mt-2 text-xs text-sage-500">
                     {r.ingredients.length} ingredients · {r.servings} servings
                   </p>
@@ -546,7 +569,10 @@ export function RecipeList() {
               </div>
             </li>
           ))}
-        </ul>
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </div>
   );

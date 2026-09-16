@@ -46,8 +46,10 @@ export function toRecipeForMatch(
     lowSugarEligible: Boolean(recipe.lowSugarEligible),
     lowSodiumEligible: Boolean(recipe.lowSodiumEligible),
     kosherAdaptNote: recipe.kosherAdaptNote ?? null,
+    halalAdaptNote: recipe.halalAdaptNote ?? null,
     veganAdaptNote: recipe.veganAdaptNote ?? null,
     vegetarianAdaptNote: recipe.vegetarianAdaptNote ?? null,
+    allergenTags: parseStringArray(recipe.allergenTags),
     techniqueTips: parseStringArray(recipe.techniqueTips),
     flavorBoosters: parseStringArray(recipe.flavorBoosters),
     ingredients: recipe.ingredients.map((i) => ({
@@ -81,6 +83,7 @@ export function serializeRecipe(
     origins: parseStringArray(recipe.origins),
     originStory: recipe.originStory ?? null,
     dishKey: recipe.dishKey ?? null,
+    allergenTags: parseStringArray(recipe.allergenTags),
     techniqueTips: parseStringArray(recipe.techniqueTips),
     flavorBoosters: parseStringArray(recipe.flavorBoosters),
     ingredients: recipe.ingredients,

@@ -11,11 +11,27 @@ export default function DietaryLearnMorePage() {
           ← Back to Account
         </Link>
         <h1 className="mt-3 font-display text-3xl font-bold text-sage-900">
-          Dietary restrictions
+          Dietary preferences & allergies
         </h1>
         <p className="mt-1 text-sm text-sage-600">
-          How FridgeForge uses religion, food preferences, and plant-based
-          options when ranking and filtering recipes.
+          FridgeForge is cuisine-first and religion-agnostic in public browse.
+          Kosher, Halal, and allergen guidance are personal — only you see them.
+        </p>
+      </div>
+
+      <div className="card space-y-3 p-5">
+        <h2 className="font-display text-lg font-bold text-sage-900">
+          Cuisine-public, not religion silos
+        </h2>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Recipes are organized by <strong className="text-sage-900">cuisine</strong>{" "}
+          (Mediterranean, Middle Eastern, Chinese, Japanese, Korean, Italian,
+          Mexican, American, and more). There are no public Kosher / Halal /
+          Jewish / Muslim browse silos or nav links.
+        </p>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Jewish cuisine or origin on a recipe is not the same as being marked
+          kosher-eligible (and the reverse is also true).
         </p>
       </div>
 
@@ -31,38 +47,33 @@ export default function DietaryLearnMorePage() {
           preferences. You can keep a religion checked even when the matching
           food preference is off.
         </p>
-        <p className="text-sm leading-relaxed text-sage-700">
-          Jewish cuisine or origin on a recipe is not the same as being marked
-          kosher-eligible (and the reverse is also true).
-        </p>
       </div>
 
       <div className="card space-y-3 p-5">
         <h2 className="font-display text-lg font-bold text-sage-900">
-          Kosher* and Halal* on recipes
+          Personal Kosher / Halal warnings
         </h2>
         <p className="text-sm leading-relaxed text-sage-700">
-          When a recipe shows Kosher* or Halal*, that means it is{" "}
-          <em>eligible if you use certified ingredients</em> — not a claim that
-          FridgeForge or the recipe author has certified the dish.
+          When you have Prefer Kosher, Observant, Prefer Halal, or the Muslim
+          soft path, FridgeForge may show you private badges, “not kosher/halal”
+          notes, adapt hints, and similar eligible recipes. Guests and users
+          without those prefs do not see that chrome.
         </p>
-      </div>
-
-      <div className="card space-y-3 p-5">
-        <h2 className="font-display text-lg font-bold text-sage-900">
-          How filters work
-        </h2>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Kosher* / Halal* on a recipe (when shown to you) means{" "}
+          <em>eligible if you use certified ingredients</em> — not a
+          certification claim.
+        </p>
         <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-sage-700">
           <li>
-            Religions stack freely with plant-based preferences.
+            Prefer Kosher, Observant, Prefer Halal, and Muslim soft-prefer{" "}
+            <strong className="text-sage-900">soft-boost</strong> matching
+            recipes — they do <em>not</em> hard-hide non-matching recipes in
+            Cook Now / Weekly / suggestions.
           </li>
           <li>
-            <strong className="text-sage-900">Observant</strong> hard-filters to
-            kosher-eligible recipes or ones with a “Make it kosher” note.
-          </li>
-          <li>
-            <strong className="text-sage-900">Muslim</strong> soft-prefers Halal.{" "}
-            <strong className="text-sage-900">Prefer Halal</strong> hard-filters.
+            Plant and macro prefs (vegan, carnivore, low carb, etc.) still
+            hard-filter as before.
           </li>
         </ul>
       </div>
@@ -77,8 +88,19 @@ export default function DietaryLearnMorePage() {
         </p>
         <p className="text-sm leading-relaxed text-sage-700">
           Kosher without alcohol still covers Halal satisfaction on the Halal
-          path, so a kosher-eligible recipe without alcohol can count when you
-          are following Halal.
+          path.
+        </p>
+      </div>
+
+      <div className="card space-y-3 p-5">
+        <h2 className="font-display text-lg font-bold text-sage-900">
+          Allergies
+        </h2>
+        <p className="text-sm leading-relaxed text-sage-700">
+          Allergen flags on Account are <strong className="text-sage-900">personal</strong>.
+          Recipes may list common allergen tags (from ingredients or admin). If a
+          recipe conflicts with your flags, you get a private allergy warning —
+          the recipe is still shown so you can decide.
         </p>
       </div>
 
@@ -90,12 +112,8 @@ export default function DietaryLearnMorePage() {
           Priority is <strong className="text-sage-900">vegan</strong> &gt;{" "}
           <strong className="text-sage-900">vegetarian</strong> &gt;{" "}
           <strong className="text-sage-900">pescatarian</strong> (one primary).
-          Vegan implies vegetarian.
-        </p>
-        <p className="text-sm leading-relaxed text-sage-700">
-          Lists prefer matching recipes; non-matching recipes may still appear
-          when an adapt note exists (for example, a vegetarian adapt note on an
-          otherwise non-vegetarian dish).
+          Vegan implies vegetarian. Lists prefer matching recipes; non-matching
+          recipes may still appear when an adapt note exists.
         </p>
       </div>
 
@@ -104,29 +122,10 @@ export default function DietaryLearnMorePage() {
           Macro / lifestyle restrictions
         </h2>
         <p className="text-sm leading-relaxed text-sage-700">
-          <strong className="text-sage-900">Carnivore</strong>,{" "}
-          <strong className="text-sage-900">Atkins</strong>,{" "}
-          <strong className="text-sage-900">low carb</strong>,{" "}
-          <strong className="text-sage-900">low sugar</strong>, and{" "}
-          <strong className="text-sage-900">low sodium</strong> are stackable
-          food preferences. They combine with Jewish/Muslim and Kosher/Halal,
-          and with each other (for example Atkins + low sugar + low sodium).
-        </p>
-        <p className="text-sm leading-relaxed text-sage-700">
-          <strong className="text-sage-900">Carnivore</strong> is mutually
-          exclusive with plant-based prefs: turning carnivore on clears
-          vegan/vegetarian/pescatarian, and turning any plant primary on clears
-          carnivore.
-        </p>
-        <p className="text-sm leading-relaxed text-sage-700">
-          Atkins does not automatically enable low carb — you can select both,
-          and each filters independently. When a prefer flag is on, Cook Now /
-          Weekly / suggestions hard-filter to matching eligible recipes (empty
-          pool is OK if none match).
-        </p>
-        <p className="text-sm leading-relaxed text-sage-700">
-          Naming: we use <strong className="text-sage-900">low sodium</strong>{" "}
-          (not “low salt”).
+          Carnivore, Atkins, low carb, low sugar, and low sodium are stackable
+          and still hard-filter when on. Carnivore is mutually exclusive with
+          plant-based. Atkins does not auto-enable low carb. Naming:{" "}
+          <strong className="text-sage-900">low sodium</strong> (not “low salt”).
         </p>
       </div>
 

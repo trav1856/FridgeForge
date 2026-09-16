@@ -23,11 +23,11 @@ model User {
    *  Religion (Jewish/Muslim) ≠ food (Kosher/Halal). Kosher food supersedes Halal food. */
   isJewish     Boolean           @default(false)
   isObservant  Boolean           @default(false)
-  /** Soft prefer kosher + show Kosher section; observant ⇒ hard-filter kosherEligible|adapt. */
+  /** Soft prefer kosher + personal kosher chrome (badges/warnings); never a public silo. */
   preferKosher Boolean           @default(false)
-  /** Soft prefer + show Halal section; religion flag — not cleared by isJewish alone. */
+  /** Soft prefer Halal + personal chrome; religion flag — not cleared by isJewish alone. */
   isMuslim     Boolean           @default(false)
-  /** Show Halal section + hard-filter; cleared/disabled when preferKosher or Observant. */
+  /** Soft prefer Halal + personal chrome; cleared/disabled when preferKosher or Observant. */
   preferHalal  Boolean           @default(false)
   /** Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary). */
   preferVegetarian Boolean       @default(false)
@@ -40,6 +40,8 @@ model User {
   preferLowSugar Boolean         @default(false)
   /** Prefer low sodium (not “low salt”). */
   preferLowSodium Boolean        @default(false)
+  /** JSON string array of allergen ids/labels the user avoids (personal; not a public silo). */
+  allergenFlags String           @default("[]")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -173,6 +175,10 @@ model Recipe {
   veganAdaptNote   String?
   /** Short note: how to adapt this recipe to vegetarian when not vegetarianEligible. */
   vegetarianAdaptNote String?
+  /** Short note: how to adapt toward Halal when not satisfiesHalal. */
+  halalAdaptNote   String?
+  /** JSON string array of allergen tags (milk, eggs, fish, …) — public recipe info. */
+  allergenTags     String             @default("[]")
   techniqueTips    String?            // JSON array
   flavorBoosters   String?            // JSON array
   /** global | household | shared  (legacy aliases: public→global, private→household) */

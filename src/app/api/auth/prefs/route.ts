@@ -11,6 +11,8 @@ import {
   normalizePlantPrefs,
   type MacroPrefKey,
 } from "@/lib/dietary";
+import { parseAllergenList } from "@/lib/allergens";
+import { stringifyArray } from "@/lib/json";
 
 const prefsSchema = z.object({
   isJewish: z.boolean().optional(),
@@ -26,6 +28,7 @@ const prefsSchema = z.object({
   preferLowCarb: z.boolean().optional(),
   preferLowSugar: z.boolean().optional(),
   preferLowSodium: z.boolean().optional(),
+  allergenFlags: z.array(z.string().max(64)).max(40).optional(),
 });
 
 const MACRO_KEYS: MacroPrefKey[] = [
@@ -157,6 +160,13 @@ export async function PATCH(req: NextRequest) {
         preferLowCarb: macros.preferLowCarb,
         preferLowSugar: macros.preferLowSugar,
         preferLowSodium: macros.preferLowSodium,
+        ...(body.allergenFlags !== undefined
+          ? {
+              allergenFlags: stringifyArray(
+                parseAllergenList(body.allergenFlags)
+              ),
+            }
+          : {}),
       },
       include: {
         memberships: {
@@ -207,6 +217,9 @@ export async function GET() {
       preferLowCarb: Boolean(user.preferLowCarb),
       preferLowSugar: Boolean(user.preferLowSugar),
       preferLowSodium: Boolean(user.preferLowSodium),
+      allergenFlags: parseAllergenList(
+        (user as { allergenFlags?: string | null }).allergenFlags
+      ),
     },
   });
 }

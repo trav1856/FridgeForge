@@ -195,7 +195,8 @@ describe("inferRecipeTaxonomy staples", () => {
       tags: ["rice", "egg"],
       ingredients: [{ name: "Soy sauce" }, { name: "Chili flakes" }],
     });
-    expect(rice.cuisine).toBe("Asian");
+    // Fried rice is a clear Chinese cue (was generic Asian).
+    expect(rice.cuisine).toBe("Chinese");
     const pasta = inferRecipeTaxonomy({
       title: "Spaghetti with Simple Tomato Sauce",
       tags: ["pasta"],
@@ -222,5 +223,31 @@ describe("inferRecipeTaxonomy staples", () => {
     });
     // default cuisine American but origins may be empty without cues
     expect(Array.isArray(t.origins)).toBe(true);
+  });
+});
+
+describe("cuisine refinements", () => {
+  it("prefers Chinese / Japanese / Korean over generic Asian when clear", () => {
+    expect(
+      inferRecipeTaxonomy({
+        title: "Kung Pao Chicken",
+        tags: ["chinese"],
+        ingredients: [{ name: "soy sauce" }, { name: "chicken" }],
+      }).cuisine
+    ).toBe("Chinese");
+    expect(
+      inferRecipeTaxonomy({
+        title: "Chicken Teriyaki",
+        tags: [],
+        ingredients: [{ name: "teriyaki sauce" }],
+      }).cuisine
+    ).toBe("Japanese");
+    expect(
+      inferRecipeTaxonomy({
+        title: "Bibimbap Bowl",
+        tags: ["korean"],
+        ingredients: [{ name: "gochujang" }, { name: "rice" }],
+      }).cuisine
+    ).toBe("Korean");
   });
 });

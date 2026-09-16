@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStruggleMode } from "./StruggleModeProvider";
 import clsx from "clsx";
 import { RECIPE_REQUESTS_CHANGED_EVENT } from "@/lib/recipe-request";
-import { showHalalSection, showKosherSection } from "@/lib/dietary";
 
 const baseLinks = [
   { href: "/", label: "Home" },
@@ -23,13 +22,10 @@ const struggleLink = { href: "/struggle", label: "Struggle hub" };
 
 export function Nav() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { struggleMode, toggle } = useStruggleMode();
   const [planLabel, setPlanLabel] = useState<string | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
-  const [showKosher, setShowKosher] = useState(false);
-  const [showHalal, setShowHalal] = useState(false);
 
   const refreshPendingCount = useCallback(() => {
     fetch("/api/recipe-requests?box=pending-count")
@@ -52,9 +48,6 @@ export function Nav() {
         else if (data?.user) setPlanLabel("Community");
         else setPlanLabel(null);
         setIsAdminUser(data?.user?.role === "admin");
-        const u = data?.user;
-        setShowKosher(showKosherSection(u));
-        setShowHalal(showHalalSection(u));
         if (data?.user) {
           refreshPendingCount();
         } else {
@@ -66,8 +59,6 @@ export function Nav() {
           setPlanLabel(null);
           setIsAdminUser(false);
           setPendingRequestCount(0);
-          setShowKosher(false);
-          setShowHalal(false);
         }
       });
     return () => {
@@ -173,27 +164,13 @@ export function Nav() {
         {[
           ...baseLinks,
           ...(struggleMode ? [struggleLink] : []),
-          ...(showKosher
-            ? [{ href: "/recipes?dietary=kosher", label: "Kosher" }]
-            : []),
-          ...(showHalal
-            ? [{ href: "/recipes?dietary=halal", label: "Halal" }]
-            : []),
         ].map((l) => {
-          const [hrefPath, hrefQs = ""] = l.href.split("?");
-          const dietaryParam = searchParams.get("dietary");
+          const [hrefPath] = l.href.split("?");
           let active = false;
           if (l.href === "/") {
             active = pathname === "/";
-          } else if (hrefQs.includes("dietary=kosher")) {
-            active = pathname === "/recipes" && dietaryParam === "kosher";
-          } else if (hrefQs.includes("dietary=halal")) {
-            active = pathname === "/recipes" && dietaryParam === "halal";
           } else if (hrefPath === "/recipes") {
-            active =
-              pathname.startsWith("/recipes") &&
-              dietaryParam !== "kosher" &&
-              dietaryParam !== "halal";
+            active = pathname.startsWith("/recipes");
           } else {
             active = pathname.startsWith(hrefPath!);
           }

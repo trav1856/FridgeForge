@@ -8,6 +8,11 @@ export const CUISINES = [
   "American",
   "Mexican",
   "Italian",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Thai",
+  "Vietnamese",
   "Asian",
   "Indian",
   "Mediterranean",
@@ -518,24 +523,57 @@ export function inferRecipeTaxonomy(input: InferInput): {
     origins.add("italian");
     origins.add("european");
   } else if (
+    has(text, ["sushi", "teriyaki", "ramen", "miso", "udon", "tempura", "japanese"]) ||
+    tags.includes("japanese")
+  ) {
+    cuisine = "Japanese";
+    origins.add("japanese");
+    origins.add("asian");
+  } else if (
+    has(text, ["kimchi", "gochujang", "bulgogi", "bibimbap", "korean"]) ||
+    tags.includes("korean")
+  ) {
+    cuisine = "Korean";
+    origins.add("korean");
+    origins.add("asian");
+  } else if (
+    has(text, ["pad thai", "green curry", "thai basil", "thai"]) ||
+    tags.includes("thai")
+  ) {
+    cuisine = "Thai";
+    origins.add("thai");
+    origins.add("asian");
+  } else if (
+    has(text, ["pho", "banh mi", "vietnamese", "nuoc cham"]) ||
+    tags.includes("vietnamese")
+  ) {
+    cuisine = "Vietnamese";
+    origins.add("vietnamese");
+    origins.add("asian");
+  } else if (
     has(text, [
       "stir-fry",
       "stir fry",
-      "soy",
       "fried rice",
-      "asian",
-      "teriyaki",
-      "ramen",
-      "sesame",
+      "chow mein",
+      "kung pao",
+      "szechuan",
+      "sichuan",
+      "dim sum",
+      "chinese",
     ]) ||
-    tags.includes("stir-fry")
+    tags.includes("stir-fry") ||
+    tags.includes("chinese")
+  ) {
+    cuisine = "Chinese";
+    origins.add("chinese");
+    origins.add("asian");
+  } else if (
+    has(text, ["asian", "sesame", "soy", "soy sauce"]) ||
+    tags.includes("asian")
   ) {
     cuisine = "Asian";
     origins.add("asian");
-    if (has(text, ["teriyaki", "ramen"])) origins.add("japanese");
-    else if (has(text, ["fried rice", "stir-fry", "stir fry", "soy"])) {
-      origins.add("chinese");
-    }
   } else if (has(text, ["curry", "tikka", "masala", "indian", "naan"])) {
     cuisine = "Indian";
     origins.add("indian");

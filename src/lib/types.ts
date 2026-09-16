@@ -46,8 +46,10 @@ export type RecipeInput = {
   lowSugarEligible?: boolean;
   lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
+  halalAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
+  allergenTags?: string[];
   techniqueTips?: string[];
   flavorBoosters?: string[];
   ingredients: RecipeIngredientInput[];
@@ -92,8 +94,10 @@ export type RecipeForMatch = {
   lowSugarEligible?: boolean;
   lowSodiumEligible?: boolean;
   kosherAdaptNote?: string | null;
+  halalAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
+  allergenTags?: string[];
   techniqueTips: string[];
   flavorBoosters: string[];
   ingredients: {

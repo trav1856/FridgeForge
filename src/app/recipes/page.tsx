@@ -9,8 +9,10 @@ export default function RecipesPage() {
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold text-sage-900">Recipes</h1>
         <p className="mt-1 text-sm text-sage-600">
-          Filter by cuisine, course, food type, or cultural origin. Search by name
-          or tags. Struggle Meal mode sorts budget heroes first.
+          Browse by cuisine first — Mediterranean, Middle Eastern, Chinese,
+          Japanese, Korean, Italian, Mexican, American, and more. Filter by
+          course, food type, or cultural origin. Struggle Meal mode sorts budget
+          heroes first.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-sage-600">Loading recipes…</p>}>

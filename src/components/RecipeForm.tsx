@@ -14,6 +14,7 @@ import {
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
+import { COMMON_ALLERGENS, inferAllergenTags } from "@/lib/allergens";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
 
@@ -87,8 +88,10 @@ export function RecipeForm() {
   const [lowSugarEligible, setLowSugarEligible] = useState(false);
   const [lowSodiumEligible, setLowSodiumEligible] = useState(false);
   const [kosherAdaptNote, setKosherAdaptNote] = useState("");
+  const [halalAdaptNote, setHalalAdaptNote] = useState("");
   const [veganAdaptNote, setVeganAdaptNote] = useState("");
   const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
+  const [allergenTags, setAllergenTags] = useState<string[]>([]);
   const [stepsText, setStepsText] = useState("");
   const [tipsText, setTipsText] = useState("");
   const [boostersText, setBoostersText] = useState("");
@@ -225,8 +228,10 @@ export function RecipeForm() {
       lowSugarEligible,
       lowSodiumEligible,
       kosherAdaptNote: kosherAdaptNote.trim() || null,
+      halalAdaptNote: halalAdaptNote.trim() || null,
       veganAdaptNote: veganAdaptNote.trim() || null,
       vegetarianAdaptNote: vegetarianAdaptNote.trim() || null,
+      allergenTags,
       steps,
       techniqueTips: tipsText
         .split("\n")
@@ -583,6 +588,16 @@ export function RecipeForm() {
               />
             </div>
             <div>
+              <label className="label">Halal adapt note</label>
+              <input
+                className="input"
+                value={halalAdaptNote}
+                onChange={(e) => setHalalAdaptNote(e.target.value)}
+                placeholder="e.g. Omit wine; use stock"
+                maxLength={500}
+              />
+            </div>
+            <div>
               <label className="label">Vegan adapt note</label>
               <input
                 className="input"
@@ -604,6 +619,54 @@ export function RecipeForm() {
             </div>
           </div>
         </div>
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="label mb-0">Allergen tags</label>
+            <button
+              type="button"
+              className="text-xs font-semibold text-ember-700 hover:underline"
+              onClick={() => {
+                const inferred = inferAllergenTags({
+                  title,
+                  description,
+                  tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
+                  ingredients: ingredients.map((i) => ({ name: i.name })),
+                  steps: stepsText.split("\n"),
+                });
+                setAllergenTags((prev) =>
+                  [...new Set([...prev, ...inferred])]
+                );
+              }}
+            >
+              Infer from ingredients
+            </button>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {COMMON_ALLERGENS.map((a) => {
+              const on = allergenTags.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    on
+                      ? "bg-sage-800 text-cream-50"
+                      : "border border-cream-300 bg-cream-100 text-sage-800"
+                  }`}
+                  aria-pressed={on}
+                  onClick={() =>
+                    setAllergenTags((prev) =>
+                      on ? prev.filter((x) => x !== a.id) : [...prev, a.id]
+                    )
+                  }
+                >
+                  {a.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div>
           <label className="label">Tags (comma-separated)</label>
           <input

@@ -8,7 +8,6 @@ import type {
 import {
   HALAL_SOFT_BOOST,
   KOSHER_SOFT_BOOST,
-  passesKosherDietaryFilter,
   passesPlantDietaryFilter,
   passesMacroDietaryFilter,
   plantSoftBoost,
@@ -17,6 +16,11 @@ import {
   ADAPT_SOFT_BOOST,
   satisfiesHalal,
 } from "./dietary";
+import {
+  ALLERGEN_CONFLICT_PENALTY,
+  hasAllergenConflict,
+  parseAllergenList,
+} from "./allergens";
 
 const CHEAP_STAPLES = new Set([
   "rice",
@@ -75,12 +79,14 @@ export type SuggestOptions = {
   q?: string;
   /** Soft-boost kosherEligible (adapt-note path gets a smaller boost). */
   softPreferKosher?: boolean;
-  /** Hard-filter to kosherEligible OR kosherAdaptNote (empty if none). */
+  /** Legacy; Prefer Kosher / Observant no longer hard-filter. Kept for engine tests. */
   requireKosher?: boolean;
   /** Soft-boost recipes that satisfyHalal (halalEligible or kosher-no-alcohol). */
   softPreferHalal?: boolean;
-  /** Hard-filter to satisfiesHalal only (empty if none). */
+  /** Legacy; Prefer Halal no longer hard-filter. Kept for engine tests. */
   requireHalal?: boolean;
+  /** Personal allergen flags — soft-demote conflicts (still shown). */
+  allergenFlags?: string[] | string | null;
   /** Hard-filter veganEligible OR veganAdaptNote. */
   requireVegan?: boolean;
   requireVegetarian?: boolean;
@@ -169,6 +175,7 @@ export function scoreRecipe(
     requireLowCarb = false,
     requireLowSugar = false,
     requireLowSodium = false,
+    allergenFlags,
   } = options;
   const required = recipe.ingredients.filter((i) => !i.optional);
   const matchedIngredients: string[] = [];
@@ -256,6 +263,25 @@ export function scoreRecipe(
   });
   score += dietaryBoost;
 
+  const flags = parseAllergenList(allergenFlags);
+  if (
+    flags.length &&
+    hasAllergenConflict(
+      {
+        allergenTags: (recipe as { allergenTags?: string[] | string | null })
+          .allergenTags,
+        title: recipe.title,
+        description: recipe.description,
+        tags: recipe.tags,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+      },
+      flags
+    )
+  ) {
+    score -= ALLERGEN_CONFLICT_PENALTY;
+  }
+
   // Slight boost for creative pairings present
   const note = creativeNoteFor(matchedIngredients, missingIngredients);
   if (note) score += 5;
@@ -303,9 +329,9 @@ export function suggestMeals(
     mood,
     q,
     softPreferKosher = false,
-    requireKosher = false,
+    requireKosher: _requireKosher = false,
     softPreferHalal = false,
-    requireHalal = false,
+    requireHalal: _requireHalal = false,
     requireVegan = false,
     requireVegetarian = false,
     requirePescatarian = false,
@@ -322,7 +348,10 @@ export function suggestMeals(
     softPreferLowCarb = false,
     softPreferLowSugar = false,
     softPreferLowSodium = false,
+    allergenFlags,
   } = options;
+  void _requireKosher;
+  void _requireHalal;
 
   let pool = recipes;
   if (struggleMode) {
@@ -331,13 +360,9 @@ export function suggestMeals(
     pool = recipes.filter((r) => r.isStruggleMeal);
   }
 
-  // Dietary hard filters (AND with struggle / each other). Empty if none match.
-  if (requireKosher) {
-    pool = pool.filter((r) => passesKosherDietaryFilter(r));
-  }
-  if (requireHalal) {
-    pool = pool.filter((r) => satisfiesHalal(r));
-  }
+  // Kosher/Halal: soft-boost only (no hard-filter) so Observant / Prefer Halal
+  // never empty the suggestion pool. Plant + macro hard filters unchanged.
+  // (requireKosher / requireHalal ignored intentionally.)
   // Plant prefs: eligible OR adapt-note path (vegan/vegetarian); pescatarian hard-eligible only
   if (requireVegan || requireVegetarian || requirePescatarian) {
     pool = pool.filter((r) =>
@@ -389,9 +414,7 @@ export function suggestMeals(
         maxMinutes,
         mood,
         softPreferKosher,
-        requireKosher,
         softPreferHalal,
-        requireHalal,
         requireVegan,
         requireVegetarian,
         requirePescatarian,
@@ -408,6 +431,7 @@ export function suggestMeals(
         softPreferLowCarb,
         softPreferLowSugar,
         softPreferLowSodium,
+        allergenFlags,
       })
     )
     .sort((a, b) => b.score - a.score)

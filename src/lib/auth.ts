@@ -147,6 +147,18 @@ export function publicUser(user: AuthUser) {
     preferLowCarb: Boolean(user.preferLowCarb),
     preferLowSugar: Boolean(user.preferLowSugar),
     preferLowSodium: Boolean(user.preferLowSodium),
+    allergenFlags: (() => {
+      try {
+        const raw = (user as { allergenFlags?: string | null }).allergenFlags;
+        if (!raw) return [] as string[];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed)
+          ? parsed.filter((x): x is string => typeof x === "string")
+          : [];
+      } catch {
+        return [] as string[];
+      }
+    })(),
     createdAt: user.createdAt.toISOString(),
     households: user.memberships.map((m) => ({
       id: m.household.id,

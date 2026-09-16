@@ -1,6 +1,11 @@
 "use client";
 
-import { DIETARY_BADGE_FOOTNOTE } from "@/lib/dietary";
+import {
+  DIETARY_BADGE_FOOTNOTE,
+  wantsHalalChrome,
+  wantsKosherChrome,
+  type DietaryUserPrefs,
+} from "@/lib/dietary";
 
 type Props = {
   kosherEligible?: boolean | null;
@@ -13,15 +18,18 @@ type Props = {
   lowCarbEligible?: boolean | null;
   lowSugarEligible?: boolean | null;
   lowSodiumEligible?: boolean | null;
+  /**
+   * When set, Kosher* / Halal* badges only show for users with those personal prefs.
+   * Guests / missing prefs → hide religion-diet badges (platform stays cuisine-first).
+   */
+  prefs?: DietaryUserPrefs | null;
   /** Show the * footnote under badges (detail pages). */
   showFootnote?: boolean;
   className?: string;
 };
 
 /**
- * Show small dietary badges when eligible.
- * Kosher* / Halal* footnote: eligibility assumes certified ingredients.
- * Macro badges only when eligible — keep concise, don’t flood.
+ * Plant/macro badges are public. Kosher* / Halal* are prefs-gated personalization.
  */
 export function DietaryBadges({
   kosherEligible,
@@ -34,17 +42,17 @@ export function DietaryBadges({
   lowCarbEligible,
   lowSugarEligible,
   lowSodiumEligible,
+  prefs = null,
   showFootnote = false,
   className = "",
 }: Props) {
-  const showK = Boolean(kosherEligible);
-  const showH = Boolean(halalEligible);
+  const showK = Boolean(kosherEligible) && wantsKosherChrome(prefs);
+  const showH = Boolean(halalEligible) && wantsHalalChrome(prefs);
   const showVegan = Boolean(veganEligible);
-  // Vegetarian implied by vegan — only show vegetarian if not vegan
   const showVeg = Boolean(vegetarianEligible) && !showVegan;
   const showPesc = Boolean(pescatarianEligible) && !showVeg && !showVegan;
-  // Carnivore mutually exclusive with plant badges for display clarity
-  const showCarnivore = Boolean(carnivoreEligible) && !showVegan && !showVeg && !showPesc;
+  const showCarnivore =
+    Boolean(carnivoreEligible) && !showVegan && !showVeg && !showPesc;
   const showAtkins = Boolean(atkinsEligible);
   const showLowCarb = Boolean(lowCarbEligible);
   const showLowSugar = Boolean(lowSugarEligible);

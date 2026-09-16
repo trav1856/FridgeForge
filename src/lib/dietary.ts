@@ -27,16 +27,24 @@ export type DietaryUserPrefs = {
   preferLowCarb?: boolean | null;
   preferLowSugar?: boolean | null;
   preferLowSodium?: boolean | null;
+  /** Personal allergen ids/labels (JSON array on User.allergenFlags). */
+  allergenFlags?: string[] | string | null;
 };
 
 export type DietarySuggestOptions = {
   /** Soft-boost kosherEligible (and smaller boost for kosherAdaptNote path). */
   softPreferKosher?: boolean;
-  /** Hard-filter to kosherEligible OR kosherAdaptNote (Jewish + observant). */
+  /**
+   * Legacy hard-filter for kosherEligible OR kosherAdaptNote.
+   * Prefer Kosher / Observant no longer set this — soft-boost + private warnings instead.
+   */
   requireKosher?: boolean;
-  /** Soft-boost satisfiesHalal (Muslim; suppressed while kosher food prefs active). */
+  /** Soft-boost satisfiesHalal (Muslim / Prefer Halal; suppressed while kosher food prefs active). */
   softPreferHalal?: boolean;
-  /** Hard-filter to satisfiesHalal (preferHalal; suppressed while kosher food active). */
+  /**
+   * Legacy hard-filter for satisfiesHalal.
+   * Prefer Halal no longer sets this — soft-boost + private warnings instead.
+   */
   requireHalal?: boolean;
   /** Hard-filter veganEligible OR veganAdaptNote (preferVegan). */
   requireVegan?: boolean;
@@ -58,6 +66,8 @@ export type DietarySuggestOptions = {
   softPreferLowCarb?: boolean;
   softPreferLowSugar?: boolean;
   softPreferLowSodium?: boolean;
+  /** Personal allergen flags for soft-demote (still show). */
+  allergenFlags?: string[] | string | null;
 };
 
 export type PlantDiet = "vegan" | "vegetarian" | "pescatarian" | null;
@@ -245,16 +255,15 @@ export function resolveDietarySuggestOptions(
   const effective = applyKosherHalalSupersede(prefs);
   const observant = effectiveObservant(effective);
   const kosherActive = kosherFoodActive(effective);
+  // Prefer Kosher / Observant / Jewish → soft-boost only (no hard-filter).
   const softPreferKosher =
-    !observant &&
-    (Boolean(effective.preferKosher) ||
-      (Boolean(effective.isJewish) && !Boolean(effective.isObservant)));
-  // Halal food path suppressed while kosher food prefs are active.
-  // isMuslim (religion) may still be true; softPreferHalal is still off when kosher food is on.
+    Boolean(effective.preferKosher) ||
+    Boolean(effective.isJewish) ||
+    observant;
+  // Halal soft path: Muslim and/or Prefer Halal; suppressed while kosher food prefs are active.
   const softPreferHalal =
     !kosherActive &&
-    Boolean(effective.isMuslim) &&
-    !Boolean(effective.preferHalal);
+    (Boolean(effective.isMuslim) || Boolean(effective.preferHalal));
   // Carnivore ↔ plant exclusivity: carnivore clears plant for filtering.
   const carnivore = Boolean(effective.preferCarnivore);
   const plant = carnivore
@@ -271,9 +280,9 @@ export function resolveDietarySuggestOptions(
   const preferLowSodium = Boolean(effective.preferLowSodium);
   return {
     softPreferKosher,
-    requireKosher: observant,
+    requireKosher: false,
     softPreferHalal,
-    requireHalal: !kosherActive && Boolean(effective.preferHalal),
+    requireHalal: false,
     requireVegan: plant.primary === "vegan",
     requireVegetarian: plant.primary === "vegetarian",
     requirePescatarian: plant.primary === "pescatarian",
@@ -290,20 +299,45 @@ export function resolveDietarySuggestOptions(
     softPreferLowCarb: preferLowCarb,
     softPreferLowSugar: preferLowSugar,
     softPreferLowSodium: preferLowSodium,
+    allergenFlags: prefs.allergenFlags ?? null,
   };
 }
 
-/** Show dedicated Kosher nav/section when Jewish and/or preferKosher. */
+/**
+ * Personal kosher chrome (badges / warnings / adapt) — NOT a public nav silo.
+ * True when Jewish and/or Prefer Kosher and/or Observant.
+ */
 export function showKosherSection(prefs: DietaryUserPrefs | null | undefined): boolean {
   if (!prefs) return false;
-  return Boolean(prefs.isJewish) || Boolean(prefs.preferKosher);
+  return (
+    Boolean(prefs.isJewish) ||
+    Boolean(prefs.preferKosher) ||
+    effectiveObservant(prefs)
+  );
 }
 
-/** Show dedicated Halal nav/section when Muslim and/or preferHalal (not when kosher food active). */
+/**
+ * Personal Halal chrome — NOT a public nav silo.
+ * Suppressed while kosher food prefs are active.
+ */
 export function showHalalSection(prefs: DietaryUserPrefs | null | undefined): boolean {
   if (!prefs) return false;
-  if (kosherFoodActive(prefs)) return false; // kosher food covers / supersedes Halal food
+  if (kosherFoodActive(prefs)) return false;
   return Boolean(prefs.isMuslim) || Boolean(prefs.preferHalal);
+}
+
+/** Alias: personal kosher interest for private warnings/badges. */
+export function wantsKosherChrome(
+  prefs: DietaryUserPrefs | null | undefined
+): boolean {
+  return showKosherSection(prefs);
+}
+
+/** Alias: personal Halal interest for private warnings/badges. */
+export function wantsHalalChrome(
+  prefs: DietaryUserPrefs | null | undefined
+): boolean {
+  return showHalalSection(prefs);
 }
 
 export type RecipeDietaryFields = {
@@ -318,8 +352,10 @@ export type RecipeDietaryFields = {
   lowSugarEligible?: boolean | null;
   lowSodiumEligible?: boolean | null;
   kosherAdaptNote?: string | null;
+  halalAdaptNote?: string | null;
   veganAdaptNote?: string | null;
   vegetarianAdaptNote?: string | null;
+  allergenTags?: string[] | string | null;
   /** Optional text used to detect alcohol for kosher-without-alcohol ⇒ halal. */
   title?: string | null;
   description?: string | null;
@@ -421,10 +457,110 @@ export function macroSoftBoost(
 }
 
 export type AdaptHint = {
-  kind: "vegan" | "vegetarian" | "kosher";
+  kind: "vegan" | "vegetarian" | "kosher" | "halal";
   label: string;
   note: string;
 };
+
+export type DietConflictPill = {
+  kind: "kosher" | "halal";
+  label: string;
+};
+
+/**
+ * Private “not kosher / not halal” pills for users with those prefs only.
+ * Guests / users without prefs get [].
+ */
+export function dietConflictPills(
+  recipe: RecipeDietaryFields,
+  prefs: DietaryUserPrefs | null | undefined
+): DietConflictPill[] {
+  if (!prefs) return [];
+  const pills: DietConflictPill[] = [];
+  if (wantsKosherChrome(prefs) && !recipe.kosherEligible) {
+    pills.push({ kind: "kosher", label: "Not kosher" });
+  }
+  if (wantsHalalChrome(prefs) && !satisfiesHalal(recipe)) {
+    pills.push({ kind: "halal", label: "Not halal" });
+  }
+  return pills;
+}
+
+/** Rank candidates for “similar eligible” suggestions (same cuisine/course/dishKey preferred). */
+export function scoreSimilarDietaryCandidate(
+  candidate: RecipeDietaryFields & {
+    id: string;
+    cuisine?: string | null;
+    course?: string | null;
+    dishKey?: string | null;
+  },
+  current: RecipeDietaryFields & {
+    id: string;
+    cuisine?: string | null;
+    course?: string | null;
+    dishKey?: string | null;
+  },
+  mode: "kosher" | "halal"
+): number {
+  if (candidate.id === current.id) return -1;
+  const eligible =
+    mode === "kosher"
+      ? Boolean(candidate.kosherEligible)
+      : satisfiesHalal(candidate);
+  if (!eligible) return -1;
+  let score = 10;
+  if (
+    current.dishKey &&
+    candidate.dishKey &&
+    current.dishKey === candidate.dishKey
+  ) {
+    score += 40;
+  }
+  if (
+    current.cuisine &&
+    candidate.cuisine &&
+    current.cuisine.toLowerCase() === candidate.cuisine.toLowerCase()
+  ) {
+    score += 20;
+  }
+  if (
+    current.course &&
+    candidate.course &&
+    current.course.toLowerCase() === candidate.course.toLowerCase()
+  ) {
+    score += 10;
+  }
+  return score;
+}
+
+export function pickSimilarEligibleRecipes<
+  T extends RecipeDietaryFields & {
+    id: string;
+    title: string;
+    cuisine?: string | null;
+    course?: string | null;
+    dishKey?: string | null;
+  },
+>(
+  current: T,
+  pool: T[],
+  prefs: DietaryUserPrefs | null | undefined,
+  limit = 3
+): T[] {
+  if (!prefs) return [];
+  const modes: ("kosher" | "halal")[] = [];
+  if (wantsKosherChrome(prefs) && !current.kosherEligible) modes.push("kosher");
+  if (wantsHalalChrome(prefs) && !satisfiesHalal(current)) modes.push("halal");
+  if (!modes.length) return [];
+  // Prefer kosher mode when both (kosher food supersedes)
+  const mode = modes.includes("kosher") ? "kosher" : "halal";
+  return [...pool]
+    .map((c) => ({ c, score: scoreSimilarDietaryCandidate(c, current, mode) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.c);
+}
 
 /**
  * Prominent adapt hint when recipe doesn't match active dietary prefs.
@@ -458,6 +594,12 @@ export function adaptHintForPrefs(
     const note = recipe.kosherAdaptNote?.trim();
     if (note) {
       return { kind: "kosher", label: "Make it kosher", note };
+    }
+  }
+  if (wantsHalalChrome(prefs) && !satisfiesHalal(recipe)) {
+    const note = recipe.halalAdaptNote?.trim();
+    if (note) {
+      return { kind: "halal", label: "Make it halal", note };
     }
   }
   return null;
@@ -617,12 +759,14 @@ export function inferAdaptNotes(input: {
   veganAdaptNote: string | null;
   vegetarianAdaptNote: string | null;
   kosherAdaptNote: string | null;
+  halalAdaptNote: string | null;
 } {
   const blob = blobFromInput(input);
   const diet = inferDietaryEligibility(input);
   let veganAdaptNote: string | null = null;
   let vegetarianAdaptNote: string | null = null;
   let kosherAdaptNote: string | null = null;
+  let halalAdaptNote: string | null = null;
 
   // Light kosher adapt heuristics (not cuisine/origin claims).
   if (!diet.kosherEligible) {
@@ -667,7 +811,20 @@ export function inferAdaptNotes(input: {
     }
   }
 
-  return { veganAdaptNote, vegetarianAdaptNote, kosherAdaptNote };
+  if (!diet.halalEligible) {
+    if (/(pork|bacon|ham|prosciutto|pancetta|lard|pepperoni|salami)/i.test(blob)) {
+      halalAdaptNote =
+        "Swap pork products for halal-certified beef, chicken, turkey, or plant protein.";
+    } else if (ALCOHOL_IN_RECIPE.test(blob)) {
+      halalAdaptNote =
+        "Omit wine/beer/liquor or replace with stock, vinegar, or grape juice as appropriate.";
+    } else {
+      halalAdaptNote =
+        "Use halal-certified ingredients and avoid alcohol in cooking.";
+    }
+  }
+
+  return { veganAdaptNote, vegetarianAdaptNote, kosherAdaptNote, halalAdaptNote };
 }
 
 export const KOSHER_SOFT_BOOST = 20;

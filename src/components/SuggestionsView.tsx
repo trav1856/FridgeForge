@@ -12,6 +12,8 @@ import { ShareRecipe } from "./ShareRecipe";
 import { AddToShoppingList } from "./AddToShoppingList";
 import { RecipeCardRating } from "./RecipeCardRating";
 import { DietaryBadges } from "./DietaryBadges";
+import { PersonalDietChrome } from "./PersonalDietChrome";
+import type { DietaryUserPrefs } from "@/lib/dietary";
 import type { DealCouponSummary } from "@/lib/deals";
 import { buildMoodChips, pickSurprise, type MoodDef } from "@/lib/moods";
 
@@ -76,8 +78,24 @@ export function SuggestionsView() {
   const [qDraft, setQDraft] = useState("");
   const [tonightPickId, setTonightPickId] = useState<string | null>(null);
   const [flashPick, setFlashPick] = useState(false);
+  const [dietPrefs, setDietPrefs] = useState<DietaryUserPrefs | null>(null);
   const lastSurpriseId = useRef<string | null>(null);
   const pickCardRef = useRef<HTMLLIElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setDietPrefs(data?.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setDietPrefs(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -342,6 +360,7 @@ export function SuggestionsView() {
             highlightId={tonightPickId}
             flash={flashPick}
             pickCardRef={pickCardRef}
+            dietPrefs={dietPrefs}
           />
           <Section
             title="Almost there (1–2 cheap staples)"
@@ -350,6 +369,7 @@ export function SuggestionsView() {
             highlightId={tonightPickId}
             flash={flashPick}
             pickCardRef={pickCardRef}
+            dietPrefs={dietPrefs}
           />
           <Section
             title="Need more ingredients"
@@ -362,6 +382,7 @@ export function SuggestionsView() {
             highlightId={tonightPickId}
             flash={flashPick}
             pickCardRef={pickCardRef}
+            dietPrefs={dietPrefs}
           />
         </>
       )}
@@ -376,6 +397,7 @@ function Section({
   highlightId,
   flash,
   pickCardRef,
+  dietPrefs,
 }: {
   title: string;
   items: Suggestion[];
@@ -383,6 +405,7 @@ function Section({
   highlightId: string | null;
   flash: boolean;
   pickCardRef: MutableRefObject<HTMLLIElement | null>;
+  dietPrefs: DietaryUserPrefs | null;
 }) {
   return (
     <section>
@@ -457,6 +480,7 @@ function Section({
                         vegetarianEligible={s.recipe.vegetarianEligible}
                         pescatarianEligible={s.recipe.pescatarianEligible}
                         veganEligible={s.recipe.veganEligible}
+                        prefs={dietPrefs}
                       />
                     </div>
                     <RecipeIcons
@@ -474,6 +498,12 @@ function Section({
                       averageStars={s.recipe.averageStars}
                       reviewCount={s.recipe.reviewCount}
                       className="mt-1"
+                    />
+                    <PersonalDietChrome
+                      recipe={s.recipe}
+                      prefs={dietPrefs}
+                      compact
+                      className="mt-2"
                     />
                     {s.recipe.description && (
                       <p className="mt-1 text-sm text-sage-600">
