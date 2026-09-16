@@ -28,6 +28,7 @@ export type RecipeInput = {
   course?: string | null;
   foodCategories?: string[];
   origins?: string[];
+  meatType?: string | null;
   originStory?: string | null;
   dishKey?: string | null;
   servings?: number;
@@ -77,6 +78,7 @@ export type RecipeForMatch = {
   course?: string | null;
   foodCategories?: string[];
   origins?: string[];
+  meatType?: string | null;
   originStory?: string | null;
   dishKey?: string | null;
   servings: number;

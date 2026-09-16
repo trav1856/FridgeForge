@@ -15,8 +15,11 @@ import {
   COURSES,
   CUISINES,
   FOOD_CATEGORIES,
+  MEAT_TYPES,
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
+  inferRecipeTaxonomy,
+  ensureParentCuisineOrigins,
 } from "@/lib/recipe-taxonomy";
 import { COMMON_ALLERGENS, inferAllergenTags } from "@/lib/allergens";
 import { decodeRecipeTextFields } from "@/lib/html-entities";
@@ -37,6 +40,7 @@ export type RecipeFormDraft = {
   course?: string | null;
   foodCategories?: string[];
   origins?: string[];
+  meatType?: string | null;
   originStory?: string | null;
   servings?: number;
   isStruggleMeal?: boolean;
@@ -87,6 +91,12 @@ function applyRecipeToForm(
     cookTimeMinutes?: number | null;
     ingredients?: { name: string; quantity: number; unit: string }[];
     steps?: string[];
+    cuisine?: string | null;
+    course?: string | null;
+    foodCategories?: string[];
+    origins?: string[];
+    meatType?: string | null;
+    tags?: string[];
   },
   setters: {
     setTitle: (v: string) => void;
@@ -95,6 +105,11 @@ function applyRecipeToForm(
     setCookTimeMinutes: (v: string) => void;
     setIngredients: (v: Ing[]) => void;
     setStepsText: (v: string) => void;
+    setCuisine?: (v: string) => void;
+    setCourse?: (v: string) => void;
+    setFoodCategories?: (v: string[]) => void;
+    setOrigins?: (v: string[]) => void;
+    setMeatType?: (v: string) => void;
   }
 ) {
   const decoded = decodeRecipeTextFields({
@@ -121,6 +136,54 @@ function applyRecipeToForm(
     }))
   );
   setters.setStepsText((r.steps || []).join("\n"));
+
+  // Fill blank cuisine (and related taxonomy) from inference on import draft apply
+  const cuisineBlank = !(r.cuisine || "").trim();
+  if (cuisineBlank || !(r.meatType || "").trim()) {
+    const inferred = inferRecipeTaxonomy({
+      title: r.title || "",
+      description: r.description,
+      tags: r.tags,
+      ingredients: r.ingredients,
+      steps: r.steps,
+    });
+    if (cuisineBlank && setters.setCuisine) {
+      setters.setCuisine(inferred.cuisine);
+      if (setters.setOrigins) {
+        setters.setOrigins(
+          ensureParentCuisineOrigins(
+            inferred.cuisine,
+            r.origins?.length ? r.origins : inferred.origins
+          )
+        );
+      }
+      if (setters.setCourse && !(r.course || "").trim()) {
+        setters.setCourse(inferred.course);
+      }
+      if (setters.setFoodCategories && !(r.foodCategories || []).length) {
+        setters.setFoodCategories(inferred.foodCategories);
+      }
+    }
+    if (setters.setMeatType && !(r.meatType || "").trim() && inferred.meatType) {
+      setters.setMeatType(inferred.meatType);
+      if (setters.setFoodCategories) {
+        // ensure meat category present
+        const cats = new Set(r.foodCategories || []);
+        cats.add("meat");
+        if (!(r.foodCategories || []).length && cuisineBlank) {
+          for (const c of inferred.foodCategories) cats.add(c);
+        }
+        setters.setFoodCategories([...cats]);
+      }
+    }
+  } else {
+    if (r.cuisine && setters.setCuisine) setters.setCuisine(r.cuisine);
+    if (r.course && setters.setCourse) setters.setCourse(r.course);
+    if (r.foodCategories && setters.setFoodCategories)
+      setters.setFoodCategories(r.foodCategories);
+    if (r.origins && setters.setOrigins) setters.setOrigins(r.origins);
+    if (r.meatType && setters.setMeatType) setters.setMeatType(r.meatType);
+  }
 }
 
 function draftToIngredients(d?: RecipeFormDraft | null): Ing[] {
@@ -258,6 +321,11 @@ export function RecipeForm({
     setCookTimeMinutes,
     setIngredients,
     setStepsText,
+    setCuisine,
+    setCourse,
+    setFoodCategories,
+    setOrigins,
+    setMeatType,
   };
 
   async function tryImport() {
@@ -353,6 +421,7 @@ export function RecipeForm({
       cuisine: cuisine || null,
       course: course || null,
       foodCategories,
+      meatType: foodCategories.includes("meat") ? meatType || null : null,
       origins,
       originStory: originStory.trim() || null,
       servings: Number(servings) || 2,
@@ -851,7 +920,13 @@ export function RecipeForm({
             <select
               className="input"
               value={cuisine}
-              onChange={(e) => setCuisine(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCuisine(next);
+                if (next) {
+                  setOrigins((prev) => ensureParentCuisineOrigins(next, prev));
+                }
+              }}
             >
               <option value="">—</option>
               {CUISINES.map((c) => (
@@ -891,17 +966,53 @@ export function RecipeForm({
                       ? "bg-sage-800 text-cream-50"
                       : "border border-cream-300 bg-cream-100 text-sage-800"
                   }`}
-                  onClick={() =>
-                    setFoodCategories((prev) =>
-                      on ? prev.filter((x) => x !== c) : [...prev, c]
-                    )
-                  }
+                  onClick={() => {
+                    setFoodCategories((prev) => {
+                      const next = on
+                        ? prev.filter((x) => x !== c)
+                        : [...prev, c];
+                      if (c === "meat" && on) setMeatType("");
+                      return next;
+                    });
+                  }}
                 >
                   {c}
                 </button>
               );
             })}
           </div>
+          {(foodCategories.includes("meat") || Boolean(meatType)) && (
+            <div className="mt-2" data-testid="meat-type-selector">
+              <label className="label">Meat type</label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {MEAT_TYPES.map((m) => {
+                  const on = meatType === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        on
+                          ? "bg-ember-600 text-white"
+                          : "border border-cream-300 bg-cream-100 text-sage-800"
+                      }`}
+                      onClick={() => {
+                        setMeatType(on ? "" : m);
+                        if (!on && !foodCategories.includes("meat")) {
+                          setFoodCategories((prev) => [...prev, "meat"]);
+                        }
+                      }}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-xs text-sage-500">
+                Fish and shrimp stay under seafood, not meat.
+              </p>
+            </div>
+          )}
         </div>
         <div>
           <label className="label">Origin (by region)</label>

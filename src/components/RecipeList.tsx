@@ -16,6 +16,12 @@ import {
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
+import {
+  cuisineFilterHref,
+  foodCategoryFilterHref,
+  meatTypeFilterHref,
+} from "@/lib/recipe-filter-hrefs";
+import { normalizeVisibility } from "@/lib/recipe-visibility";
 import { DietaryBadges } from "./DietaryBadges";
 import { PersonalDietChrome } from "./PersonalDietChrome";
 import type { DietaryUserPrefs } from "@/lib/dietary";
@@ -30,6 +36,7 @@ type Recipe = {
   course?: string | null;
   foodCategories?: string[];
   origins?: string[];
+  meatType?: string | null;
   servings: number;
   isStruggleMeal: boolean;
   kosherEligible?: boolean;
@@ -226,6 +233,7 @@ export function RecipeList() {
   const cuisineParam = searchParams.get("cuisine") || "";
   const courseParam = searchParams.get("course") || "";
   const foodCategoryParam = searchParams.get("foodCategory") || "";
+  const meatTypeParam = searchParams.get("meatType") || "";
   const originParam =
     searchParams.get("origin") || searchParams.get("ethnicity") || "";
   const dietaryParam = searchParams.get("dietary") || "";
@@ -244,6 +252,7 @@ export function RecipeList() {
   const [loading, setLoading] = useState(true);
   const [qDraft, setQDraft] = useState(qParam);
   const [dietPrefs, setDietPrefs] = useState<DietaryUserPrefs | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     setQDraft(qParam);
@@ -256,9 +265,13 @@ export function RecipeList() {
       .then((data) => {
         if (cancelled) return;
         setDietPrefs(data?.user ?? null);
+        setCurrentUserId(data?.user?.id ?? null);
       })
       .catch(() => {
-        if (!cancelled) setDietPrefs(null);
+        if (!cancelled) {
+          setDietPrefs(null);
+          setCurrentUserId(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -290,6 +303,7 @@ export function RecipeList() {
     if (cuisineParam) params.set("cuisine", cuisineParam);
     if (courseParam) params.set("course", courseParam);
     if (foodCategoryParam) params.set("foodCategory", foodCategoryParam);
+    if (meatTypeParam) params.set("meatType", meatTypeParam);
     if (originParam) params.set("origin", originParam);
     if (dietaryParam) params.set("dietary", dietaryParam);
     if (costTierParam) params.set("costTier", costTierParam);
@@ -304,6 +318,7 @@ export function RecipeList() {
     cuisineParam,
     courseParam,
     foodCategoryParam,
+    meatTypeParam,
     originParam,
     dietaryParam,
     costTierParam,
@@ -487,7 +502,7 @@ export function RecipeList() {
                   alt=""
                   className="rounded-none rounded-t-xl"
                 />
-                <div className="flex flex-1 flex-col p-4 pb-14">
+                <div className="flex flex-1 flex-col p-4 pb-16">
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     <span
                       className={`badge ${
@@ -516,9 +531,56 @@ export function RecipeList() {
                       lowSodiumEligible={r.lowSodiumEligible}
                       prefs={dietPrefs}
                     />
-                    {r.cuisine && (
-                      <span className="badge bg-sage-200 text-sage-900">
+                    {r.cuisine ? (
+                      <span
+                        role="link"
+                        tabIndex={0}
+                        data-testid="chip-cuisine"
+                        className="badge bg-sage-200 text-sage-900 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(cuisineFilterHref(r.cuisine!));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(cuisineFilterHref(r.cuisine!));
+                          }
+                        }}
+                      >
                         {r.cuisine}
+                      </span>
+                    ) : null}
+                    {(r.foodCategories || []).includes("meat") && (
+                      <span
+                        role="link"
+                        tabIndex={0}
+                        data-testid="chip-food-meat"
+                        className="badge bg-cream-200 text-sage-700 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(foodCategoryFilterHref("meat"));
+                        }}
+                      >
+                        meat
+                      </span>
+                    )}
+                    {r.meatType && (
+                      <span
+                        role="link"
+                        tabIndex={0}
+                        data-testid={`chip-meat-${r.meatType}`}
+                        className="badge bg-ember-50 text-ember-800 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(meatTypeFilterHref(r.meatType!));
+                        }}
+                      >
+                        {r.meatType}
                       </span>
                     )}
                     {r.course && (
@@ -566,23 +628,105 @@ export function RecipeList() {
                   </p>
                 </div>
               </Link>
-              <div className="absolute bottom-3 right-3 flex items-center gap-1">
-                <FavoriteButton
-                  recipeId={r.id}
-                  initialFavorited={Boolean(r.favorited)}
-                />
-                <ShareRecipe recipeId={r.id} title={r.title} compact />
-                <button
-                  type="button"
-                  className="btn-ghost text-xs text-red-700"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    remove(r.id);
-                  }}
-                >
-                  Delete
-                </button>
+              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-1.5">
+                {!(r.cuisine || "").trim() && (
+                  <div
+                    className="flex flex-wrap items-center gap-1.5"
+                    data-testid="needs-cuisine"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
+                      Needs cuisine
+                    </span>
+                    {currentUserId && r.ownerUserId === currentUserId && (
+                      <select
+                        className="input max-w-[9rem] py-0.5 text-xs"
+                        aria-label="Set cuisine"
+                        data-testid="card-cuisine-select"
+                        defaultValue=""
+                        onChange={async (e) => {
+                          const next = e.target.value;
+                          if (!next) return;
+                          const prev = r.cuisine;
+                          setRecipes((list) =>
+                            list.map((x) =>
+                              x.id === r.id ? { ...x, cuisine: next } : x
+                            )
+                          );
+                          const res = await fetch(`/api/recipes/${r.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ cuisine: next }),
+                          });
+                          if (!res.ok) {
+                            setRecipes((list) =>
+                              list.map((x) =>
+                                x.id === r.id ? { ...x, cuisine: prev } : x
+                              )
+                            );
+                          }
+                        }}
+                      >
+                        <option value="">Set cuisine…</option>
+                        {CUISINES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+                <div className="ml-auto flex items-center gap-1">
+                  {currentUserId &&
+                    r.ownerUserId === currentUserId &&
+                    normalizeVisibility(r.visibility) !== "global" && (
+                      <button
+                        type="button"
+                        className="btn-secondary px-2 py-1 text-xs"
+                        data-testid="card-make-public"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const res = await fetch(`/api/recipes/${r.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ visibility: "global" }),
+                          });
+                          if (res.ok) {
+                            setRecipes((list) =>
+                              list.map((x) =>
+                                x.id === r.id
+                                  ? { ...x, visibility: "global" }
+                                  : x
+                              )
+                            );
+                          }
+                        }}
+                      >
+                        Make public
+                      </button>
+                    )}
+                  <FavoriteButton
+                    recipeId={r.id}
+                    initialFavorited={Boolean(r.favorited)}
+                  />
+                  <ShareRecipe recipeId={r.id} title={r.title} compact />
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs text-red-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      remove(r.id);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </li>
           ))}

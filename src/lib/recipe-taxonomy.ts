@@ -11,17 +11,51 @@ export const CUISINES = [
   "Chinese",
   "Japanese",
   "Korean",
+  "Filipino",
   "Thai",
   "Vietnamese",
+  "Cambodian",
   "Asian",
   "Indian",
   "Mediterranean",
   "French",
+  "Eastern European",
+  "Russian",
+  "Ukrainian",
+  "Polish",
+  "Belarusian",
   "Middle Eastern",
   "Caribbean",
   "African",
+  "Native American",
   "Slow cooker",
   "Other",
+] as const;
+
+/**
+ * Cuisines that roll up under the Asian parent bucket for ?cuisine=Asian
+ * filters and auto-add the asian origin association. Russian is excluded.
+ */
+export const ASIAN_CHILD_CUISINES = [
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Filipino",
+  "Thai",
+  "Vietnamese",
+  "Cambodian",
+  "Indian",
+] as const;
+
+/**
+ * Eastern European specifics that roll up under the Eastern European parent
+ * bucket for ?cuisine=Eastern European filters.
+ */
+export const EASTERN_EUROPEAN_CHILD_CUISINES = [
+  "Russian",
+  "Ukrainian",
+  "Polish",
+  "Belarusian",
 ] as const;
 
 export type Cuisine = (typeof CUISINES)[number];
@@ -55,6 +89,10 @@ export const FOOD_CATEGORIES = [
 ] as const;
 
 export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
+
+/** Land-meat subtype. Fish/shrimp stay under seafood, not meat. */
+export const MEAT_TYPES = ["beef", "pork", "chicken", "other"] as const;
+export type MeatType = (typeof MEAT_TYPES)[number];
 
 /**
  * Culinary / cultural foodways labels (not religious gatekeeping).
@@ -347,9 +385,85 @@ export function normalizeCuisine(
   value: string | null | undefined
 ): Cuisine | null {
   if (!value?.trim()) return null;
-  const needle = value.trim().toLowerCase();
+  let needle = value.trim().toLowerCase();
+  // Aliases
+  if (needle === "philippine" || needle === "philippines") needle = "filipino";
+  if (needle === "native american" || needle === "indigenous american") {
+    needle = "native american";
+  }
   const hit = CUISINES.find((c) => c.toLowerCase() === needle);
   return hit ?? null;
+}
+
+/** Cuisines matched by a cuisine filter (Asian includes East/SE children + Indian; not Russian). */
+export function cuisineFilterMatchSet(filterCuisine: string): Set<string> {
+  const want = filterCuisine.trim().toLowerCase();
+  if (!want) return new Set();
+  if (want === "asian") {
+    return new Set(
+      ["asian", ...ASIAN_CHILD_CUISINES.map((c) => c.toLowerCase())]
+    );
+  }
+  if (want === "eastern european") {
+    return new Set([
+      "eastern european",
+      ...EASTERN_EUROPEAN_CHILD_CUISINES.map((c) => c.toLowerCase()),
+    ]);
+  }
+  return new Set([want]);
+}
+
+export function recipeMatchesCuisineFilter(
+  recipeCuisine: string | null | undefined,
+  filterCuisine: string | null | undefined
+): boolean {
+  const filt = (filterCuisine ?? "").trim();
+  if (!filt) return true;
+  const have = (recipeCuisine || "").trim().toLowerCase();
+  if (!have) return false;
+  return cuisineFilterMatchSet(filt).has(have);
+}
+
+/** Ensure East/SE Asian specifics carry the asian origin parent (not Indian). */
+/** Ensure Asian-linked specifics carry the asian origin parent. */
+export function ensureAsianParentOrigins(
+  cuisine: string | null | undefined,
+  origins: string[]
+): string[] {
+  const c = normalizeCuisine(cuisine);
+  if (!c) return origins;
+  const isChild = (ASIAN_CHILD_CUISINES as readonly string[]).includes(c);
+  if (!isChild) return origins;
+  if (origins.map((o) => o.toLowerCase()).includes("asian")) return origins;
+  return normalizeOrigins([...origins, "asian"]);
+}
+
+/** Ensure EE specifics carry eastern-european origin parent. */
+export function ensureEasternEuropeanParentOrigins(
+  cuisine: string | null | undefined,
+  origins: string[]
+): string[] {
+  const c = normalizeCuisine(cuisine);
+  if (!c) return origins;
+  const isChild = (EASTERN_EUROPEAN_CHILD_CUISINES as readonly string[]).includes(
+    c
+  );
+  if (!isChild) return origins;
+  if (origins.map((o) => o.toLowerCase()).includes("eastern-european")) {
+    return origins;
+  }
+  return normalizeOrigins([...origins, "eastern-european"]);
+}
+
+/** Apply all parent-bucket origin associations for a cuisine selection. */
+export function ensureParentCuisineOrigins(
+  cuisine: string | null | undefined,
+  origins: string[]
+): string[] {
+  return ensureEasternEuropeanParentOrigins(
+    cuisine,
+    ensureAsianParentOrigins(cuisine, origins)
+  );
 }
 
 export function normalizeCourse(
@@ -380,6 +494,19 @@ export function normalizeFoodCategories(
   return out;
 }
 
+export function normalizeMeatType(
+  value: string | null | undefined
+): MeatType | null {
+  if (!value?.trim()) return null;
+  const needle = value.trim().toLowerCase();
+  const hit = MEAT_TYPES.find((m) => m === needle);
+  return hit ?? null;
+}
+
+export function isMeatType(value: string | null | undefined): value is MeatType {
+  return normalizeMeatType(value) != null;
+}
+
 export function isCuisine(value: string): value is Cuisine {
   return CUISINE_SET.has(value.trim().toLowerCase());
 }
@@ -400,6 +527,7 @@ export type TaxonomyRecipeLike = {
   course?: string | null;
   foodCategories?: string[] | null;
   origins?: string[] | null;
+  meatType?: string | null;
   ingredients?: { name: string }[] | null;
 };
 
@@ -408,6 +536,8 @@ export type TaxonomyFilters = {
   cuisine?: string | null;
   course?: string | null;
   foodCategory?: string | null;
+  /** Land-meat subtype when foodCategory=meat (beef|pork|chicken|other) */
+  meatType?: string | null;
   /** ethnicity / national origin id; matches self + descendants */
   origin?: string | null;
   ethnicity?: string | null;
@@ -445,9 +575,8 @@ export function matchesTaxonomyFilters(
   filters: TaxonomyFilters
 ): boolean {
   const cuisine = (filters.cuisine ?? "").trim();
-  if (cuisine) {
-    const want = cuisine.toLowerCase();
-    if ((recipe.cuisine || "").trim().toLowerCase() !== want) return false;
+  if (cuisine && !recipeMatchesCuisineFilter(recipe.cuisine, cuisine)) {
+    return false;
   }
   const course = (filters.course ?? "").trim();
   if (course) {
@@ -459,6 +588,11 @@ export function matchesTaxonomyFilters(
     const want = foodCategory.toLowerCase();
     const cats = (recipe.foodCategories || []).map((c) => c.toLowerCase());
     if (!cats.includes(want)) return false;
+  }
+  const meatType = (filters.meatType ?? "").trim();
+  if (meatType) {
+    const want = meatType.toLowerCase();
+    if ((recipe.meatType || "").trim().toLowerCase() !== want) return false;
   }
   const origin = (filters.origin ?? filters.ethnicity ?? "").trim();
   if (origin && !recipeMatchesOrigin(recipe.origins, origin)) return false;
@@ -498,6 +632,7 @@ export function inferRecipeTaxonomy(input: InferInput): {
   course: Course;
   foodCategories: FoodCategory[];
   origins: string[];
+  meatType: MeatType | null;
 } {
   const text = blob(input);
   const tags = (input.tags || []).map((t) => t.toLowerCase());
@@ -517,8 +652,12 @@ export function inferRecipeTaxonomy(input: InferInput): {
   } else {
   // Mexican only from strong dish/tag cues — not "chili" as a seasoning word.
   const mexicanCue =
-    tags.some((t) => ["tacos", "taco", "chili", "mexican", "tex-mex"].includes(t)) ||
-    /\b(taco|tacos|burrito|enchilada|quesadilla|mexican|tex-mex)\b/.test(text) ||
+    tags.some((t) =>
+      ["tacos", "taco", "chili", "mexican", "tex-mex", "empanada", "empanadas"].includes(t)
+    ) ||
+    /\b(taco|tacos|burrito|enchilada|quesadilla|mexican|tex-mex|empanada|empanadas)\b/.test(
+      text
+    ) ||
     /\bchili\s*\/\s*taco\b/.test(text) ||
     /^chili\b/i.test(input.title.trim());
 
@@ -562,6 +701,29 @@ export function inferRecipeTaxonomy(input: InferInput): {
   ) {
     cuisine = "Vietnamese";
     origins.add("vietnamese");
+    origins.add("asian");
+  } else if (
+    has(text, [
+      "adobo",
+      "lumpia",
+      "pancit",
+      "sinigang",
+      "filipino",
+      "philippine",
+      "philippines",
+    ]) ||
+    tags.includes("filipino") ||
+    tags.includes("philippine")
+  ) {
+    cuisine = "Filipino";
+    origins.add("filipino");
+    origins.add("asian");
+  } else if (
+    has(text, ["amok", "lok lak", "loc lac", "cambodian", "khmer"]) ||
+    tags.includes("cambodian") ||
+    tags.includes("khmer")
+  ) {
+    cuisine = "Cambodian";
     origins.add("asian");
   } else if (
     has(text, [
@@ -613,16 +775,96 @@ export function inferRecipeTaxonomy(input: InferInput): {
       origins.add("greek");
       origins.add("european");
     }
+  } else if (
+    has(text, [
+      "jerk",
+      "caribbean",
+      "haitian",
+      "jamaican",
+      "cuban",
+      "plantain",
+      "sofrito",
+    ]) ||
+    tags.includes("caribbean") ||
+    tags.includes("jerk")
+  ) {
+    cuisine = "Caribbean";
+    origins.add("caribbean");
+  } else if (
+    has(text, [
+      "native american",
+      "indigenous",
+      "three sisters",
+      "frybread",
+      "fry bread",
+      "navajo",
+    ]) ||
+    tags.includes("native american")
+  ) {
+    cuisine = "Native American";
+    // No forced wrong origin — leave origins sparse unless tagged elsewhere
   } else if (has(text, ["french", "croissant", "béchamel", "bechamel"])) {
     cuisine = "French";
     origins.add("french");
     origins.add("european");
+  } else if (
+    has(text, ["varenyky", "vareniki", "ukrainian", "holubtsi"]) ||
+    tags.includes("ukrainian")
+  ) {
+    cuisine = "Ukrainian";
+    origins.add("eastern-european");
+  } else if (
+    has(text, ["pierogi", "kielbasa", "bigos", "polish", "golabki", "gołąbki"]) ||
+    tags.includes("polish")
+  ) {
+    cuisine = "Polish";
+    origins.add("eastern-european");
+  } else if (
+    has(text, ["belarusian", "draniki", "machanka"]) ||
+    tags.includes("belarusian")
+  ) {
+    cuisine = "Belarusian";
+    origins.add("eastern-european");
+  } else if (
+    has(text, [
+      "borscht",
+      "borshch",
+      "stroganoff",
+      "beef stroganoff",
+      "russian",
+      "pelmeni",
+      "blini",
+    ]) ||
+    tags.includes("russian")
+  ) {
+    // Russian is Eastern European (not Asian).
+    cuisine = "Russian";
+    origins.add("eastern-european");
+  } else if (
+    has(text, ["eastern european", "eastern-european"]) ||
+    tags.includes("eastern european")
+  ) {
+    cuisine = "Eastern European";
+    origins.add("eastern-european");
   } else if (has(text, ["goulash", "paprikash", "hungarian"])) {
     cuisine = "Other";
     origins.add("hungarian");
     origins.add("european");
     origins.add("eastern-european");
-  } else if (has(text, ["bagel", "latke", "kugel", "matzo", "challah", "brisket"])) {
+  } else if (
+    has(text, [
+      "bagel",
+      "latke",
+      "kugel",
+      "matzo",
+      "challah",
+      "brisket",
+      "hamantaschen",
+      "hamantasch",
+      "jewish apple cake",
+    ])
+  ) {
+    // Ashkenazi sweets/staples: American cuisine label + Jewish origins (not Middle Eastern).
     cuisine = "American";
     origins.add("jewish");
     origins.add("ashkenazi-jewish");
@@ -685,22 +927,37 @@ export function inferRecipeTaxonomy(input: InferInput): {
   ) {
     foodCategories.add("dessert");
   }
+  // Land meat vs seafood: fish/shrimp stay seafood only (never meatType).
+  const seafoodCue = has(text, [
+    "tuna",
+    "salmon",
+    "fish",
+    "shrimp",
+    "seafood",
+    "cod",
+    "tilapia",
+    "halibut",
+    "prawn",
+  ]);
+  let meatType: MeatType | null = null;
   if (
-    has(text, [
-      "chicken",
-      "beef",
-      "pork",
-      "steak",
-      "bacon",
-      "meat",
-      "sausage",
-      "turkey",
-      "lamb",
-    ])
+    /\b(ground\s+beef|beef|steak|brisket|short\s*rib|ribeye|sirloin)\b/.test(text)
   ) {
+    meatType = "beef";
+  } else if (/\b(pork|bacon|ham|prosciutto|pancetta|pulled\s+pork)\b/.test(text)) {
+    meatType = "pork";
+  } else if (/\b(chicken|hen)\b/.test(text)) {
+    meatType = "chicken";
+  } else if (
+    /\b(lamb|goat|venison|turkey|duck|bison|veal|rabbit|meat|sausage)\b/.test(text)
+  ) {
+    // turkey/duck/etc. → other (not chicken); generic "meat"/"sausage" → other
+    meatType = "other";
+  }
+  if (meatType) {
     foodCategories.add("meat");
   }
-  if (has(text, ["tuna", "salmon", "fish", "shrimp", "seafood", "cod"])) {
+  if (seafoodCue) {
     foodCategories.add("seafood");
   }
   if (has(text, ["egg", "eggs"])) foodCategories.add("egg");
@@ -772,5 +1029,70 @@ export function inferRecipeTaxonomy(input: InferInput): {
     course,
     foodCategories: [...foodCategories],
     origins: [...origins],
+    meatType,
   };
+}
+
+/**
+ * When cuisine is blank on create/update, fill cuisine/course/origins/foodCategories/meatType
+ * from inferRecipeTaxonomy. Non-destructive for fields the caller already set.
+ */
+export function resolveTaxonomyForWrite(input: {
+  title: string;
+  description?: string | null;
+  tags?: string[];
+  ingredients?: { name: string }[];
+  steps?: string[] | null;
+  cuisine?: string | null;
+  course?: string | null;
+  foodCategories?: string[] | null;
+  origins?: string[] | null;
+  meatType?: string | null;
+}): {
+  cuisine: Cuisine | null;
+  course: Course | null;
+  foodCategories: FoodCategory[];
+  origins: string[];
+  meatType: MeatType | null;
+} {
+  let cuisine = normalizeCuisine(input.cuisine ?? null);
+  let course = normalizeCourse(input.course ?? null);
+  let foodCategories = normalizeFoodCategories(input.foodCategories);
+  let origins = normalizeOrigins(input.origins);
+  let meatType = normalizeMeatType(input.meatType ?? null);
+
+  const cuisineBlank = !cuisine;
+  const needsMeatType =
+    !meatType &&
+    (foodCategories.includes("meat") ||
+      cuisineBlank ||
+      !foodCategories.length);
+
+  if (cuisineBlank || needsMeatType || !course || !foodCategories.length || !origins.length) {
+    const inferred = inferRecipeTaxonomy({
+      title: input.title,
+      description: input.description,
+      tags: input.tags,
+      ingredients: input.ingredients,
+      steps: input.steps,
+    });
+    if (cuisineBlank) cuisine = inferred.cuisine;
+    if (!course) course = inferred.course;
+    if (!foodCategories.length) foodCategories = inferred.foodCategories;
+    if (!origins.length && cuisineBlank) origins = inferred.origins;
+    if (!meatType && inferred.meatType) {
+      meatType = inferred.meatType;
+      if (!foodCategories.includes("meat")) {
+        foodCategories = [...foodCategories, "meat"];
+      }
+    }
+  }
+
+  if (!foodCategories.includes("meat")) {
+    meatType = null;
+  }
+
+  origins = ensureParentCuisineOrigins(cuisine, origins);
+
+  return { cuisine, course, foodCategories, origins, meatType };
 }

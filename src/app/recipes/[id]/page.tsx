@@ -42,6 +42,7 @@ import {
   courseFilterHref,
   cuisineFilterHref,
   foodCategoryFilterHref,
+  meatTypeFilterHref,
   originChipLabel,
   originFilterHref,
   searchFilterHref,
@@ -381,6 +382,15 @@ export default async function RecipeDetailPage({ params }: Props) {
               {c}
             </Link>
           ))}
+          {recipe.meatType && (
+            <Link
+              href={meatTypeFilterHref(recipe.meatType)}
+              className="badge bg-ember-50 text-ember-800 hover:underline"
+              data-testid={`chip-meat-${recipe.meatType}`}
+            >
+              {recipe.meatType}
+            </Link>
+          )}
           {(recipe.origins || []).slice(0, 4).map((o: string) => (
             <Link
               key={`or-${o}`}

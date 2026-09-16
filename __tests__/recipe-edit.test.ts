@@ -72,9 +72,11 @@ describe("RecipeOwnerControls visibility", () => {
     expect(ctrl).toMatch(/\"global\"/);
   });
 
-  it("PATCH accepts visibility-only body", () => {
+  it("PATCH accepts quick visibility/cuisine/meatType body", () => {
     const route = source("src/app/api/recipes/[id]/route.ts");
-    expect(route).toMatch(/Visibility-only update/);
-    expect(route).toMatch(/bodyKeys\[0\] === \"visibility\"/);
+    expect(route).toMatch(/Quick owner updates/);
+    expect(route).toMatch(/visibility/);
+    expect(route).toMatch(/cuisine/);
+    expect(route).toMatch(/meatType/);
   });
 });

@@ -5,6 +5,7 @@ import {
   costTierFilterHref,
   courseFilterHref,
   cuisineFilterHref,
+  meatTypeFilterHref,
   dietaryFilterHref,
   foodCategoryFilterHref,
   originFilterHref,
@@ -45,5 +46,20 @@ describe("recipe filter hrefs", () => {
     expect(list).toMatch(/params\.set\(\"dietary\"/);
     expect(list).toMatch(/params\.set\(\"costTier\"/);
     expect(list).toMatch(/params\.set\(\"struggle\"/);
+  });
+});
+
+describe("meat type hrefs + list card markers", () => {
+  it("builds meatType filter URLs", () => {
+    expect(meatTypeFilterHref("beef")).toBe(
+      "/recipes?foodCategory=meat&meatType=beef"
+    );
+  });
+
+  it("RecipeList has Make public + needs-cuisine UI", () => {
+    const list = source("src/components/RecipeList.tsx");
+    expect(list).toMatch(/card-make-public/);
+    expect(list).toMatch(/needs-cuisine/);
+    expect(list).toMatch(/card-cuisine-select/);
   });
 });

@@ -139,6 +139,8 @@ model Recipe {
   course           String?
   /** JSON array of food category labels (dairy, meat, vegetable, …). */
   foodCategories   String             @default("[]")
+  /** Land-meat subtype when applicable: beef | pork | chicken | other. Null if no meat / unknown. Fish stays seafood. */
+  meatType         String?
   /** JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy). */
   origins          String             @default("[]")
   /** Short cultural/history blurb shown as “Story behind this food” on detail. */
@@ -201,6 +203,7 @@ model Recipe {
   @@index([ownerUserId])
   @@index([visibility])
   @@index([cuisine])
+  @@index([meatType])
   @@index([course])
   @@index([dishKey])
 }

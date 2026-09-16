@@ -5,14 +5,14 @@ import { AuthError, getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { recipeRowMatchesScope } from "@/lib/household";
 import { recipeIsReadable } from "@/lib/recipe-request";
 import { serializeRecipe } from "@/lib/mappers";
-import { stringifyArray } from "@/lib/json";
 import { normalizeVisibility } from "@/lib/recipe-visibility";
 import {
+  ensureParentCuisineOrigins,
   normalizeCuisine,
-  normalizeCourse,
-  normalizeFoodCategories,
-  normalizeOrigins,
+  normalizeMeatType,
+  resolveTaxonomyForWrite,
 } from "@/lib/recipe-taxonomy";
+import { parseStringArray, stringifyArray } from "@/lib/json";
 import { inferAllergenTags } from "@/lib/allergens";
 import { canEditRecipe } from "@/lib/recipe-user-images";
 import { dishKeyForTitle } from "@/lib/dish-key";
@@ -37,6 +37,7 @@ const patchSchema = z.object({
   course: z.string().max(40).optional().nullable(),
   foodCategories: z.array(z.string()).optional(),
   origins: z.array(z.string()).optional(),
+  meatType: z.string().max(40).optional().nullable(),
   originStory: z.string().max(4000).optional().nullable(),
   servings: z.number().int().positive().default(2),
   cookTimeMinutes: z.number().int().positive().optional().nullable(),
@@ -141,42 +142,76 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
     const body = await req.json();
 
-    // Visibility-only update from recipe detail "Make public" controls
-    const visibilityOnly = z
-      .object({
-        visibility: z.enum([
-          "global",
-          "household",
-          "shared",
-          "public",
-          "private",
-        ]),
-      })
-      .safeParse(body);
+    // Quick owner updates: visibility / cuisine / meatType (card + detail controls)
     const bodyKeys =
       body && typeof body === "object" && !Array.isArray(body)
         ? Object.keys(body as object)
         : [];
-    if (
-      visibilityOnly.success &&
-      bodyKeys.length === 1 &&
-      bodyKeys[0] === "visibility"
-    ) {
-      const updated = await prisma.recipe.update({
-        where: { id },
-        data: {
-          visibility: normalizeVisibility(visibilityOnly.data.visibility),
-        },
-        include: { ingredients: true },
-      });
-      return NextResponse.json(serializeRecipe(updated));
+    const quickKeys = new Set(["visibility", "cuisine", "meatType"]);
+    if (bodyKeys.length > 0 && bodyKeys.every((k) => quickKeys.has(k))) {
+      const quick = z
+        .object({
+          visibility: z
+            .enum(["global", "household", "shared", "public", "private"])
+            .optional(),
+          cuisine: z.string().max(80).nullable().optional(),
+          meatType: z.string().max(40).nullable().optional(),
+        })
+        .safeParse(body);
+      if (quick.success) {
+        const dataQuick: {
+          visibility?: string;
+          cuisine?: string | null;
+          meatType?: string | null;
+          foodCategories?: string;
+          origins?: string;
+        } = {};
+        if (quick.data.visibility !== undefined) {
+          dataQuick.visibility = normalizeVisibility(quick.data.visibility);
+        }
+        if (quick.data.cuisine !== undefined) {
+          const c = normalizeCuisine(quick.data.cuisine);
+          dataQuick.cuisine = c;
+          if (c) {
+            const nextOrigins = ensureParentCuisineOrigins(
+              c,
+              parseStringArray(existing.origins)
+            );
+            dataQuick.origins = JSON.stringify(nextOrigins);
+          }
+        }
+        if (quick.data.meatType !== undefined) {
+          const mt = normalizeMeatType(quick.data.meatType);
+          dataQuick.meatType = mt;
+          if (mt) {
+            const cats = parseStringArray(existing.foodCategories);
+            if (!cats.map((c) => c.toLowerCase()).includes("meat")) {
+              dataQuick.foodCategories = JSON.stringify([...cats, "meat"]);
+            }
+          }
+        }
+        const updated = await prisma.recipe.update({
+          where: { id },
+          data: dataQuick,
+          include: { ingredients: true },
+        });
+        return NextResponse.json(serializeRecipe(updated));
+      }
     }
 
     const data = sanitizeRecipeWritePayload(patchSchema.parse(body));
-    const cuisine = normalizeCuisine(data.cuisine ?? null);
-    const course = normalizeCourse(data.course ?? null);
-    const foodCategories = normalizeFoodCategories(data.foodCategories);
-    const origins = normalizeOrigins(data.origins);
+    const tax = resolveTaxonomyForWrite({
+      title: data.title,
+      description: data.description,
+      tags: data.tags,
+      ingredients: data.ingredients,
+      steps: data.steps,
+      cuisine: data.cuisine,
+      course: data.course,
+      foodCategories: data.foodCategories,
+      origins: data.origins,
+      meatType: data.meatType,
+    });
     const sourceUrl =
       data.sourceUrl === "" || data.sourceUrl == null
         ? null
@@ -192,10 +227,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           steps: stringifyArray(data.steps),
           costTier: data.costTier,
           tags: stringifyArray(data.tags),
-          cuisine,
-          course,
-          foodCategories: stringifyArray(foodCategories),
-          origins: stringifyArray(origins),
+          cuisine: tax.cuisine,
+          course: tax.course,
+          foodCategories: stringifyArray(tax.foodCategories),
+          origins: stringifyArray(tax.origins),
+          meatType: tax.meatType,
           originStory: data.originStory?.trim() || null,
           servings: data.servings,
           cookTimeMinutes: data.cookTimeMinutes ?? null,

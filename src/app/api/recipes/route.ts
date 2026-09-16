@@ -15,11 +15,10 @@ import {
   reviewStatsFor,
 } from "@/lib/recipe-review-stats";
 import {
+  ASIAN_CHILD_CUISINES,
+  EASTERN_EUROPEAN_CHILD_CUISINES,
   matchesTaxonomyFilters,
-  normalizeCuisine,
-  normalizeCourse,
-  normalizeFoodCategories,
-  normalizeOrigins,
+  resolveTaxonomyForWrite,
 } from "@/lib/recipe-taxonomy";
 import { satisfiesHalal } from "@/lib/dietary";
 import { inferAllergenTags } from "@/lib/allergens";
@@ -42,6 +41,7 @@ const createSchema = z.object({
   course: z.string().max(40).optional().nullable(),
   foodCategories: z.array(z.string()).optional(),
   origins: z.array(z.string()).optional(),
+  meatType: z.string().max(40).optional().nullable(),
   originStory: z.string().max(4000).optional().nullable(),
   servings: z.number().int().positive().default(2),
   cookTimeMinutes: z.number().int().positive().optional().nullable(),
@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
   const origin =
     req.nextUrl.searchParams.get("origin") ||
     req.nextUrl.searchParams.get("ethnicity");
+  const meatType = req.nextUrl.searchParams.get("meatType");
   const dietary = req.nextUrl.searchParams.get("dietary"); // kosher | halal | vegan | vegetarian | pescatarian | carnivore | atkins | lowCarb | lowSugar | lowSodium
   const kosherOnly = dietary === "kosher" || req.nextUrl.searchParams.get("kosher") === "1";
   const halalOnly = dietary === "halal" || req.nextUrl.searchParams.get("halal") === "1";
@@ -157,10 +158,52 @@ export async function GET(req: NextRequest) {
 
   // Narrow cuisine/course in SQL when present; JSON arrays + search filtered in JS
   if (cuisine?.trim()) {
-    where = { AND: [where, { cuisine: { equals: cuisine.trim(), mode: "insensitive" } }] };
+    const c = cuisine.trim();
+    const cl = c.toLowerCase();
+    if (cl === "asian") {
+      where = {
+        AND: [
+          where,
+          {
+            OR: [
+              { cuisine: { equals: "Asian", mode: "insensitive" } },
+              ...ASIAN_CHILD_CUISINES.map((child) => ({
+                cuisine: { equals: child, mode: "insensitive" as const },
+              })),
+            ],
+          },
+        ],
+      };
+    } else if (cl === "eastern european") {
+      where = {
+        AND: [
+          where,
+          {
+            OR: [
+              { cuisine: { equals: "Eastern European", mode: "insensitive" } },
+              ...EASTERN_EUROPEAN_CHILD_CUISINES.map((child) => ({
+                cuisine: { equals: child, mode: "insensitive" as const },
+              })),
+            ],
+          },
+        ],
+      };
+    } else {
+      where = {
+        AND: [where, { cuisine: { equals: c, mode: "insensitive" } }],
+      };
+    }
   }
   if (course?.trim()) {
     where = { AND: [where, { course: { equals: course.trim(), mode: "insensitive" } }] };
+  }
+  if (meatType?.trim()) {
+    where = {
+      AND: [
+        where,
+        { meatType: { equals: meatType.trim(), mode: "insensitive" } },
+      ],
+    };
   }
 
   const recipesRaw = await prisma.recipe.findMany({
@@ -199,9 +242,10 @@ export async function GET(req: NextRequest) {
         course: serialized.course,
         foodCategories: serialized.foodCategories,
         origins: serialized.origins,
+        meatType: serialized.meatType,
         ingredients: serialized.ingredients,
       },
-      { q, cuisine, course, foodCategory, origin }
+      { q, cuisine, course, foodCategory, origin, meatType }
     );
   });
   const reviewStats = await getReviewStatsByRecipeIds(
@@ -230,10 +274,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = sanitizeRecipeWritePayload(createSchema.parse(body));
     const user = await getCurrentUser();
-    const cuisine = normalizeCuisine(data.cuisine ?? null);
-    const course = normalizeCourse(data.course ?? null);
-    const foodCategories = normalizeFoodCategories(data.foodCategories);
-    const origins = normalizeOrigins(data.origins);
+    const tax = resolveTaxonomyForWrite({
+      title: data.title,
+      description: data.description,
+      tags: data.tags,
+      ingredients: data.ingredients,
+      steps: data.steps,
+      cuisine: data.cuisine,
+      course: data.course,
+      foodCategories: data.foodCategories,
+      origins: data.origins,
+      meatType: data.meatType,
+    });
     const recipe = await prisma.recipe.create({
       data: {
         title: data.title,
@@ -241,10 +293,11 @@ export async function POST(req: NextRequest) {
         steps: stringifyArray(data.steps),
         costTier: data.costTier,
         tags: stringifyArray(data.tags),
-        cuisine,
-        course,
-        foodCategories: stringifyArray(foodCategories),
-        origins: stringifyArray(origins),
+        cuisine: tax.cuisine,
+        course: tax.course,
+        foodCategories: stringifyArray(tax.foodCategories),
+        origins: stringifyArray(tax.origins),
+        meatType: tax.meatType,
         originStory: data.originStory?.trim() || null,
         servings: data.servings,
         cookTimeMinutes: data.cookTimeMinutes ?? null,

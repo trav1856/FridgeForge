@@ -29,6 +29,11 @@ export function foodCategoryFilterHref(foodCategory: string): string {
   return recipesFilterHref({ foodCategory });
 }
 
+/** meat + optional subtype, e.g. /recipes?foodCategory=meat&meatType=beef */
+export function meatTypeFilterHref(meatType: string): string {
+  return recipesFilterHref({ foodCategory: "meat", meatType });
+}
+
 export function originFilterHref(originId: string): string {
   return recipesFilterHref({ origin: originId });
 }
