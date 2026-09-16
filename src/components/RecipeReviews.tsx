@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   REVIEW_BODY_MAX,
   reviewShareText,
@@ -98,14 +98,16 @@ export function RecipeReviews({ recipeId, recipeTitle }: Props) {
     load().catch(() => setStatus("Failed to load reviews"));
   }, [load]);
 
-  const url = useMemo(() => {
-    if (typeof window === "undefined") return `/recipes/${recipeId}`;
-    return `${window.location.origin}/recipes/${recipeId}`;
+  // Absolute share URLs only after mount — avoids SSR/client href hydration mismatch
+  // (relative on server vs Funnel origin on client), which can break other client UI.
+  const [shareUrl, setShareUrl] = useState(`/recipes/${recipeId}`);
+  useEffect(() => {
+    setShareUrl(`${window.location.origin}/recipes/${recipeId}`);
   }, [recipeId]);
 
   const shareText = reviewShareText(recipeTitle, stars || mine?.stars || 5);
-  const tw = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`;
-  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  const tw = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

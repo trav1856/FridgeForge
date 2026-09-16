@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
 import { RecipeShareManager } from "./RecipeShareManager";
 
 type Props = {
@@ -16,9 +16,9 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const url = useMemo(() => {
-    if (typeof window === "undefined") return `/recipes/${recipeId}`;
-    return `${window.location.origin}/recipes/${recipeId}`;
+  const [shareUrl, setShareUrl] = useState(`/recipes/${recipeId}`);
+  useEffect(() => {
+    setShareUrl(`${window.location.origin}/recipes/${recipeId}`);
   }, [recipeId]);
 
   const text = `Check out ${title} on FridgeForge`;
@@ -28,7 +28,7 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
     e.stopPropagation();
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title, text, url });
+        await navigator.share({ title, text, url: shareUrl });
         return;
       } catch {
         // fall through to panel
@@ -41,7 +41,7 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
     e.preventDefault();
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       setStatus("Link copied");
     } catch {
       setStatus("Copy failed");
@@ -76,8 +76,8 @@ export function ShareRecipe({ recipeId, title, compact }: Props) {
     }
   }
 
-  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-  const tw = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  const tw = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>

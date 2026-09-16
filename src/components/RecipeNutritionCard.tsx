@@ -171,7 +171,7 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
                 >
                   <button
                     type="button"
-                    onClick={() => setMode("serving")}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMode("serving"); }}
                     aria-pressed={mode === "serving"}
                     className={
                       mode === "serving"
@@ -183,7 +183,7 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMode("recipe")}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMode("recipe"); }}
                     aria-pressed={mode === "recipe"}
                     className={
                       mode === "recipe"
