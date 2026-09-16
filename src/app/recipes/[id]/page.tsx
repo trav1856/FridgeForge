@@ -442,23 +442,27 @@ export default async function RecipeDetailPage({ params }: Props) {
             similarEligible={similarEligible}
           />
         </div>
-        <div className="mt-3 max-w-2xl space-y-3">
-          <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+        <div className="mt-3 max-w-4xl space-y-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start">
+            <div className="min-w-0 flex-1">
+              <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+            </div>
+            {canEditPhoto && (
+              <div className="card w-full shrink-0 p-4 md:w-72 lg:w-80">
+                <RecipePhotoUpload
+                  recipeId={recipe.id}
+                  imageUrl={recipe.imageUrl}
+                  alt={recipe.title}
+                  showPreview={false}
+                />
+              </div>
+            )}
+          </div>
           {canEdit && (
             <RecipeOwnerControls
               recipeId={recipe.id}
               visibility={recipe.visibility}
             />
-          )}
-          {canEditPhoto && (
-            <div className="card p-4">
-              <RecipePhotoUpload
-                recipeId={recipe.id}
-                imageUrl={recipe.imageUrl}
-                alt={recipe.title}
-                showPreview={false}
-              />
-            </div>
           )}
         </div>
         {(featuredVariants.length > 0 || restVariants.length > 0) && (

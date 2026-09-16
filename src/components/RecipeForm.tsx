@@ -229,6 +229,7 @@ export function RecipeForm({
     initialDraft?.foodCategories || []
   );
   const [origins, setOrigins] = useState<string[]>(initialDraft?.origins || []);
+  const [meatType, setMeatType] = useState(initialDraft?.meatType || "");
   const [originStory, setOriginStory] = useState(
     initialDraft?.originStory || ""
   );
