@@ -150,54 +150,51 @@ export function RecipeNutritionCard({ estimate, className = "" }: Props) {
         </div>
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-sage-500">
-              {coverageLabel}
-              <span className="text-sage-400">
-                {" "}
-                · switch Per serving / Whole recipe
-              </span>
-            </p>
-            <div
-              className="inline-flex overflow-hidden rounded-full border-2 border-sage-300 text-xs font-bold shadow-sm"
-              role="group"
-              aria-label="Nutrition amount basis"
-            >
-              <button
-                type="button"
-                onClick={() => setMode("serving")}
-                aria-pressed={mode === "serving"}
-                className={
-                  mode === "serving"
-                    ? "bg-sage-800 px-3.5 py-1.5 text-cream-50"
-                    : "bg-cream-50 px-3.5 py-1.5 text-sage-700 hover:bg-sage-100"
-                }
-              >
-                Per serving
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("recipe")}
-                aria-pressed={mode === "recipe"}
-                className={
-                  mode === "recipe"
-                    ? "bg-sage-800 px-3.5 py-1.5 text-cream-50"
-                    : "bg-cream-50 px-3.5 py-1.5 text-sage-700 hover:bg-sage-100"
-                }
-              >
-                Whole recipe
-              </button>
-            </div>
-          </div>
-
+          {coverageLabel && (
+            <p className="mb-2 text-xs text-sage-500">{coverageLabel}</p>
+          )}
           <div className="card w-full max-w-[340px] overflow-hidden border-sage-200/80 bg-gradient-to-br from-cream-50 to-sage-50/60 p-0 shadow-sm">
-            <div className="border-b-4 border-ember-600 bg-cream-50/90 px-4 pb-2 pt-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ember-700">
-                FridgeForge
-              </p>
-              <h2 className="font-display text-2xl font-bold leading-tight text-sage-900">
-                Nutrition Facts
-              </h2>
+            <div className="border-b-4 border-ember-600 bg-cream-50/90 px-4 pb-2 pt-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ember-700">
+                    FridgeForge
+                  </p>
+                  <h2 className="font-display text-2xl font-bold leading-tight text-sage-900">
+                    Nutrition Facts
+                  </h2>
+                </div>
+                <div
+                  className="inline-flex shrink-0 overflow-hidden rounded-full border border-sage-300 text-[10px] font-bold leading-none shadow-sm"
+                  role="group"
+                  aria-label="Nutrition amount basis"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setMode("serving")}
+                    aria-pressed={mode === "serving"}
+                    className={
+                      mode === "serving"
+                        ? "bg-sage-800 px-2.5 py-1.5 text-cream-50"
+                        : "bg-cream-50 px-2.5 py-1.5 text-sage-700 hover:bg-sage-100"
+                    }
+                  >
+                    Per serving
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("recipe")}
+                    aria-pressed={mode === "recipe"}
+                    className={
+                      mode === "recipe"
+                        ? "bg-sage-800 px-2.5 py-1.5 text-cream-50"
+                        : "bg-cream-50 px-2.5 py-1.5 text-sage-700 hover:bg-sage-100"
+                    }
+                  >
+                    Whole recipe
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="border-b border-sage-200 px-4 py-2 text-sm leading-snug text-sage-800">
