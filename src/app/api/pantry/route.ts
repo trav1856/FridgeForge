@@ -10,9 +10,13 @@ import { upsertCustomStaple } from "@/lib/custom-staples";
 import { findCatalogItem } from "@/lib/pantry-catalog";
 import { inferMeasureKind } from "@/lib/units";
 import {
-  searchNutritionByName,
+  searchProductByName,
   stringifyNutrition,
 } from "@/lib/open-food-facts";
+import {
+  genericPantryImageForName,
+  prefersGenericPantryImage,
+} from "@/lib/pantry-images";
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -74,13 +78,29 @@ export async function POST(req: NextRequest) {
     }
 
     let nutritionJson = data.nutritionJson ?? null;
-    if (!nutritionJson) {
+    let imageUrl = data.imageUrl?.trim() || null;
+    if (!imageUrl && prefersGenericPantryImage(data.name)) {
+      imageUrl = genericPantryImageForName(data.name, data.category);
+    }
+    if (!nutritionJson || (!imageUrl && !prefersGenericPantryImage(data.name))) {
       try {
-        const snap = await searchNutritionByName(data.name);
-        nutritionJson = stringifyNutrition(snap);
+        const hit = await searchProductByName(data.name);
+        if (!nutritionJson && hit?.nutrition) {
+          nutritionJson = stringifyNutrition(hit.nutrition);
+        }
+        if (
+          !imageUrl &&
+          !prefersGenericPantryImage(data.name) &&
+          hit?.imageUrl
+        ) {
+          imageUrl = hit.imageUrl;
+        }
       } catch {
-        nutritionJson = null;
+        /* best-effort */
       }
+    }
+    if (!imageUrl) {
+      imageUrl = genericPantryImageForName(data.name, data.category);
     }
 
     const item = await prisma.pantryItem.create({
@@ -95,7 +115,7 @@ export async function POST(req: NextRequest) {
           ? new Date(data.expirationDate)
           : null,
         nutritionJson,
-        imageUrl: data.imageUrl ?? null,
+        imageUrl: imageUrl ?? null,
         householdId,
       },
     });

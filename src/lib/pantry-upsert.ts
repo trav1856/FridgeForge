@@ -4,9 +4,13 @@ import { stringifyArray } from "@/lib/json";
 import { normalizeName } from "@/lib/normalize";
 import { serializePantry } from "@/lib/mappers";
 import {
-  searchNutritionByName,
+  searchProductByName,
   stringifyNutrition,
 } from "@/lib/open-food-facts";
+import {
+  genericPantryImageForName,
+  prefersGenericPantryImage,
+} from "@/lib/pantry-images";
 
 export type UpsertPantryInput = {
   name: string;
@@ -51,18 +55,46 @@ export async function upsertPantryItem(
       ) ?? null;
   }
 
+  const genericImage = genericPantryImageForName(
+    data.name,
+    data.category ?? existing?.category ?? null
+  );
+
   let nutritionJson = data.nutritionJson ?? null;
-  if (
-    !nutritionJson &&
+  let imageUrl = data.imageUrl?.trim() || null;
+
+  // Curated generic for staples when caller did not pass a brand/OFF image.
+  if (!imageUrl) {
+    imageUrl = prefersGenericPantryImage(data.name) ? genericImage : null;
+  }
+
+  const needsOffLookup =
     data.lookupNutrition !== false &&
-    !existing?.nutritionJson
-  ) {
+    (!nutritionJson || (!imageUrl && !prefersGenericPantryImage(data.name))) &&
+    !existing?.nutritionJson;
+
+  if (needsOffLookup) {
     try {
-      const snap = await searchNutritionByName(data.name);
-      nutritionJson = stringifyNutrition(snap);
+      const hit = await searchProductByName(data.name);
+      if (!nutritionJson && hit?.nutrition) {
+        nutritionJson = stringifyNutrition(hit.nutrition);
+      }
+      // Brand/OFF image only when we don't already have one and this isn't a
+      // curated generic staple (avoid random brand carton for "milk").
+      if (
+        !imageUrl &&
+        !prefersGenericPantryImage(data.name) &&
+        hit?.imageUrl
+      ) {
+        imageUrl = hit.imageUrl;
+      }
     } catch {
-      nutritionJson = null;
+      /* best-effort */
     }
+  }
+
+  if (!imageUrl) {
+    imageUrl = genericImage;
   }
 
   if (existing) {
@@ -82,8 +114,7 @@ export async function upsertPantryItem(
         }),
         ...(!existing.nutritionJson &&
           nutritionJson && { nutritionJson }),
-        ...(!existing.imageUrl &&
-          data.imageUrl && { imageUrl: data.imageUrl }),
+        ...(!existing.imageUrl && imageUrl && { imageUrl }),
       },
     });
     return { item: serializePantry(updated), merged: true as const };
@@ -101,7 +132,7 @@ export async function upsertPantryItem(
         ? new Date(data.expirationDate)
         : null,
       nutritionJson,
-      imageUrl: data.imageUrl ?? null,
+      imageUrl: imageUrl ?? null,
       householdId,
     },
   });

@@ -4,6 +4,16 @@ import {
   type PantryCategory,
 } from "./categories";
 
+/** Compact nutrition snapshot stored as PantryItem.nutritionJson */
+export type NutritionSnapshot = {
+  caloriesPer100g?: number | null;
+  proteinPer100g?: number | null;
+  fatPer100g?: number | null;
+  carbsPer100g?: number | null;
+  productName?: string | null;
+  source: "openfoodfacts";
+};
+
 export type BarcodeLookupResult = {
   found: boolean;
   barcode: string;
@@ -13,19 +23,19 @@ export type BarcodeLookupResult = {
   suggestedCategory?: PantryCategory;
   suggestedUnit?: string;
   imageUrl?: string | null;
+  /** Nutrition snapshot when OFF product has nutriments. */
+  nutrition?: NutritionSnapshot | null;
   rawCategories?: string | null;
   /** True when OFF signals a clear non-food product (battery, electronics, chemicals…). */
   isLikelyNonFood?: boolean;
 };
 
-/** Compact nutrition snapshot stored as PantryItem.nutritionJson */
-export type NutritionSnapshot = {
-  caloriesPer100g?: number | null;
-  proteinPer100g?: number | null;
-  fatPer100g?: number | null;
-  carbsPer100g?: number | null;
-  productName?: string | null;
-  source: "openfoodfacts";
+/** Name-search hit: nutrition + optional brand product image. */
+export type OffNameSearchResult = {
+  nutrition: NutritionSnapshot | null;
+  imageUrl: string | null;
+  brand: string | null;
+  productName: string | null;
 };
 
 type OffNutriments = {
@@ -220,9 +230,52 @@ export async function lookupOpenFoodFacts(
     ),
     suggestedUnit: suggestUnitFromOff(p.quantity),
     imageUrl: p.image_front_small_url || p.image_url || null,
+    nutrition: nutritionFromOffProduct(p),
     rawCategories: p.categories || null,
     isLikelyNonFood: nonFood,
   };
+}
+
+function rankOffProducts(products: OffProduct[], needle: string): OffProduct[] {
+  return [...products].sort((a, b) => {
+    const an = (pickName(a) || "").toLowerCase();
+    const bn = (pickName(b) || "").toLowerCase();
+    const as =
+      an.includes(needle) || needle.includes(an.split(" ")[0] || "") ? 0 : 1;
+    const bs =
+      bn.includes(needle) || needle.includes(bn.split(" ")[0] || "") ? 0 : 1;
+    const anut = a.nutriments ? 0 : 1;
+    const bnut = b.nutriments ? 0 : 1;
+    const aimg = a.image_front_small_url || a.image_url ? 0 : 1;
+    const bimg = b.image_front_small_url || b.image_url ? 0 : 1;
+    return as - bs || anut - bnut || aimg - bimg;
+  });
+}
+
+async function fetchOffNameSearch(q: string): Promise<OffProduct[]> {
+  const url = new URL("https://world.openfoodfacts.org/cgi/search.pl");
+  url.searchParams.set("search_terms", q);
+  url.searchParams.set("search_simple", "1");
+  url.searchParams.set("action", "process");
+  url.searchParams.set("json", "1");
+  url.searchParams.set("page_size", "5");
+  url.searchParams.set(
+    "fields",
+    "product_name,product_name_en,generic_name,brands,nutriments,categories,categories_tags,image_front_small_url,image_url"
+  );
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": OFF_UA,
+      Accept: "application/json",
+    },
+    // Avoid Next caching failed/empty searches forever
+    cache: "no-store",
+  });
+
+  if (!res.ok) return [];
+  const data = (await res.json()) as { products?: OffProduct[] };
+  return data.products || [];
 }
 
 /**
@@ -232,50 +285,37 @@ export async function lookupOpenFoodFacts(
 export async function searchNutritionByName(
   name: string
 ): Promise<NutritionSnapshot | null> {
+  const hit = await searchProductByName(name);
+  return hit?.nutrition ?? null;
+}
+
+/**
+ * Best-effort name search for nutrition + brand product image.
+ * Prefer barcode lookup when available; use this for typed branded names.
+ */
+export async function searchProductByName(
+  name: string
+): Promise<OffNameSearchResult | null> {
   const q = name.trim();
   if (!q || q.length < 2) return null;
 
   try {
-    const url = new URL("https://world.openfoodfacts.org/cgi/search.pl");
-    url.searchParams.set("search_terms", q);
-    url.searchParams.set("search_simple", "1");
-    url.searchParams.set("action", "process");
-    url.searchParams.set("json", "1");
-    url.searchParams.set("page_size", "5");
-    url.searchParams.set(
-      "fields",
-      "product_name,product_name_en,generic_name,brands,nutriments,categories,categories_tags"
-    );
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        "User-Agent": OFF_UA,
-        Accept: "application/json",
-      },
-      // Avoid Next caching failed/empty searches forever
-      cache: "no-store",
-    });
-
-    if (!res.ok) return null;
-
-    const data = (await res.json()) as { products?: OffProduct[] };
-    const products = data.products || [];
+    const products = await fetchOffNameSearch(q);
+    if (products.length === 0) return null;
     const needle = q.toLowerCase();
-
-    // Prefer a product whose name loosely matches and has nutriments
-    const ranked = [...products].sort((a, b) => {
-      const an = (pickName(a) || "").toLowerCase();
-      const bn = (pickName(b) || "").toLowerCase();
-      const as = an.includes(needle) || needle.includes(an.split(" ")[0] || "") ? 0 : 1;
-      const bs = bn.includes(needle) || needle.includes(bn.split(" ")[0] || "") ? 0 : 1;
-      const anut = a.nutriments ? 0 : 1;
-      const bnut = b.nutriments ? 0 : 1;
-      return as - bs || anut - bnut;
-    });
+    const ranked = rankOffProducts(products, needle);
 
     for (const p of ranked) {
       const snap = nutritionFromOffProduct(p);
-      if (snap) return snap;
+      const imageUrl = p.image_front_small_url || p.image_url || null;
+      if (snap || imageUrl) {
+        return {
+          nutrition: snap,
+          imageUrl,
+          brand: p.brands?.trim() || null,
+          productName: pickName(p) ?? null,
+        };
+      }
     }
     return null;
   } catch {

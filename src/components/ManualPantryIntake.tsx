@@ -12,6 +12,7 @@ import {
   type CatalogChip,
   type CatalogItem,
 } from "@/lib/pantry-catalog";
+import { resolvePantryImageUrl } from "@/lib/pantry-images";
 import {
   defaultUnitForItem,
   unitsForItem,
@@ -660,16 +661,23 @@ function EditPantryForm({
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
       <h2 className="font-display text-xl font-bold text-sage-900">Edit item</h2>
-      {form.imageUrl && (
-        <div className="flex h-24 w-24 overflow-hidden rounded-xl bg-sage-100">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={form.imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        </div>
-      )}
+      {(() => {
+        const photo = resolvePantryImageUrl({
+          name: form.name,
+          imageUrl: form.imageUrl,
+          category: form.category,
+        });
+        return photo ? (
+          <div className="aspect-square h-24 w-24 overflow-hidden rounded-xl bg-sage-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo}
+              alt={form.name}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null;
+      })()}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label">Name</label>

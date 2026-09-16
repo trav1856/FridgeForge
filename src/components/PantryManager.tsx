@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BarcodeIntake } from "./BarcodeIntake";
 import { ManualPantryIntake } from "./ManualPantryIntake";
 import { ReceiptIntake } from "./ReceiptIntake";
-import { formatNutritionBlurb } from "@/lib/open-food-facts";
-import { pantryIconFor } from "@/lib/pantry-icons";
+import { PantryItemTile } from "./PantryItemTile";
 
 type PantryItem = {
   id: string;
@@ -196,10 +195,15 @@ export function PantryManager() {
         </div>
       </details>
 
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-bold text-sage-900">
-          Your pantry ({items.length})
-        </h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-bold text-sage-900">
+            Your pantry ({items.length})
+          </h2>
+          <p className="mt-0.5 text-xs text-sage-600">
+            Photo tiles — tap a square to edit quantity.
+          </p>
+        </div>
         <input
           className="input max-w-[200px]"
           placeholder="Filter…"
@@ -222,99 +226,15 @@ export function PantryManager() {
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-sage-500">
                 {cat}
               </h3>
-              <ul className="space-y-2">
-                {list.map((item) => {
-                  const fallback = pantryIconFor({
-                    name: item.name,
-                    category: item.category,
-                  });
-                  return (
-                  <li key={item.id} className="card overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(item)}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none ring-ember-500 focus-visible:ring-2"
-                    >
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sage-100 text-xl"
-                        aria-hidden
-                      >
-                        {item.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span title={fallback.label}>{fallback.emoji}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                      <div className="font-semibold text-sage-900">
-                        {item.name}
-                      </div>
-                      <div className="text-sm text-sage-600">
-                        {item.quantity} {item.unit}
-                        {item.barcode && (
-                          <span className="ml-2 font-mono text-xs text-sage-500">
-                            · #{item.barcode}
-                          </span>
-                        )}
-                        {item.expirationDate && (
-                          <span className="ml-2 text-ember-700">
-                            · exp {item.expirationDate.slice(0, 10)}
-                          </span>
-                        )}
-                      </div>
-                      {item.tags.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {item.tags.map((t) => (
-                            <span
-                              key={t}
-                              className="badge bg-sage-100 text-sage-700"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {formatNutritionBlurb(item.nutritionJson) && (
-                        <p className="mt-1 text-xs text-sage-500">
-                          {formatNutritionBlurb(item.nutritionJson)}
-                        </p>
-                      )}
-                    </div>
-                    </button>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        className="btn-ghost text-xs"
-                        onClick={() => startEdit(item)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-ghost text-xs text-red-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void remove(item.id);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    </div>
-                    {item.quantity <= 0 && (
-                      <p className="border-t border-ember-100 bg-ember-50/70 px-4 py-1.5 text-xs text-ember-800">
-                        You probably need more {item.name}.
-                      </p>
-                    )}
-                  </li>
-                  );
-                })}
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {list.map((item) => (
+                  <PantryItemTile
+                    key={item.id}
+                    item={item}
+                    onEdit={startEdit}
+                    onRemove={(id) => void remove(id)}
+                  />
+                ))}
               </ul>
             </section>
           ))}

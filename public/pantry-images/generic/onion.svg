@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Onion">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5e8ff"/>
+      <stop offset="100%" stop-color="#d8b8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="48" fill="url(#g)"/>
+  <circle cx="400" cy="96" r="72" fill="#ffffff" opacity="0.12"/>
+  <circle cx="96" cy="420" r="96" fill="#ffffff" opacity="0.08"/>
+  <rect x="56" y="56" width="400" height="400" rx="36" fill="#ffffff" opacity="0.18"/>
+  <text x="256" y="250" text-anchor="middle" font-size="160" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🧅</text>
+  <text x="256" y="420" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#4a306b" opacity="0.9">Onion</text>
+</svg>

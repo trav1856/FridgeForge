@@ -3,6 +3,15 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { PANTRY_CATEGORIES } from "@/lib/categories";
 
+type NutritionSnap = {
+  caloriesPer100g?: number | null;
+  proteinPer100g?: number | null;
+  fatPer100g?: number | null;
+  carbsPer100g?: number | null;
+  productName?: string | null;
+  source: "openfoodfacts";
+};
+
 type LookupResult = {
   found: boolean;
   barcode: string;
@@ -12,6 +21,7 @@ type LookupResult = {
   suggestedCategory?: string;
   suggestedUnit?: string;
   imageUrl?: string | null;
+  nutrition?: NutritionSnap | null;
   isLikelyNonFood?: boolean;
 };
 
@@ -127,6 +137,7 @@ export function BarcodeIntake({ onAdded }: Props) {
     category: string | null;
     barcode: string | null;
     imageUrl?: string | null;
+    nutritionJson?: string | null;
   }) {
     const res = await fetch("/api/pantry", {
       method: "POST",
@@ -138,6 +149,7 @@ export function BarcodeIntake({ onAdded }: Props) {
         category: payload.category || null,
         barcode: payload.barcode || null,
         imageUrl: payload.imageUrl || null,
+        nutritionJson: payload.nutritionJson || null,
         merge: true,
       }),
     });
@@ -214,6 +226,9 @@ export function BarcodeIntake({ onAdded }: Props) {
           category: draft.category,
           barcode: draft.barcode,
           imageUrl: draft.imageUrl,
+          nutritionJson: data.nutrition
+            ? JSON.stringify(data.nutrition)
+            : null,
         });
         return;
       }
