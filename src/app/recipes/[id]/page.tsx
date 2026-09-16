@@ -37,6 +37,16 @@ import {
   reviewStatsFor,
 } from "@/lib/recipe-review-stats";
 import { recipeListAccessWhere } from "@/lib/recipe-visibility";
+import {
+  costTierFilterHref,
+  courseFilterHref,
+  cuisineFilterHref,
+  foodCategoryFilterHref,
+  originChipLabel,
+  originFilterHref,
+  searchFilterHref,
+  struggleFilterHref,
+} from "@/lib/recipe-filter-hrefs";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -307,11 +317,21 @@ export default async function RecipeDetailPage({ params }: Props) {
           ← Recipes
         </Link>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className={`badge ${recipe.costTier === "cheap" ? "bg-sage-100 text-sage-800" : "bg-ember-50 text-ember-800"}`}>
+          <Link
+            href={costTierFilterHref(recipe.costTier)}
+            className={`badge hover:underline ${recipe.costTier === "cheap" ? "bg-sage-100 text-sage-800" : "bg-ember-50 text-ember-800"}`}
+            data-testid="chip-costTier"
+          >
             {recipe.costTier}
-          </span>
+          </Link>
           {recipe.isStruggleMeal && (
-            <span className="badge bg-ember-600 text-white">struggle meal</span>
+            <Link
+              href={struggleFilterHref()}
+              className="badge bg-ember-600 text-white hover:underline"
+              data-testid="chip-struggle"
+            >
+              struggle meal
+            </Link>
           )}
           <DietaryBadges
             kosherEligible={recipe.kosherEligible}
@@ -326,6 +346,7 @@ export default async function RecipeDetailPage({ params }: Props) {
             lowSodiumEligible={recipe.lowSodiumEligible}
             prefs={user}
             showFootnote
+            linkToFilters
           />
           {parseAllergenList(recipe.allergenTags).map((a: string) => (
             <span key={`al-${a}`} className="badge bg-cream-200 text-sage-800">
@@ -333,20 +354,42 @@ export default async function RecipeDetailPage({ params }: Props) {
             </span>
           ))}
           {recipe.cuisine && (
-            <span className="badge bg-sage-200 text-sage-900">{recipe.cuisine}</span>
+            <Link
+              href={cuisineFilterHref(recipe.cuisine)}
+              className="badge bg-sage-200 text-sage-900 hover:underline"
+              data-testid="chip-cuisine"
+            >
+              {recipe.cuisine}
+            </Link>
           )}
           {recipe.course && (
-            <span className="badge bg-cream-300 text-sage-800">{recipe.course}</span>
+            <Link
+              href={courseFilterHref(recipe.course)}
+              className="badge bg-cream-300 text-sage-800 hover:underline"
+              data-testid="chip-course"
+            >
+              {recipe.course}
+            </Link>
           )}
           {(recipe.foodCategories || []).slice(0, 4).map((c: string) => (
-            <span key={`fc-${c}`} className="badge bg-cream-200 text-sage-700">
+            <Link
+              key={`fc-${c}`}
+              href={foodCategoryFilterHref(c)}
+              className="badge bg-cream-200 text-sage-700 hover:underline"
+              data-testid={`chip-food-${c}`}
+            >
               {c}
-            </span>
+            </Link>
           ))}
           {(recipe.origins || []).slice(0, 4).map((o: string) => (
-            <span key={`or-${o}`} className="badge bg-ember-50 text-ember-800">
-              {o}
-            </span>
+            <Link
+              key={`or-${o}`}
+              href={originFilterHref(o)}
+              className="badge bg-ember-50 text-ember-800 hover:underline"
+              data-testid={`chip-origin-${o}`}
+            >
+              {originChipLabel(o)}
+            </Link>
           ))}
           {recipe.visibility && (
             <span className="badge bg-cream-200 text-sage-700">
@@ -357,11 +400,25 @@ export default async function RecipeDetailPage({ params }: Props) {
                   : recipe.visibility}
             </span>
           )}
-          {recipe.tags.map((t) => (
-            <span key={t} className="badge bg-cream-200 text-sage-700">
-              {t}
-            </span>
-          ))}
+          {recipe.tags.map((t) =>
+            t === "struggle" ? (
+              <Link
+                key={t}
+                href={struggleFilterHref()}
+                className="badge bg-cream-200 text-sage-700 hover:underline"
+              >
+                {t}
+              </Link>
+            ) : (
+              <Link
+                key={t}
+                href={searchFilterHref(t)}
+                className="badge bg-cream-200 text-sage-700 hover:underline"
+              >
+                {t}
+              </Link>
+            )
+          )}
         </div>
         {adaptHint ? (
           <div className="mt-3 max-w-2xl">

@@ -228,6 +228,9 @@ export function RecipeList() {
   const foodCategoryParam = searchParams.get("foodCategory") || "";
   const originParam =
     searchParams.get("origin") || searchParams.get("ethnicity") || "";
+  const dietaryParam = searchParams.get("dietary") || "";
+  const costTierParam = searchParams.get("costTier") || "";
+  const struggleParam = searchParams.get("struggle") === "1";
   const scopeParam = (searchParams.get("scope") as Scope) || "all";
   const favoritesParam = searchParams.get("favorites") === "1";
 
@@ -288,6 +291,9 @@ export function RecipeList() {
     if (courseParam) params.set("course", courseParam);
     if (foodCategoryParam) params.set("foodCategory", foodCategoryParam);
     if (originParam) params.set("origin", originParam);
+    if (dietaryParam) params.set("dietary", dietaryParam);
+    if (costTierParam) params.set("costTier", costTierParam);
+    if (struggleParam) params.set("struggle", "1");
     const res = await fetch(`/api/recipes?${params.toString()}`);
     const data = await res.json();
     setRecipes(Array.isArray(data) ? data : []);
@@ -299,6 +305,9 @@ export function RecipeList() {
     courseParam,
     foodCategoryParam,
     originParam,
+    dietaryParam,
+    costTierParam,
+    struggleParam,
   ]);
 
   useEffect(() => {
@@ -312,6 +321,9 @@ export function RecipeList() {
   }
 
   let list = recipes;
+  if (costTierParam === "cheap" || costTierParam === "moderate") {
+    list = list.filter((r) => r.costTier === costTierParam);
+  }
   if (struggleMode) {
     list = [...recipes].sort((a, b) => {
       const as = (a.isStruggleMeal ? 2 : 0) + (a.costTier === "cheap" ? 1 : 0);

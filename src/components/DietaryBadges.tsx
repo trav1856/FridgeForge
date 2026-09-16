@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   DIETARY_BADGE_FOOTNOTE,
   wantsHalalChrome,
   wantsKosherChrome,
   type DietaryUserPrefs,
 } from "@/lib/dietary";
+import { dietaryFilterHref } from "@/lib/recipe-filter-hrefs";
 
 type Props = {
   kosherEligible?: boolean | null;
@@ -25,8 +28,35 @@ type Props = {
   prefs?: DietaryUserPrefs | null;
   /** Show the * footnote under badges (detail pages). */
   showFootnote?: boolean;
+  /** When true, badges link to /recipes?dietary=… */
+  linkToFilters?: boolean;
   className?: string;
 };
+
+function Badge({
+  href,
+  className,
+  title,
+  children,
+}: {
+  href?: string | null;
+  className: string;
+  title: string;
+  children: ReactNode;
+}) {
+  if (href) {
+    return (
+      <Link href={href} className={`${className} hover:underline`} title={title}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <span className={className} title={title}>
+      {children}
+    </span>
+  );
+}
 
 /**
  * Plant/macro badges are public. Kosher* / Halal* are prefs-gated personalization.
@@ -44,6 +74,7 @@ export function DietaryBadges({
   lowSodiumEligible,
   prefs = null,
   showFootnote = false,
+  linkToFilters = false,
   className = "",
 }: Props) {
   const showK = Boolean(kosherEligible) && wantsKosherChrome(prefs);
@@ -72,82 +103,101 @@ export function DietaryBadges({
     return null;
   }
 
+  const href = (dietary: string) =>
+    linkToFilters ? dietaryFilterHref(dietary) : null;
+
   return (
     <span className={className}>
       <span className="inline-flex flex-wrap gap-1.5">
         {showVegan && (
-          <span className="badge bg-lime-100 text-lime-900" title="Vegan">
+          <Badge
+            href={href("vegan")}
+            className="badge bg-lime-100 text-lime-900"
+            title="Vegan"
+          >
             Vegan
-          </span>
+          </Badge>
         )}
         {showVeg && (
-          <span
+          <Badge
+            href={href("vegetarian")}
             className="badge bg-green-100 text-green-900"
             title="Vegetarian"
           >
             Vegetarian
-          </span>
+          </Badge>
         )}
         {showPesc && (
-          <span
+          <Badge
+            href={href("pescatarian")}
             className="badge bg-teal-100 text-teal-900"
             title="Pescatarian"
           >
             Pescatarian
-          </span>
+          </Badge>
         )}
         {showCarnivore && (
-          <span
+          <Badge
+            href={href("carnivore")}
             className="badge bg-rose-100 text-rose-900"
             title="Carnivore"
           >
             Carnivore
-          </span>
+          </Badge>
         )}
         {showAtkins && (
-          <span className="badge bg-amber-100 text-amber-900" title="Atkins">
+          <Badge
+            href={href("atkins")}
+            className="badge bg-amber-100 text-amber-900"
+            title="Atkins"
+          >
             Atkins
-          </span>
+          </Badge>
         )}
         {showLowCarb && (
-          <span
+          <Badge
+            href={href("lowCarb")}
             className="badge bg-orange-100 text-orange-900"
             title="Low carb"
           >
             Low carb
-          </span>
+          </Badge>
         )}
         {showLowSugar && (
-          <span
+          <Badge
+            href={href("lowSugar")}
             className="badge bg-yellow-100 text-yellow-900"
             title="Low sugar"
           >
             Low sugar
-          </span>
+          </Badge>
         )}
         {showLowSodium && (
-          <span
+          <Badge
+            href={href("lowSodium")}
             className="badge bg-cyan-100 text-cyan-900"
             title="Low sodium"
           >
             Low sodium
-          </span>
+          </Badge>
         )}
         {showK && (
-          <span
+          <Badge
+            href={href("kosher")}
             className="badge bg-sky-100 text-sky-900"
             title={`${DIETARY_BADGE_FOOTNOTE} (not a certification claim)`}
           >
             Kosher*
-          </span>
+          </Badge>
         )}
         {showH && (
-          <span
+          <Badge
+            href={href("halal")}
             className="badge bg-emerald-100 text-emerald-900"
             title={`${DIETARY_BADGE_FOOTNOTE} (not a certification claim)`}
           >
             Halal*
-          </span>
+          </Badge>
         )}
       </span>
       {showFootnote && (showK || showH) ? (

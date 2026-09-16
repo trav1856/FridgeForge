@@ -73,6 +73,7 @@ export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
   const user = await getCurrentUser();
   const struggle = req.nextUrl.searchParams.get("struggle");
+  const costTierParam = req.nextUrl.searchParams.get("costTier");
   const favoritesOnly = req.nextUrl.searchParams.get("favorites") === "1";
   const scope = req.nextUrl.searchParams.get("scope"); // mine | household | (default all in scope)
   const q = req.nextUrl.searchParams.get("q");
@@ -103,6 +104,9 @@ export async function GET(req: NextRequest) {
   // Default "All": global catalog + accessible household/shared recipes
   const dietaryFilters: Record<string, unknown>[] = [];
   if (struggle === "1") dietaryFilters.push({ isStruggleMeal: true });
+  if (costTierParam === "cheap" || costTierParam === "moderate") {
+    dietaryFilters.push({ costTier: costTierParam });
+  }
   if (kosherOnly) {
     dietaryFilters.push({
       OR: [
