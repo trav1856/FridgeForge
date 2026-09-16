@@ -1,8 +1,11 @@
 /**
- * Curated generic pantry product photos (static SVGs under
+ * Curated generic pantry product photos (static WebP under
  * public/pantry-images/generic/). Brand-specific images come from
  * Open Food Facts and are stored on PantryItem.imageUrl when scanned
  * or when a non-staple branded name resolves via OFF search.
+ *
+ * Licensing: see public/pantry-images/generic/CREDITS.md — photos are
+ * Wikimedia Commons (PD / CC) or Unsplash License; not scraped brand art.
  */
 
 const GENERIC_BASE = "/pantry-images/generic";
@@ -184,7 +187,7 @@ const CATEGORY_GENERIC: Record<string, string> = {
 };
 
 function pathForSlug(slug: string): string {
-  return `${GENERIC_BASE}/${slug}.svg`;
+  return `${GENERIC_BASE}/${slug}.webp`;
 }
 
 /** True when URL points at our curated generic assets. */
@@ -239,7 +242,16 @@ export function resolvePantryImageUrl(opts: {
   category?: string | null;
 }): string | null {
   const stored = opts.imageUrl?.trim() || null;
-  if (stored) return stored;
+  if (stored) {
+    // Legacy generic SVG paths → WebP photos
+    if (
+      stored.includes("/pantry-images/generic/") &&
+      stored.endsWith(".svg")
+    ) {
+      return stored.replace(/\.svg$/i, ".webp");
+    }
+    return stored;
+  }
   return genericPantryImageForName(opts.name, opts.category);
 }
 
