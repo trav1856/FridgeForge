@@ -19,6 +19,7 @@ import {
   ORIGIN_REGIONS,
 } from "@/lib/recipe-taxonomy";
 import { COMMON_ALLERGENS, inferAllergenTags } from "@/lib/allergens";
+import { decodeRecipeTextFields } from "@/lib/html-entities";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
 
@@ -27,9 +28,37 @@ export type RecipeFormDraft = {
   description?: string | null;
   imageUrl?: string | null;
   cookTimeMinutes?: number | null;
-  ingredients?: { name: string; quantity: number; unit: string }[];
+  ingredients?: { name: string; quantity: number; unit: string; optional?: boolean }[];
   steps?: string[];
   notes?: string | null;
+  costTier?: "cheap" | "moderate";
+  tags?: string[];
+  cuisine?: string | null;
+  course?: string | null;
+  foodCategories?: string[];
+  origins?: string[];
+  originStory?: string | null;
+  servings?: number;
+  isStruggleMeal?: boolean;
+  kosherEligible?: boolean;
+  halalEligible?: boolean;
+  vegetarianEligible?: boolean;
+  pescatarianEligible?: boolean;
+  veganEligible?: boolean;
+  carnivoreEligible?: boolean;
+  atkinsEligible?: boolean;
+  lowCarbEligible?: boolean;
+  lowSugarEligible?: boolean;
+  lowSodiumEligible?: boolean;
+  kosherAdaptNote?: string | null;
+  halalAdaptNote?: string | null;
+  veganAdaptNote?: string | null;
+  vegetarianAdaptNote?: string | null;
+  allergenTags?: string[];
+  techniqueTips?: string[];
+  flavorBoosters?: string[];
+  visibility?: "global" | "household" | "shared" | "public" | "private";
+  sourceUrl?: string | null;
 };
 
 export type RecipeFormProps = {
@@ -39,6 +68,8 @@ export type RecipeFormProps = {
   /** Called after a successful create; when set with stayAfterSave, skips navigation. */
   onSaved?: (created: { id: string }) => void;
   stayAfterSave?: boolean;
+  mode?: "create" | "edit";
+  recipeId?: string;
 };
 
 const blankIng = (): Ing => ({
@@ -66,6 +97,13 @@ function applyRecipeToForm(
     setStepsText: (v: string) => void;
   }
 ) {
+  const decoded = decodeRecipeTextFields({
+    title: r.title || "",
+    description: r.description || "",
+    ingredients: r.ingredients || [],
+    steps: r.steps || [],
+  });
+  r = { ...r, ...decoded };
   setters.setTitle(r.title || "");
   setters.setDescription(r.description || "");
   setters.setImageUrl(r.imageUrl || null);
@@ -92,7 +130,7 @@ function draftToIngredients(d?: RecipeFormDraft | null): Ing[] {
     name: i.name,
     quantity: String(i.quantity ?? 1),
     unit: i.unit || "each",
-    optional: false,
+    optional: Boolean(i.optional),
   }));
 }
 
@@ -101,51 +139,105 @@ export function RecipeForm({
   hideUrlImport = false,
   onSaved,
   stayAfterSave = false,
+  mode = "create",
+  recipeId,
 }: RecipeFormProps) {
   const router = useRouter();
+  const isEdit = mode === "edit" && Boolean(recipeId);
   const [title, setTitle] = useState(initialDraft?.title || "");
   const [description, setDescription] = useState(
     initialDraft?.description || initialDraft?.notes || ""
   );
-  const [costTier, setCostTier] = useState<"cheap" | "moderate">("cheap");
-  const [visibility, setVisibility] = useState<"global" | "household" | "shared">("household");
-  const [tags, setTags] = useState("");
-  const [cuisine, setCuisine] = useState("");
-  const [course, setCourse] = useState("");
-  const [foodCategories, setFoodCategories] = useState<string[]>([]);
-  const [origins, setOrigins] = useState<string[]>([]);
-  const [originStory, setOriginStory] = useState("");
-  const [servings, setServings] = useState("2");
+  const [costTier, setCostTier] = useState<"cheap" | "moderate">(
+    initialDraft?.costTier === "moderate" ? "moderate" : "cheap"
+  );
+  const [visibility, setVisibility] = useState<"global" | "household" | "shared">(
+    initialDraft?.visibility === "global" ||
+      initialDraft?.visibility === "public"
+      ? "global"
+      : initialDraft?.visibility === "shared"
+        ? "shared"
+        : "household"
+  );
+  const [tags, setTags] = useState((initialDraft?.tags || []).join(", "));
+  const [cuisine, setCuisine] = useState(initialDraft?.cuisine || "");
+  const [course, setCourse] = useState(initialDraft?.course || "");
+  const [foodCategories, setFoodCategories] = useState<string[]>(
+    initialDraft?.foodCategories || []
+  );
+  const [origins, setOrigins] = useState<string[]>(initialDraft?.origins || []);
+  const [originStory, setOriginStory] = useState(
+    initialDraft?.originStory || ""
+  );
+  const [servings, setServings] = useState(
+    initialDraft?.servings != null ? String(initialDraft.servings) : "2"
+  );
   const [cookTimeMinutes, setCookTimeMinutes] = useState(
     initialDraft?.cookTimeMinutes != null && initialDraft.cookTimeMinutes > 0
       ? String(initialDraft.cookTimeMinutes)
       : ""
   );
-  const [isStruggleMeal, setIsStruggleMeal] = useState(true);
-  const [kosherEligible, setKosherEligible] = useState(true);
-  const [halalEligible, setHalalEligible] = useState(true);
-  const [vegetarianEligible, setVegetarianEligible] = useState(true);
-  const [pescatarianEligible, setPescatarianEligible] = useState(true);
-  const [veganEligible, setVeganEligible] = useState(false);
-  const [carnivoreEligible, setCarnivoreEligible] = useState(false);
-  const [atkinsEligible, setAtkinsEligible] = useState(false);
-  const [lowCarbEligible, setLowCarbEligible] = useState(false);
-  const [lowSugarEligible, setLowSugarEligible] = useState(false);
-  const [lowSodiumEligible, setLowSodiumEligible] = useState(false);
-  const [kosherAdaptNote, setKosherAdaptNote] = useState("");
-  const [halalAdaptNote, setHalalAdaptNote] = useState("");
-  const [veganAdaptNote, setVeganAdaptNote] = useState("");
-  const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
-  const [allergenTags, setAllergenTags] = useState<string[]>([]);
+  const [isStruggleMeal, setIsStruggleMeal] = useState(
+    initialDraft?.isStruggleMeal ?? true
+  );
+  const [kosherEligible, setKosherEligible] = useState(
+    initialDraft?.kosherEligible ?? true
+  );
+  const [halalEligible, setHalalEligible] = useState(
+    initialDraft?.halalEligible ?? true
+  );
+  const [vegetarianEligible, setVegetarianEligible] = useState(
+    initialDraft?.vegetarianEligible ?? true
+  );
+  const [pescatarianEligible, setPescatarianEligible] = useState(
+    initialDraft?.pescatarianEligible ?? true
+  );
+  const [veganEligible, setVeganEligible] = useState(
+    initialDraft?.veganEligible ?? false
+  );
+  const [carnivoreEligible, setCarnivoreEligible] = useState(
+    initialDraft?.carnivoreEligible ?? false
+  );
+  const [atkinsEligible, setAtkinsEligible] = useState(
+    initialDraft?.atkinsEligible ?? false
+  );
+  const [lowCarbEligible, setLowCarbEligible] = useState(
+    initialDraft?.lowCarbEligible ?? false
+  );
+  const [lowSugarEligible, setLowSugarEligible] = useState(
+    initialDraft?.lowSugarEligible ?? false
+  );
+  const [lowSodiumEligible, setLowSodiumEligible] = useState(
+    initialDraft?.lowSodiumEligible ?? false
+  );
+  const [kosherAdaptNote, setKosherAdaptNote] = useState(
+    initialDraft?.kosherAdaptNote || ""
+  );
+  const [halalAdaptNote, setHalalAdaptNote] = useState(
+    initialDraft?.halalAdaptNote || ""
+  );
+  const [veganAdaptNote, setVeganAdaptNote] = useState(
+    initialDraft?.veganAdaptNote || ""
+  );
+  const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState(
+    initialDraft?.vegetarianAdaptNote || ""
+  );
+  const [allergenTags, setAllergenTags] = useState<string[]>(
+    initialDraft?.allergenTags || []
+  );
   const [stepsText, setStepsText] = useState(
     (initialDraft?.steps || []).join("\n")
   );
-  const [tipsText, setTipsText] = useState("");
-  const [boostersText, setBoostersText] = useState("");
+  const [tipsText, setTipsText] = useState(
+    (initialDraft?.techniqueTips || []).join("\n")
+  );
+  const [boostersText, setBoostersText] = useState(
+    (initialDraft?.flavorBoosters || []).join(", ")
+  );
   const [ingredients, setIngredients] = useState<Ing[]>(
     draftToIngredients(initialDraft)
   );
-  const [importUrl, setImportUrl] = useState("");
+  const [importUrl, setImportUrl] = useState(initialDraft?.sourceUrl || "");
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialDraft?.imageUrl || null
   );
@@ -305,8 +397,9 @@ export function RecipeForm({
     };
 
     try {
-      const res = await fetch("/api/recipes", {
-        method: "POST",
+      const url = isEdit ? `/api/recipes/${recipeId}` : "/api/recipes";
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -314,24 +407,24 @@ export function RecipeForm({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ? JSON.stringify(data.error) : "Save failed");
       }
-      const created = await res.json();
+      const saved = await res.json();
       if (pendingPhoto) {
-        const up = await uploadRecipePhotoAfterCreate(created.id, pendingPhoto);
+        const up = await uploadRecipePhotoAfterCreate(saved.id, pendingPhoto);
         if (!up.ok) {
           setError(
             `Recipe saved, but photo failed: ${up.error}. You can add a photo on the recipe page.`
           );
           setSaving(false);
-          onSaved?.({ id: created.id });
+          onSaved?.({ id: saved.id });
           if (!stayAfterSave) {
-            router.push(`/recipes/${created.id}`);
+            router.push(`/recipes/${saved.id}`);
           }
           return;
         }
       }
-      onSaved?.({ id: created.id });
+      onSaved?.({ id: saved.id });
       if (!stayAfterSave) {
-        router.push(`/recipes/${created.id}`);
+        router.push(`/recipes/${saved.id}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save recipe");
@@ -353,7 +446,7 @@ export function RecipeForm({
 
   return (
     <div className="space-y-6">
-      {!hideUrlImport && (
+      {!hideUrlImport && !isEdit && (
       <div className="card space-y-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="font-display text-lg font-bold text-sage-900">
@@ -959,7 +1052,7 @@ export function RecipeForm({
           </div>
         )}
         <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Saving…" : "Save recipe"}
+          {saving ? "Saving…" : isEdit ? "Update recipe" : "Save recipe"}
         </button>
       </form>
     </div>

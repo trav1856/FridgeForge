@@ -1,11 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { AuthError, getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { recipeRowMatchesScope } from "@/lib/household";
 import { recipeIsReadable } from "@/lib/recipe-request";
 import { serializeRecipe } from "@/lib/mappers";
+import { stringifyArray } from "@/lib/json";
+import { normalizeVisibility } from "@/lib/recipe-visibility";
+import {
+  normalizeCuisine,
+  normalizeCourse,
+  normalizeFoodCategories,
+  normalizeOrigins,
+} from "@/lib/recipe-taxonomy";
+import { inferAllergenTags } from "@/lib/allergens";
+import { canEditRecipe } from "@/lib/recipe-user-images";
+import { dishKeyForTitle } from "@/lib/dish-key";
+import { sanitizeRecipeWritePayload } from "@/lib/sanitize-recipe-text";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+const ingredientSchema = z.object({
+  name: z.string().min(1),
+  quantity: z.number().positive().default(1),
+  unit: z.string().default("each"),
+  optional: z.boolean().optional(),
+});
+
+const patchSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional().nullable(),
+  steps: z.array(z.string().min(1)).min(1),
+  costTier: z.enum(["cheap", "moderate"]).default("cheap"),
+  tags: z.array(z.string()).optional(),
+  cuisine: z.string().max(80).optional().nullable(),
+  course: z.string().max(40).optional().nullable(),
+  foodCategories: z.array(z.string()).optional(),
+  origins: z.array(z.string()).optional(),
+  originStory: z.string().max(4000).optional().nullable(),
+  servings: z.number().int().positive().default(2),
+  cookTimeMinutes: z.number().int().positive().optional().nullable(),
+  sourceUrl: z.string().url().optional().nullable().or(z.literal("")).or(z.null()),
+  imageUrl: z.string().max(2000).optional().nullable(),
+  isStruggleMeal: z.boolean().optional(),
+  kosherEligible: z.boolean().optional(),
+  halalEligible: z.boolean().optional(),
+  vegetarianEligible: z.boolean().optional(),
+  pescatarianEligible: z.boolean().optional(),
+  veganEligible: z.boolean().optional(),
+  carnivoreEligible: z.boolean().optional(),
+  atkinsEligible: z.boolean().optional(),
+  lowCarbEligible: z.boolean().optional(),
+  lowSugarEligible: z.boolean().optional(),
+  lowSodiumEligible: z.boolean().optional(),
+  kosherAdaptNote: z.string().max(500).optional().nullable(),
+  halalAdaptNote: z.string().max(500).optional().nullable(),
+  veganAdaptNote: z.string().max(500).optional().nullable(),
+  vegetarianAdaptNote: z.string().max(500).optional().nullable(),
+  allergenTags: z.array(z.string().max(64)).max(40).optional(),
+  techniqueTips: z.array(z.string()).optional(),
+  flavorBoosters: z.array(z.string()).optional(),
+  visibility: z
+    .enum(["global", "household", "shared", "public", "private"])
+    .optional(),
+  ingredients: z.array(ingredientSchema).min(1),
+});
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
@@ -47,6 +106,158 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     ...serializeRecipe(rest),
     shares: canManageShares ? shares : undefined,
   });
+}
+
+export async function PATCH(req: NextRequest, ctx: Ctx) {
+  try {
+    const { id } = await ctx.params;
+    const user = await getCurrentUser();
+    if (!user) throw new AuthError();
+    const householdId = await resolveHouseholdId();
+    const existing = await prisma.recipe.findUnique({
+      where: { id },
+      include: { ingredients: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Household-scoped: must be readable in current household context
+    if (
+      !recipeIsReadable(existing, householdId, {
+        userId: user.id,
+        userEmail: user.email,
+      })
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (
+      !canEditRecipe(
+        { ownerUserId: existing.ownerUserId, householdId: existing.householdId },
+        { userId: user.id, householdId }
+      )
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await req.json();
+
+    // Visibility-only update from recipe detail "Make public" controls
+    const visibilityOnly = z
+      .object({
+        visibility: z.enum([
+          "global",
+          "household",
+          "shared",
+          "public",
+          "private",
+        ]),
+      })
+      .safeParse(body);
+    const bodyKeys =
+      body && typeof body === "object" && !Array.isArray(body)
+        ? Object.keys(body as object)
+        : [];
+    if (
+      visibilityOnly.success &&
+      bodyKeys.length === 1 &&
+      bodyKeys[0] === "visibility"
+    ) {
+      const updated = await prisma.recipe.update({
+        where: { id },
+        data: {
+          visibility: normalizeVisibility(visibilityOnly.data.visibility),
+        },
+        include: { ingredients: true },
+      });
+      return NextResponse.json(serializeRecipe(updated));
+    }
+
+    const data = sanitizeRecipeWritePayload(patchSchema.parse(body));
+    const cuisine = normalizeCuisine(data.cuisine ?? null);
+    const course = normalizeCourse(data.course ?? null);
+    const foodCategories = normalizeFoodCategories(data.foodCategories);
+    const origins = normalizeOrigins(data.origins);
+    const sourceUrl =
+      data.sourceUrl === "" || data.sourceUrl == null
+        ? null
+        : data.sourceUrl;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.recipeIngredient.deleteMany({ where: { recipeId: id } });
+      return tx.recipe.update({
+        where: { id },
+        data: {
+          title: data.title,
+          description: data.description ?? null,
+          steps: stringifyArray(data.steps),
+          costTier: data.costTier,
+          tags: stringifyArray(data.tags),
+          cuisine,
+          course,
+          foodCategories: stringifyArray(foodCategories),
+          origins: stringifyArray(origins),
+          originStory: data.originStory?.trim() || null,
+          servings: data.servings,
+          cookTimeMinutes: data.cookTimeMinutes ?? null,
+          sourceUrl,
+          ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
+          isStruggleMeal:
+            data.isStruggleMeal ?? data.tags?.includes("struggle") ?? false,
+          kosherEligible: data.kosherEligible ?? false,
+          halalEligible: data.halalEligible ?? false,
+          vegetarianEligible: data.vegetarianEligible ?? false,
+          pescatarianEligible: data.pescatarianEligible ?? false,
+          veganEligible: data.veganEligible ?? false,
+          carnivoreEligible: data.carnivoreEligible ?? false,
+          atkinsEligible: data.atkinsEligible ?? false,
+          lowCarbEligible: data.lowCarbEligible ?? false,
+          lowSugarEligible: data.lowSugarEligible ?? false,
+          lowSodiumEligible: data.lowSodiumEligible ?? false,
+          kosherAdaptNote: data.kosherAdaptNote?.trim() || null,
+          halalAdaptNote: data.halalAdaptNote?.trim() || null,
+          veganAdaptNote: data.veganAdaptNote?.trim() || null,
+          vegetarianAdaptNote: data.vegetarianAdaptNote?.trim() || null,
+          allergenTags: stringifyArray(
+            data.allergenTags && data.allergenTags.length
+              ? data.allergenTags
+              : inferAllergenTags({
+                  title: data.title,
+                  description: data.description,
+                  tags: data.tags,
+                  ingredients: data.ingredients,
+                  steps: data.steps,
+                })
+          ),
+          techniqueTips: stringifyArray(data.techniqueTips),
+          flavorBoosters: stringifyArray(data.flavorBoosters),
+          ...(data.visibility !== undefined
+            ? { visibility: normalizeVisibility(data.visibility) }
+            : {}),
+          dishKey: dishKeyForTitle(data.title),
+          ingredients: {
+            create: data.ingredients.map((i) => ({
+              name: i.name,
+              quantity: i.quantity,
+              unit: i.unit,
+              optional: i.optional ?? false,
+            })),
+          },
+        },
+        include: { ingredients: true },
+      });
+    });
+
+    return NextResponse.json(serializeRecipe(updated));
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: err.flatten() }, { status: 400 });
+    }
+    console.error("recipes/[id] PATCH", err);
+    return NextResponse.json({ error: "Failed to update recipe" }, { status: 500 });
+  }
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {

@@ -20,6 +20,7 @@ export const CUISINES = [
   "Middle Eastern",
   "Caribbean",
   "African",
+  "Slow cooker",
   "Other",
 ] as const;
 
@@ -469,6 +470,7 @@ type InferInput = {
   tags?: string[];
   ingredients?: { name: string }[];
   description?: string | null;
+  steps?: string[] | null;
 };
 
 function blob(input: InferInput): string {
@@ -477,6 +479,7 @@ function blob(input: InferInput): string {
     input.description || "",
     ...(input.tags || []),
     ...((input.ingredients || []).map((i) => i.name) || []),
+    ...(input.steps || []),
   ]
     .join(" ")
     .toLowerCase();
@@ -502,6 +505,16 @@ export function inferRecipeTaxonomy(input: InferInput): {
   let cuisine: Cuisine = "American";
   const origins = new Set<string>();
 
+  // Slow cooker / crock pot — method-as-cuisine label (checked first).
+  const slowCookerCue =
+    tags.some((t) =>
+      ["slow cooker", "slow-cooker", "crockpot", "crock pot", "crock-pot"].includes(t)
+    ) ||
+    /\b(slow\s*cooker|crock\s*pot|crockpot)\b/.test(text);
+
+  if (slowCookerCue) {
+    cuisine = "Slow cooker";
+  } else {
   // Mexican only from strong dish/tag cues — not "chili" as a seasoning word.
   const mexicanCue =
     tags.some((t) => ["tacos", "taco", "chili", "mexican", "tex-mex"].includes(t)) ||
@@ -621,6 +634,8 @@ export function inferRecipeTaxonomy(input: InferInput): {
   } else if (has(text, ["rice"]) && tags.includes("side")) {
     cuisine = "Asian";
     origins.add("asian");
+  }
+
   }
 
   let course: Course = "main";

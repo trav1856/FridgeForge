@@ -11,7 +11,8 @@ import { RecipeIngredients } from "@/components/RecipeIngredients";
 import { RecipeIcons } from "@/components/RecipeIcons";
 import { RecipeDetailActions } from "@/components/RecipeDetailActions";
 import { RecipePhotoUpload } from "@/components/RecipePhotoUpload";
-import { canEditRecipeImage } from "@/lib/recipe-user-images";
+import { RecipeOwnerControls } from "@/components/RecipeOwnerControls";
+import { canEditRecipe, canEditRecipeImage } from "@/lib/recipe-user-images";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 import { RecipeReviews } from "@/components/RecipeReviews";
 import { RecipeOriginStory } from "@/components/RecipeOriginStory";
@@ -82,6 +83,10 @@ export default async function RecipeDetailPage({ params }: Props) {
     user ? { userId: user.id, householdId } : null
   );
   const canEditPhoto = canEditRecipeImage(
+    { ownerUserId: raw.ownerUserId, householdId: raw.householdId },
+    { userId: user?.id ?? null, householdId }
+  );
+  const canEdit = canEditRecipe(
     { ownerUserId: raw.ownerUserId, householdId: raw.householdId },
     { userId: user?.id ?? null, householdId }
   );
@@ -372,6 +377,12 @@ export default async function RecipeDetailPage({ params }: Props) {
         </div>
         <div className="mt-3 max-w-2xl space-y-3">
           <RecipeImage src={recipe.imageUrl} alt={recipe.title} variant="hero" />
+          {canEdit && (
+            <RecipeOwnerControls
+              recipeId={recipe.id}
+              visibility={recipe.visibility}
+            />
+          )}
           {canEditPhoto && (
             <div className="card p-4">
               <RecipePhotoUpload

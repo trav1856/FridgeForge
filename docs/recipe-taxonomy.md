@@ -4,7 +4,7 @@ Recipes carry structured fields (preferred over free tags alone):
 
 | Field | Type | Purpose |
 | --- | --- | --- |
-| `cuisine` | string | Broad cuisine chip (Mexican, Italian, Asian, …) |
+| `cuisine` | string | Broad cuisine chip (Mexican, Italian, Asian, Slow cooker, …) |
 | `course` | string | breakfast / lunch / dinner / main / side / starter / dessert / snack / drink |
 | `foodCategories` | JSON string[] | Primary food types: dairy, meat, vegetable, fruit, grain, … |
 | `origins` | JSON string[] | Ethnicity / national-origin **foodways** ids (overlapping OK) |

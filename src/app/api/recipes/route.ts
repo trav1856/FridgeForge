@@ -23,7 +23,7 @@ import {
 } from "@/lib/recipe-taxonomy";
 import { satisfiesHalal } from "@/lib/dietary";
 import { inferAllergenTags } from "@/lib/allergens";
-import { decodeHtmlEntities } from "@/lib/html-entities";
+import { sanitizeRecipeWritePayload } from "@/lib/sanitize-recipe-text";
 
 const ingredientSchema = z.object({
   name: z.string().min(1),
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
   try {
     const householdId = await resolveHouseholdId();
     const body = await req.json();
-    const data = createSchema.parse(body);
+    const data = sanitizeRecipeWritePayload(createSchema.parse(body));
     const user = await getCurrentUser();
     const cuisine = normalizeCuisine(data.cuisine ?? null);
     const course = normalizeCourse(data.course ?? null);
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
     const origins = normalizeOrigins(data.origins);
     const recipe = await prisma.recipe.create({
       data: {
-        title: decodeHtmlEntities(data.title),
+        title: data.title,
         description: data.description ?? null,
         steps: stringifyArray(data.steps),
         costTier: data.costTier,

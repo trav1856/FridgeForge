@@ -1,5 +1,5 @@
 import { parseIngredientLine, parseRecipeFromText } from "@/lib/scrape-recipe";
-import { decodeHtmlEntities } from "./html-entities";
+import { decodeHtmlEntities, decodeRecipeTextFields } from "@/lib/html-entities";
 
 export type RecipeImportDraft = {
   title: string;
@@ -111,14 +111,14 @@ export function parseDraftJson(raw: unknown): RecipeImportDraft | null {
   const description = asString(data.description) || null;
   const notes = asString(data.notes) || null;
 
-  return {
-    title: decodeHtmlEntities(title).slice(0, 200),
+  return decodeRecipeTextFields({
+    title: title.slice(0, 200),
     description: description ? description.slice(0, 2000) : null,
     ingredients,
     steps,
     cookTimeMinutes,
     notes: notes ? notes.slice(0, 2000) : null,
-  };
+  });
 }
 
 /** Heuristic fallback using existing paste parser. */
@@ -139,24 +139,24 @@ export function structureRecipeHeuristic(rawText: string): StructureResult | nul
     if (ingLines.length < 1 || stepLines.length < 1) return null;
     return {
       source: "heuristic",
-      draft: {
+      draft: decodeRecipeTextFields({
         title,
         ingredients: ingLines.map(parseIngredientLine),
         steps: stepLines,
         notes: null,
-      },
+      }),
     };
   }
   return {
     source: "heuristic",
-    draft: {
+    draft: decodeRecipeTextFields({
       title: result.recipe.title,
       description: result.recipe.description ?? null,
       ingredients: result.recipe.ingredients,
       steps: result.recipe.steps,
       cookTimeMinutes: result.recipe.cookTimeMinutes ?? null,
       notes: null,
-    },
+    }),
   };
 }
 

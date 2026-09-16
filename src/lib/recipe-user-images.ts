@@ -108,3 +108,17 @@ export function canEditRecipeImage(
   // Guest session: only recipes in guest scope (null household), same as DELETE write.
   return recipe.householdId == null;
 }
+
+
+/**
+ * Who may edit full recipe fields (title, ingredients, steps, …).
+ * Owner only — stricter than photo edit (which also allows household members).
+ * Guests and non-owners never get full edit.
+ */
+export function canEditRecipe(
+  recipe: { ownerUserId: string | null; householdId: string | null },
+  actor: { userId: string | null; householdId: string | null }
+): boolean {
+  if (!actor.userId) return false;
+  return recipe.ownerUserId === actor.userId;
+}

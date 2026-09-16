@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CUISINES,
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
   inferRecipeTaxonomy,
+  isCuisine,
   matchesRecipeSearch,
   matchesTaxonomyFilters,
+  normalizeCuisine,
   normalizeOrigins,
   originMatchIds,
   recipeMatchesOrigin,
@@ -249,5 +252,37 @@ describe("cuisine refinements", () => {
         ingredients: [{ name: "gochujang" }, { name: "rice" }],
       }).cuisine
     ).toBe("Korean");
+  });
+});
+
+
+describe("Slow cooker cuisine", () => {
+  it("is a known cuisine in CUISINES", () => {
+    expect(CUISINES).toContain("Slow cooker");
+    expect(isCuisine("Slow cooker")).toBe(true);
+    expect(normalizeCuisine("slow cooker")).toBe("Slow cooker");
+  });
+
+  it("inferRecipeTaxonomy catches crockpot / slow cooker text", () => {
+    const a = inferRecipeTaxonomy({
+      title: "Crockpot Chili",
+      tags: ["dinner"],
+      ingredients: [{ name: "ground beef" }],
+      steps: ["Add everything to the crockpot and cook on low."],
+    });
+    expect(a.cuisine).toBe("Slow cooker");
+
+    const b = inferRecipeTaxonomy({
+      title: "Weeknight Stew",
+      tags: ["slow cooker"],
+      ingredients: [{ name: "beef stew meat" }],
+    });
+    expect(b.cuisine).toBe("Slow cooker");
+
+    const c = inferRecipeTaxonomy({
+      title: "Pulled Pork",
+      steps: ["Cook in a slow cooker for 8 hours."],
+    });
+    expect(c.cuisine).toBe("Slow cooker");
   });
 });

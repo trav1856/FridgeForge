@@ -4,6 +4,16 @@ import {
   extractRecipeImage,
   resolveRecipeImageUrl,
 } from "@/lib/recipe-image";
+import { decodeRecipeTextFields } from "@/lib/html-entities";
+
+function finalizeScrapedRecipe<T extends {
+  title: string;
+  description?: string | null;
+  steps: string[];
+  ingredients: { name: string; quantity: number; unit: string }[];
+}>(recipe: T): T {
+  return decodeRecipeTextFields(recipe);
+}
 
 export type ScrapedRecipe = {
   title: string;
@@ -506,13 +516,13 @@ export function parseRecipeFromText(
 
   return {
     ok: true,
-    recipe: {
+    recipe: finalizeScrapedRecipe({
       title,
       description,
       ingredients: ingredientLines.map(parseIngredientLine),
       steps: stepLines,
       sourceUrl: sourceUrl || "",
-    },
+    }),
   };
 }
 
@@ -806,7 +816,7 @@ export async function scrapeRecipeFromUrl(url: string): Promise<ScrapeResult> {
           title: recipe.title,
           scrapedImageUrl: scrapedImage,
         });
-        return { ok: true, recipe };
+        return { ok: true, recipe: finalizeScrapedRecipe(recipe) };
       }
     }
 
@@ -835,7 +845,7 @@ export async function scrapeRecipeFromUrl(url: string): Promise<ScrapeResult> {
           title: recipe.title,
           scrapedImageUrl: scrapedImage,
         });
-        return { ok: true, recipe };
+        return { ok: true, recipe: finalizeScrapedRecipe(recipe) };
       }
     }
 

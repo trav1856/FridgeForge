@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   RECIPE_USER_IMAGE_MAX_BYTES,
+  canEditRecipe,
   canEditRecipeImage,
   isManagedRecipeUserImagePath,
   validateRecipeUserImageUpload,
@@ -99,6 +100,49 @@ describe("canEditRecipeImage", () => {
   it("does not let signed-in household members edit pure catalog rows", () => {
     expect(
       canEditRecipeImage(recipeCatalog, { userId: "u1", householdId: "h1" })
+    ).toBe(false);
+  });
+});
+
+
+describe("canEditRecipe", () => {
+  const recipeOwned = {
+    ownerUserId: "u1",
+    householdId: "h1",
+  };
+  const recipeHousehold = {
+    ownerUserId: "other",
+    householdId: "h1",
+  };
+  const recipeCatalog = {
+    ownerUserId: null,
+    householdId: null,
+  };
+
+  it("allows only the signed-in owner", () => {
+    expect(
+      canEditRecipe(recipeOwned, { userId: "u1", householdId: "h1" })
+    ).toBe(true);
+  });
+
+  it("denies household members who are not the owner", () => {
+    expect(
+      canEditRecipe(recipeHousehold, { userId: "u2", householdId: "h1" })
+    ).toBe(false);
+  });
+
+  it("denies other users, guests, and catalog rows", () => {
+    expect(
+      canEditRecipe(recipeOwned, { userId: "u9", householdId: "h9" })
+    ).toBe(false);
+    expect(
+      canEditRecipe(recipeOwned, { userId: null, householdId: null })
+    ).toBe(false);
+    expect(
+      canEditRecipe(recipeCatalog, { userId: "u1", householdId: "h1" })
+    ).toBe(false);
+    expect(
+      canEditRecipe(recipeCatalog, { userId: null, householdId: null })
     ).toBe(false);
   });
 });
