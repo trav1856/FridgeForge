@@ -1,4 +1,5 @@
 import { parseIngredientLine, parseRecipeFromText } from "@/lib/scrape-recipe";
+import { decodeHtmlEntities } from "./html-entities";
 
 export type RecipeImportDraft = {
   title: string;
@@ -29,7 +30,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 function asString(v: unknown, fallback = ""): string {
-  if (typeof v === "string") return v.trim();
+  if (typeof v === "string") return decodeHtmlEntities(v).trim();
   if (typeof v === "number" && Number.isFinite(v)) return String(v);
   return fallback;
 }
@@ -111,7 +112,7 @@ export function parseDraftJson(raw: unknown): RecipeImportDraft | null {
   const notes = asString(data.notes) || null;
 
   return {
-    title: title.slice(0, 200),
+    title: decodeHtmlEntities(title).slice(0, 200),
     description: description ? description.slice(0, 2000) : null,
     ingredients,
     steps,
