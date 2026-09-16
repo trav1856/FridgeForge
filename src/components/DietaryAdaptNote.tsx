@@ -9,7 +9,7 @@ type Props = {
   className?: string;
 };
 
-/** Prominent “Make it vegan/vegetarian/kosher: …” when recipe isn’t eligible but has a note. */
+/** Prominent adapt callout (“Kosher/Vegetarian with substitutions”, Make it vegan/halal) when recipe isn’t eligible but has a note. */
 export function DietaryAdaptNote({
   hint,
   compact = false,

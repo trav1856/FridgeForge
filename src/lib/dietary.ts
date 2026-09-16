@@ -478,7 +478,14 @@ export function dietConflictPills(
   if (!prefs) return [];
   const pills: DietConflictPill[] = [];
   if (wantsKosherChrome(prefs) && !recipe.kosherEligible) {
-    pills.push({ kind: "kosher", label: "Not kosher" });
+    const note =
+      recipe.kosherAdaptNote?.trim() ||
+      inferAdaptNotes(recipe).kosherAdaptNote?.trim() ||
+      "";
+    pills.push({
+      kind: "kosher",
+      label: note ? "Kosher with substitutions" : "Not kosher",
+    });
   }
   if (wantsHalalChrome(prefs) && !satisfiesHalal(recipe)) {
     pills.push({ kind: "halal", label: "Not halal" });
@@ -563,27 +570,38 @@ export function pickSimilarEligibleRecipes<
 }
 
 /**
- * Prominent adapt hint when recipe doesn't match active dietary prefs.
- * Plant (vegan/vegetarian) checked first; then Make it kosher when user has
- * kosher interest (preferKosher / Jewish / Observant) and a kosherAdaptNote.
- * Note: Jewish cuisine/origin ≠ kosherEligible — adapt notes are food guidance only.
+ * Prominent adapt hint when recipe does not match active dietary prefs.
+ * Plant (vegan/vegetarian) checked first; then "Kosher with substitutions" when
+ * user has kosher interest (preferKosher / Jewish / Observant) and a stored or
+ * inferred kosherAdaptNote (e.g. meat+dairy → plant/pareve cheese).
+ * Note: Jewish cuisine/origin ≠ kosherEligible — adapt notes are food guidance only,
+ * not a hechsher claim.
  */
 export function adaptHintForPrefs(
   recipe: RecipeDietaryFields,
   prefs: DietaryUserPrefs | null | undefined
 ): AdaptHint | null {
   if (!prefs) return null;
+  const inferred = inferAdaptNotes(recipe);
   const plant = normalizePlantPrefs(prefs);
   if (plant.primary === "vegan" && !recipe.veganEligible) {
-    const note = recipe.veganAdaptNote?.trim();
+    const note =
+      recipe.veganAdaptNote?.trim() || inferred.veganAdaptNote?.trim() || "";
     if (note) {
       return { kind: "vegan", label: "Make it vegan", note };
     }
   }
   if (plant.primary === "vegetarian" && !recipe.vegetarianEligible) {
-    const note = recipe.vegetarianAdaptNote?.trim();
+    const note =
+      recipe.vegetarianAdaptNote?.trim() ||
+      inferred.vegetarianAdaptNote?.trim() ||
+      "";
     if (note) {
-      return { kind: "vegetarian", label: "Make it vegetarian", note };
+      return {
+        kind: "vegetarian",
+        label: "Vegetarian with substitutions",
+        note,
+      };
     }
   }
   const wantsKosher =
@@ -591,13 +609,21 @@ export function adaptHintForPrefs(
     Boolean(prefs.isJewish) ||
     effectiveObservant(prefs);
   if (wantsKosher && !recipe.kosherEligible) {
-    const note = recipe.kosherAdaptNote?.trim();
+    const note =
+      recipe.kosherAdaptNote?.trim() ||
+      inferred.kosherAdaptNote?.trim() ||
+      "";
     if (note) {
-      return { kind: "kosher", label: "Make it kosher", note };
+      return {
+        kind: "kosher",
+        label: "Kosher with substitutions",
+        note,
+      };
     }
   }
   if (wantsHalalChrome(prefs) && !satisfiesHalal(recipe)) {
-    const note = recipe.halalAdaptNote?.trim();
+    const note =
+      recipe.halalAdaptNote?.trim() || inferred.halalAdaptNote?.trim() || "";
     if (note) {
       return { kind: "halal", label: "Make it halal", note };
     }
@@ -636,6 +662,25 @@ const FISH_SEAFOOD =
 
 const ANIMAL_DAIRY_EGG =
   /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|egg\b|eggs\b|mayonnaise|mayo\b|honey)\b/i;
+
+/** Dairy only (not egg/honey) — for classic meat+dairy kosher conflict. */
+const DAIRY_ONLY =
+  /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|cheddar|mozzarella|parmesan|swiss|provolone|ricotta|sour cream|half[- ]and[- ]half|queso|feta|brie|gouda|monterey jack|american cheese)\b/i;
+
+/**
+ * Curated substitution suggestions (not a hechsher / certification claim).
+ * Full Learning Center DB comes later — keep this small and careful.
+ */
+export const DIETARY_SUBSTITUTION_HINTS = {
+  meatDairyCheese:
+    "Use a pareve or plant-based cheese and keep meat and dairy tools separate; verify certified ingredients.",
+  meatDairyGeneric:
+    "Keep meat and dairy separate — swap dairy for pareve or plant-based alternatives, or omit dairy; verify certified ingredients.",
+  vegetarianMeat:
+    "Swap the meat for beans, tofu, mushrooms, or a plant-based crumble.",
+  vegetarianSeafood:
+    "Skip the seafood or swap for hearts of palm, chickpeas, or tofu.",
+} as const;
 
 const EGG_ONLY =
   /\b(egg\b|eggs\b)\b/i;
@@ -677,6 +722,28 @@ export function recipeContainsAlcohol(recipe: RecipeDietaryFields): boolean {
   return ALCOHOL_IN_RECIPE.test(blobFromInput(recipe));
 }
 
+/** Classic kosher conflict: land meat + dairy in the same recipe as written. */
+export function recipeHasMeatAndDairy(recipe: {
+  title?: string | null;
+  description?: string | null;
+  tags?: string[] | string | null;
+  ingredients?: { name: string }[] | string[] | null;
+  steps?: string[] | string | null;
+}): boolean {
+  const blob = blobFromInput(recipe);
+  return LAND_MEAT.test(blob) && DAIRY_ONLY.test(blob);
+}
+
+export function recipeHasDairy(recipe: {
+  title?: string | null;
+  description?: string | null;
+  tags?: string[] | string | null;
+  ingredients?: { name: string }[] | string[] | null;
+  steps?: string[] | string | null;
+}): boolean {
+  return DAIRY_ONLY.test(blobFromInput(recipe));
+}
+
 /**
  * Halal satisfaction for soft-prefer / hard-filter:
  * - halalEligible, OR
@@ -712,10 +779,14 @@ export function inferDietaryEligibility(input: {
   lowSodiumEligible: boolean;
 } {
   const blob = blobFromInput(input);
-  const kosherEligible = !KOSHER_INELIGIBLE.test(blob);
-  const halalEligible = !HALAL_INELIGIBLE.test(blob);
   const hasLandMeat = LAND_MEAT.test(blob);
   const hasFish = FISH_SEAFOOD.test(blob);
+  const hasDairy = DAIRY_ONLY.test(blob);
+  const hasMeatAndDairy = hasLandMeat && hasDairy;
+  // Pork/shellfish bans + classic meat+dairy mix are not kosher as written.
+  const kosherEligible =
+    !KOSHER_INELIGIBLE.test(blob) && !hasMeatAndDairy;
+  const halalEligible = !HALAL_INELIGIBLE.test(blob);
   const hasAnimalDairyEgg = ANIMAL_DAIRY_EGG.test(blob);
   const hasEgg = EGG_ONLY.test(blob);
   const hasCarbHeavy = CARB_HEAVY.test(blob);
@@ -768,7 +839,7 @@ export function inferAdaptNotes(input: {
   let kosherAdaptNote: string | null = null;
   let halalAdaptNote: string | null = null;
 
-  // Light kosher adapt heuristics (not cuisine/origin claims).
+  // Light kosher adapt heuristics (not cuisine/origin or hechsher claims).
   if (!diet.kosherEligible) {
     if (/\b(pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami)\b/i.test(blob)) {
       kosherAdaptNote =
@@ -780,6 +851,13 @@ export function inferAdaptNotes(input: {
     ) {
       kosherAdaptNote =
         "Swap shellfish for a kosher fish (fins and scales) or a plant alternative.";
+    } else if (recipeHasMeatAndDairy(input)) {
+      // e.g. cheeseburger — dairy cheese on a meat dish
+      if (/\b(cheese|cheddar|mozzarella|parmesan|swiss|provolone|american cheese|queso)\b/i.test(blob)) {
+        kosherAdaptNote = DIETARY_SUBSTITUTION_HINTS.meatDairyCheese;
+      } else {
+        kosherAdaptNote = DIETARY_SUBSTITUTION_HINTS.meatDairyGeneric;
+      }
     } else {
       kosherAdaptNote =
         "Use kosher-certified ingredients and keep meat/dairy separate if needed.";
@@ -799,20 +877,18 @@ export function inferAdaptNotes(input: {
     }
   } else if (!diet.vegetarianEligible) {
     if (LAND_MEAT.test(blob) && !FISH_SEAFOOD.test(blob)) {
-      vegetarianAdaptNote =
-        "Swap the meat for beans, tofu, mushrooms, or a plant-based crumble.";
+      vegetarianAdaptNote = DIETARY_SUBSTITUTION_HINTS.vegetarianMeat;
       veganAdaptNote =
         "Swap the meat for beans/tofu/mushrooms and use plant dairy if needed.";
     } else if (FISH_SEAFOOD.test(blob)) {
-      vegetarianAdaptNote =
-        "Skip the seafood or swap for hearts of palm, chickpeas, or tofu.";
+      vegetarianAdaptNote = DIETARY_SUBSTITUTION_HINTS.vegetarianSeafood;
       veganAdaptNote =
         "Skip seafood; use hearts of palm, chickpeas, or tofu, and plant dairy.";
     }
   }
 
   if (!diet.halalEligible) {
-    if (/(pork|bacon|ham|prosciutto|pancetta|lard|pepperoni|salami)/i.test(blob)) {
+    if (/\b(pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami)\b/i.test(blob)) {
       halalAdaptNote =
         "Swap pork products for halal-certified beef, chicken, turkey, or plant protein.";
     } else if (ALCOHOL_IN_RECIPE.test(blob)) {

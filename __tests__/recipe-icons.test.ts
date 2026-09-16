@@ -25,3 +25,15 @@ describe("recipeIconsFrom", () => {
     expect(ids).not.toContain("meat");
   });
 });
+
+describe("RecipeIcons markup", () => {
+  it("exposes title and mobile tap label for icon meaning", async () => {
+    const fs = await import("fs");
+    const src = fs.readFileSync("src/components/RecipeIcons.tsx", "utf8");
+    expect(src).toMatch(/title=\{icon\.label\}/);
+    expect(src).toMatch(/aria-label=\{icon\.label\}/);
+    expect(src).toMatch(/recipe-icon-label/);
+    expect(src).toMatch(/use client/);
+    expect(src).toMatch(/setActiveId/);
+  });
+});

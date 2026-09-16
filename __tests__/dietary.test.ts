@@ -6,6 +6,7 @@ import {
   applyMacroPrefToggle,
   applyPlantPrefToggle,
   dietConflictPills,
+  DIETARY_SUBSTITUTION_HINTS,
   effectiveObservant,
   inferAdaptNotes,
   inferDietaryEligibility,
@@ -14,6 +15,7 @@ import {
   passesPlantDietaryFilter,
   pickSimilarEligibleRecipes,
   recipeContainsAlcohol,
+  recipeHasMeatAndDairy,
   resolveDietarySuggestOptions,
   satisfiesHalal,
   showHalalSection,
@@ -407,6 +409,60 @@ describe("inferDietaryEligibility heuristics", () => {
     expect(r.pescatarianEligible).toBe(true);
   });
 
+  it("marks cheeseburger-like meat+dairy as not kosherEligible", () => {
+    const r = inferDietaryEligibility({
+      title: "Cheeseburger",
+      ingredients: [
+        { name: "ground beef" },
+        { name: "cheddar cheese" },
+        { name: "bun" },
+      ],
+    });
+    expect(r.kosherEligible).toBe(false);
+    expect(r.halalEligible).toBe(true);
+    expect(r.vegetarianEligible).toBe(false);
+    expect(
+      recipeHasMeatAndDairy({
+        title: "Cheeseburger",
+        ingredients: [
+          { name: "ground beef" },
+          { name: "cheddar cheese" },
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it("does not flag fish+dairy as meat+dairy kosher conflict", () => {
+    expect(
+      recipeHasMeatAndDairy({
+        title: "Salmon with Cream Sauce",
+        ingredients: [{ name: "salmon" }, { name: "cream" }],
+      })
+    ).toBe(false);
+    const r = inferDietaryEligibility({
+      title: "Salmon with Cream Sauce",
+      ingredients: [{ name: "salmon" }, { name: "cream" }],
+    });
+    expect(r.kosherEligible).toBe(true);
+  });
+
+  it("infers kosher adapt note with plant/pareve cheese for meat+dairy", () => {
+    const notes = inferAdaptNotes({
+      title: "Cheeseburger",
+      ingredients: [
+        { name: "beef patty" },
+        { name: "american cheese" },
+        { name: "bun" },
+      ],
+    });
+    expect(notes.kosherAdaptNote).toBeTruthy();
+    expect(notes.kosherAdaptNote).toMatch(/pareve|plant-based cheese/i);
+    expect(notes.kosherAdaptNote).toBe(
+      DIETARY_SUBSTITUTION_HINTS.meatDairyCheese
+    );
+    expect(notes.vegetarianAdaptNote).toMatch(/beans|tofu|mushroom/i);
+  });
+
   it("infers vegan adapt note for dairy dishes", () => {
     const notes = inferAdaptNotes({
       title: "Mac and Cheese",
@@ -711,7 +767,7 @@ describe("adapt hints", () => {
     ).toBeNull();
   });
 
-  it("shows Make it kosher when not kosherEligible but note + kosher prefs", () => {
+  it("shows Kosher with substitutions when not kosherEligible but note + kosher prefs", () => {
     expect(
       adaptHintForPrefs(
         {
@@ -722,7 +778,7 @@ describe("adapt hints", () => {
       )
     ).toEqual({
       kind: "kosher",
-      label: "Make it kosher",
+      label: "Kosher with substitutions",
       note: "Swap shrimp for kosher fish",
     });
     expect(
@@ -733,7 +789,7 @@ describe("adapt hints", () => {
         },
         { isJewish: true }
       )
-    ).toMatchObject({ kind: "kosher", label: "Make it kosher" });
+    ).toMatchObject({ kind: "kosher", label: "Kosher with substitutions" });
     // no kosher interest → no kosher hint
     expect(
       adaptHintForPrefs(
@@ -751,6 +807,39 @@ describe("adapt hints", () => {
         { preferKosher: true }
       )
     ).toBeNull();
+  });
+
+  it("infers Kosher with substitutions for cheeseburger without stored note", () => {
+    const hint = adaptHintForPrefs(
+      {
+        kosherEligible: false,
+        title: "Cheeseburger",
+        ingredients: [
+          { name: "ground beef" },
+          { name: "cheddar cheese" },
+        ],
+      },
+      { preferKosher: true }
+    );
+    expect(hint?.kind).toBe("kosher");
+    expect(hint?.label).toBe("Kosher with substitutions");
+    expect(hint?.note).toMatch(/pareve|plant-based cheese/i);
+  });
+
+  it("shows Vegetarian with substitutions when meat dish + veg prefs", () => {
+    expect(
+      adaptHintForPrefs(
+        {
+          vegetarianEligible: false,
+          vegetarianAdaptNote: "Swap chicken for chickpeas",
+        },
+        { preferVegetarian: true }
+      )
+    ).toEqual({
+      kind: "vegetarian",
+      label: "Vegetarian with substitutions",
+      note: "Swap chicken for chickpeas",
+    });
   });
 
   it("shows Make it halal when not satisfiesHalal but note + Halal prefs", () => {
@@ -976,6 +1065,17 @@ describe("DietaryBadges markup", () => {
   });
 });
 
+describe("substitution chrome labels", () => {
+  it("keeps substitution wording in dietary helpers (prefs-gated chrome)", () => {
+    const fs = require("fs") as typeof import("fs");
+    const src = fs.readFileSync("src/lib/dietary.ts", "utf8");
+    expect(src).toMatch(/Kosher with substitutions/);
+    expect(src).toMatch(/Vegetarian with substitutions/);
+    expect(src).toMatch(/pareve or plant-based cheese/);
+    expect(src).not.toMatch(/public Kosher nav/i);
+  });
+});
+
 describe("private diet chrome", () => {
   it("hides conflict pills from guests and users without prefs", () => {
     expect(
@@ -999,6 +1099,31 @@ describe("private diet chrome", () => {
         { preferHalal: true }
       )
     ).toEqual([{ kind: "halal", label: "Not halal" }]);
+  });
+
+  it("shows Kosher with substitutions pill when meat+dairy adapt path exists", () => {
+    expect(
+      dietConflictPills(
+        {
+          kosherEligible: false,
+          title: "Cheeseburger",
+          ingredients: [
+            { name: "ground beef" },
+            { name: "cheese" },
+          ],
+        },
+        { preferKosher: true }
+      )
+    ).toEqual([{ kind: "kosher", label: "Kosher with substitutions" }]);
+    expect(
+      dietConflictPills(
+        {
+          kosherEligible: false,
+          kosherAdaptNote: "Use plant cheese",
+        },
+        { isJewish: true }
+      )
+    ).toEqual([{ kind: "kosher", label: "Kosher with substitutions" }]);
   });
 
   it("picks similar eligible recipes by cuisine/course/dishKey", () => {
