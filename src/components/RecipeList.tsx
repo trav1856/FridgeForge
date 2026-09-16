@@ -382,9 +382,14 @@ export function RecipeList() {
             Search
           </button>
         </form>
-        <Link href="/recipes/new" className="btn-primary">
-          Add / import recipe
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/recipes/new" className="btn-primary">
+            Add / import recipe
+          </Link>
+          <Link href="/recipes/import" className="btn-secondary">
+            Scan a page
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

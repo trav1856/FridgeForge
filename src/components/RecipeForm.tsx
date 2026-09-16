@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
 import {
@@ -17,6 +18,25 @@ import {
 import { COMMON_ALLERGENS, inferAllergenTags } from "@/lib/allergens";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
+
+export type RecipeFormDraft = {
+  title?: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  cookTimeMinutes?: number | null;
+  ingredients?: { name: string; quantity: number; unit: string }[];
+  steps?: string[];
+  notes?: string | null;
+};
+
+export type RecipeFormProps = {
+  initialDraft?: RecipeFormDraft | null;
+  /** Hide the URL / paste import card (used by scan import review). */
+  hideUrlImport?: boolean;
+  /** Called after a successful create; when set with stayAfterSave, skips navigation. */
+  onSaved?: (created: { id: string }) => void;
+  stayAfterSave?: boolean;
+};
 
 const blankIng = (): Ing => ({
   name: "",
@@ -62,10 +82,28 @@ function applyRecipeToForm(
   setters.setStepsText((r.steps || []).join("\n"));
 }
 
-export function RecipeForm() {
+function draftToIngredients(d?: RecipeFormDraft | null): Ing[] {
+  const list = d?.ingredients || [];
+  if (!list.length) return [blankIng()];
+  return list.map((i) => ({
+    name: i.name,
+    quantity: String(i.quantity ?? 1),
+    unit: i.unit || "each",
+    optional: false,
+  }));
+}
+
+export function RecipeForm({
+  initialDraft = null,
+  hideUrlImport = false,
+  onSaved,
+  stayAfterSave = false,
+}: RecipeFormProps) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(initialDraft?.title || "");
+  const [description, setDescription] = useState(
+    initialDraft?.description || initialDraft?.notes || ""
+  );
   const [costTier, setCostTier] = useState<"cheap" | "moderate">("cheap");
   const [visibility, setVisibility] = useState<"global" | "household" | "shared">("household");
   const [tags, setTags] = useState("");
@@ -75,7 +113,11 @@ export function RecipeForm() {
   const [origins, setOrigins] = useState<string[]>([]);
   const [originStory, setOriginStory] = useState("");
   const [servings, setServings] = useState("2");
-  const [cookTimeMinutes, setCookTimeMinutes] = useState("");
+  const [cookTimeMinutes, setCookTimeMinutes] = useState(
+    initialDraft?.cookTimeMinutes != null && initialDraft.cookTimeMinutes > 0
+      ? String(initialDraft.cookTimeMinutes)
+      : ""
+  );
   const [isStruggleMeal, setIsStruggleMeal] = useState(true);
   const [kosherEligible, setKosherEligible] = useState(true);
   const [halalEligible, setHalalEligible] = useState(true);
@@ -92,12 +134,18 @@ export function RecipeForm() {
   const [veganAdaptNote, setVeganAdaptNote] = useState("");
   const [vegetarianAdaptNote, setVegetarianAdaptNote] = useState("");
   const [allergenTags, setAllergenTags] = useState<string[]>([]);
-  const [stepsText, setStepsText] = useState("");
+  const [stepsText, setStepsText] = useState(
+    (initialDraft?.steps || []).join("\n")
+  );
   const [tipsText, setTipsText] = useState("");
   const [boostersText, setBoostersText] = useState("");
-  const [ingredients, setIngredients] = useState<Ing[]>([blankIng()]);
+  const [ingredients, setIngredients] = useState<Ing[]>(
+    draftToIngredients(initialDraft)
+  );
   const [importUrl, setImportUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialDraft?.imageUrl || null
+  );
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -271,11 +319,17 @@ export function RecipeForm() {
             `Recipe saved, but photo failed: ${up.error}. You can add a photo on the recipe page.`
           );
           setSaving(false);
-          router.push(`/recipes/${created.id}`);
+          onSaved?.({ id: created.id });
+          if (!stayAfterSave) {
+            router.push(`/recipes/${created.id}`);
+          }
           return;
         }
       }
-      router.push(`/recipes/${created.id}`);
+      onSaved?.({ id: created.id });
+      if (!stayAfterSave) {
+        router.push(`/recipes/${created.id}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save recipe");
     } finally {
@@ -285,10 +339,16 @@ export function RecipeForm() {
 
   return (
     <div className="space-y-6">
+      {!hideUrlImport && (
       <div className="card space-y-3 p-4 sm:p-5">
-        <h2 className="font-display text-lg font-bold text-sage-900">
-          Import from URL
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h2 className="font-display text-lg font-bold text-sage-900">
+            Import from URL
+          </h2>
+          <Link href="/recipes/import" className="btn-ghost text-sm">
+            Scan a page
+          </Link>
+        </div>
         <p className="text-sm text-sage-600">
           Best-effort parse for common recipe sites (JSON-LD / common HTML). Some
           sites intermittently block automated fetches — use Paste recipe if that
@@ -396,6 +456,7 @@ export function RecipeForm() {
           )}
         </div>
       </div>
+      )}
 
       <form onSubmit={onSubmit} className="card space-y-4 p-4 sm:p-5">
         <h2 className="font-display text-lg font-bold text-sage-900">

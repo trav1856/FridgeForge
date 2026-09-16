@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RecipeForm } from "@/components/RecipeForm";
 
 export default function NewRecipePage() {
@@ -8,7 +9,14 @@ export default function NewRecipePage() {
           Add recipe
         </h1>
         <p className="mt-1 text-sm text-sage-600">
-          Import from a URL or enter everything by hand.
+          Import from a URL,{" "}
+          <Link
+            href="/recipes/import"
+            className="font-semibold text-ember-800 underline"
+          >
+            scan a cookbook page
+          </Link>
+          , or enter everything by hand.
         </p>
       </div>
       <RecipeForm />

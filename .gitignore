@@ -40,3 +40,9 @@ next-env.d.ts
 # User-uploaded pantry photos (keep folder)
 /public/pantry-images/user/*
 !/public/pantry-images/user/.gitkeep
+
+# Temporary cookbook page scans for import (keep folder)
+/public/recipe-images/import/*
+!/public/recipe-images/import/.gitkeep
+eng.traineddata
+*.traineddata
