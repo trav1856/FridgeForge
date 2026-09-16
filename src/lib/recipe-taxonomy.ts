@@ -749,7 +749,7 @@ export function inferRecipeTaxonomy(input: InferInput): {
   ) {
     cuisine = "Asian";
     origins.add("asian");
-  } else if (has(text, ["curry", "tikka", "masala", "indian", "naan"])) {
+  } else if (has(text, ["curry", "tikka", "masala", "indian", "naan", "butter chicken", "biryani", "vindaloo"])) {
     cuisine = "Indian";
     origins.add("indian");
     origins.add("asian");
