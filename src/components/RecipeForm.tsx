@@ -9,6 +9,7 @@ import {
   useCallback,
   useDeferredValue,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -716,16 +717,31 @@ export function RecipeForm({
     );
   }, []);
 
+  const inferAllergenSrc = useRef({
+    title,
+    description,
+    tags,
+    ingredients,
+    stepsText,
+  });
+  inferAllergenSrc.current = {
+    title,
+    description,
+    tags,
+    ingredients,
+    stepsText,
+  };
   const inferAllergens = useCallback(() => {
+    const s = inferAllergenSrc.current;
     const inferred = inferAllergenTags({
-      title,
-      description,
-      tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
-      ingredients: ingredients.map((i) => ({ name: i.name })),
-      steps: stepsText.split("\n"),
+      title: s.title,
+      description: s.description,
+      tags: s.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      ingredients: s.ingredients.map((i) => ({ name: i.name })),
+      steps: s.stepsText.split("\n"),
     });
     setAllergenTags((prev) => [...new Set([...prev, ...inferred])]);
-  }, [title, description, tags, ingredients, stepsText]);
+  }, []);
 
   const toggleFoodCategory = useCallback((c: string) => {
     setFoodCategories((prev) => {
