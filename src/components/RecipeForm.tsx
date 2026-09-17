@@ -3,7 +3,14 @@
 import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
 import { RecipeNutritionCard } from "@/components/RecipeNutritionCard";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  memo,
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
@@ -82,6 +89,200 @@ const blankIng = (): Ing => ({
   unit: "each",
   optional: false,
 });
+
+/** Pre-group origins once — avoids filtering ORIGIN_OPTIONS on every keystroke. */
+const ORIGINS_BY_REGION = ORIGIN_REGIONS.map((region) => ({
+  region,
+  options: ORIGIN_OPTIONS.filter((o) => o.regionId === region.id),
+}));
+
+type ChipBtnProps = {
+  label: string;
+  on: boolean;
+  onClick: () => void;
+  activeClass?: string;
+};
+
+const ChipBtn = memo(function ChipBtn({
+  label,
+  on,
+  onClick,
+  activeClass = "bg-sage-800 text-cream-50",
+}: ChipBtnProps) {
+  return (
+    <button
+      type="button"
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+        on
+          ? activeClass
+          : "border border-cream-300 bg-cream-100 text-sage-800"
+      }`}
+      aria-pressed={on}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+});
+
+const OriginPicker = memo(function OriginPicker({
+  origins,
+  onToggle,
+}: {
+  origins: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div>
+      <label className="label">Origin (by region)</label>
+      <div className="mt-1 max-h-44 space-y-2 overflow-y-auto">
+        {ORIGINS_BY_REGION.map(({ region, options }) => (
+          <div key={region.id}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
+              {region.label}
+            </p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {options.map((o) => {
+                const on = origins.includes(o.id);
+                return (
+                  <ChipBtn
+                    key={o.id}
+                    label={`${o.depth ? "· ".repeat(o.depth) : ""}${o.label}`}
+                    on={on}
+                    onClick={() => onToggle(o.id)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const AllergenPicker = memo(function AllergenPicker({
+  allergenTags,
+  onInfer,
+  onToggle,
+}: {
+  allergenTags: string[];
+  onInfer: () => void;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label className="label mb-0">Allergen tags</label>
+        <button
+          type="button"
+          className="text-xs font-semibold text-ember-700 hover:underline"
+          onClick={onInfer}
+        >
+          Infer from ingredients
+        </button>
+      </div>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {COMMON_ALLERGENS.map((a) => {
+          const on = allergenTags.includes(a.id);
+          return (
+            <ChipBtn
+              key={a.id}
+              label={a.label}
+              on={on}
+              onClick={() => onToggle(a.id)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const FoodCategoryPicker = memo(function FoodCategoryPicker({
+  foodCategories,
+  meatType,
+  onToggleCategory,
+  onToggleMeat,
+}: {
+  foodCategories: string[];
+  meatType: string;
+  onToggleCategory: (c: string) => void;
+  onToggleMeat: (m: string) => void;
+}) {
+  return (
+    <div>
+      <label className="label">Food categories</label>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {FOOD_CATEGORIES.map((c) => {
+          const on = foodCategories.includes(c);
+          return (
+            <ChipBtn
+              key={c}
+              label={c}
+              on={on}
+              onClick={() => onToggleCategory(c)}
+            />
+          );
+        })}
+      </div>
+      {(foodCategories.includes("meat") || Boolean(meatType)) && (
+        <div className="mt-2" data-testid="meat-type-selector">
+          <label className="label">Meat type</label>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {MEAT_TYPES.map((m) => {
+              const on = meatType === m;
+              return (
+                <ChipBtn
+                  key={m}
+                  label={m}
+                  on={on}
+                  activeClass="bg-ember-600 text-white"
+                  onClick={() => onToggleMeat(m)}
+                />
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-sage-500">
+            Fish and shrimp stay under seafood, not meat.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const NutritionPreview = memo(function NutritionPreview({
+  ingredients,
+  servings,
+}: {
+  ingredients: Ing[];
+  servings: string;
+}) {
+  const deferredIngredients = useDeferredValue(ingredients);
+  const deferredServings = useDeferredValue(servings);
+  const estimate = useMemo(
+    () =>
+      estimateRecipeNutrition(
+        deferredIngredients
+          .filter((i) => i.name.trim())
+          .map((i) => ({
+            name: i.name.trim(),
+            quantity: Number(i.quantity) || 0,
+            unit: i.unit || "each",
+          })),
+        Number(deferredServings) || 2
+      ),
+    [deferredIngredients, deferredServings]
+  );
+  if (estimate.matchedCount <= 0) return null;
+  return (
+    <div id="recipe-nutrition-preview" className="pt-2">
+      <RecipeNutritionCard estimate={estimate} />
+    </div>
+  );
+});
+
 
 function applyRecipeToForm(
   r: {
@@ -503,16 +704,49 @@ export function RecipeForm({
     }
   }
 
-  const nutritionPreview = estimateRecipeNutrition(
-    ingredients
-      .filter((i) => i.name.trim())
-      .map((i) => ({
-        name: i.name.trim(),
-        quantity: Number(i.quantity) || 0,
-        unit: i.unit || "each",
-      })),
-    Number(servings) || 2
-  );
+  const toggleOrigin = useCallback((id: string) => {
+    setOrigins((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const toggleAllergen = useCallback((id: string) => {
+    setAllergenTags((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const inferAllergens = useCallback(() => {
+    const inferred = inferAllergenTags({
+      title,
+      description,
+      tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
+      ingredients: ingredients.map((i) => ({ name: i.name })),
+      steps: stepsText.split("\n"),
+    });
+    setAllergenTags((prev) => [...new Set([...prev, ...inferred])]);
+  }, [title, description, tags, ingredients, stepsText]);
+
+  const toggleFoodCategory = useCallback((c: string) => {
+    setFoodCategories((prev) => {
+      const on = prev.includes(c);
+      const next = on ? prev.filter((x) => x !== c) : [...prev, c];
+      if (c === "meat" && on) setMeatType("");
+      return next;
+    });
+  }, []);
+
+  const toggleMeatType = useCallback((m: string) => {
+    setMeatType((prev) => {
+      const on = prev === m;
+      if (!on) {
+        setFoodCategories((cats) =>
+          cats.includes("meat") ? cats : [...cats, "meat"]
+        );
+      }
+      return on ? "" : m;
+    });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -658,7 +892,7 @@ export function RecipeForm({
         </div>
         <RecipePhotoUpload
           imageUrl={imageUrl}
-          alt={title || "Recipe photo"}
+          alt="Recipe photo"
           pendingFile={pendingPhoto}
           onPendingFileChange={(file) => {
             setPendingPhoto(file);
@@ -857,53 +1091,11 @@ export function RecipeForm({
             </div>
           </div>
         </div>
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="label mb-0">Allergen tags</label>
-            <button
-              type="button"
-              className="text-xs font-semibold text-ember-700 hover:underline"
-              onClick={() => {
-                const inferred = inferAllergenTags({
-                  title,
-                  description,
-                  tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
-                  ingredients: ingredients.map((i) => ({ name: i.name })),
-                  steps: stepsText.split("\n"),
-                });
-                setAllergenTags((prev) =>
-                  [...new Set([...prev, ...inferred])]
-                );
-              }}
-            >
-              Infer from ingredients
-            </button>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {COMMON_ALLERGENS.map((a) => {
-              const on = allergenTags.includes(a.id);
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    on
-                      ? "bg-sage-800 text-cream-50"
-                      : "border border-cream-300 bg-cream-100 text-sage-800"
-                  }`}
-                  aria-pressed={on}
-                  onClick={() =>
-                    setAllergenTags((prev) =>
-                      on ? prev.filter((x) => x !== a.id) : [...prev, a.id]
-                    )
-                  }
-                >
-                  {a.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <AllergenPicker
+          allergenTags={allergenTags}
+          onInfer={inferAllergens}
+          onToggle={toggleAllergen}
+        />
 
         <div>
           <label className="label">Tags (comma-separated)</label>
@@ -953,108 +1145,14 @@ export function RecipeForm({
             </select>
           </div>
         </div>
-        <div>
-          <label className="label">Food categories</label>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {FOOD_CATEGORIES.map((c) => {
-              const on = foodCategories.includes(c);
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    on
-                      ? "bg-sage-800 text-cream-50"
-                      : "border border-cream-300 bg-cream-100 text-sage-800"
-                  }`}
-                  onClick={() => {
-                    setFoodCategories((prev) => {
-                      const next = on
-                        ? prev.filter((x) => x !== c)
-                        : [...prev, c];
-                      if (c === "meat" && on) setMeatType("");
-                      return next;
-                    });
-                  }}
-                >
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-          {(foodCategories.includes("meat") || Boolean(meatType)) && (
-            <div className="mt-2" data-testid="meat-type-selector">
-              <label className="label">Meat type</label>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {MEAT_TYPES.map((m) => {
-                  const on = meatType === m;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        on
-                          ? "bg-ember-600 text-white"
-                          : "border border-cream-300 bg-cream-100 text-sage-800"
-                      }`}
-                      onClick={() => {
-                        setMeatType(on ? "" : m);
-                        if (!on && !foodCategories.includes("meat")) {
-                          setFoodCategories((prev) => [...prev, "meat"]);
-                        }
-                      }}
-                    >
-                      {m}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-1 text-xs text-sage-500">
-                Fish and shrimp stay under seafood, not meat.
-              </p>
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="label">Origin (by region)</label>
-          <div className="mt-1 max-h-44 space-y-2 overflow-y-auto">
-            {ORIGIN_REGIONS.map((region) => (
-              <div key={region.id}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
-                  {region.label}
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {ORIGIN_OPTIONS.filter((o) => o.regionId === region.id).map(
-                    (o) => {
-                      const on = origins.includes(o.id);
-                      return (
-                        <button
-                          key={o.id}
-                          type="button"
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            on
-                              ? "bg-sage-800 text-cream-50"
-                              : "border border-cream-300 bg-cream-100 text-sage-800"
-                          }`}
-                          onClick={() =>
-                            setOrigins((prev) =>
-                              on
-                                ? prev.filter((x) => x !== o.id)
-                                : [...prev, o.id]
-                            )
-                          }
-                        >
-                          {o.depth ? "· ".repeat(o.depth) : ""}
-                          {o.label}
-                        </button>
-                      );
-                    }
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <FoodCategoryPicker
+          foodCategories={foodCategories}
+          meatType={meatType}
+          onToggleCategory={toggleFoodCategory}
+          onToggleMeat={toggleMeatType}
+        />
+        <OriginPicker origins={origins} onToggle={toggleOrigin} />
+
         <div>
           <label className="label">Story behind this food (optional)</label>
           <textarea
@@ -1158,11 +1256,7 @@ export function RecipeForm({
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        {nutritionPreview.matchedCount > 0 && (
-          <div id="recipe-nutrition-preview" className="pt-2">
-            <RecipeNutritionCard estimate={nutritionPreview} />
-          </div>
-        )}
+        <NutritionPreview ingredients={ingredients} servings={servings} />
         <button type="submit" className="btn-primary" disabled={saving}>
           {saving ? "Saving…" : isEdit ? "Update recipe" : "Save recipe"}
         </button>

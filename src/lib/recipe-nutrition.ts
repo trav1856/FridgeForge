@@ -842,40 +842,83 @@ function macrosFromSnapshot(snap: NutritionSnapshot): Macros | null {
   };
 }
 
+type NutritionMatch = { key: string; entry: NutritionTableEntry };
+
+/** Pre-normalized table candidates — built once at module load. */
+const NUTRITION_CANDIDATES: {
+  key: string;
+  entry: NutritionTableEntry;
+  nc: string;
+  raw: string;
+}[] = (() => {
+  const out: {
+    key: string;
+    entry: NutritionTableEntry;
+    nc: string;
+    raw: string;
+  }[] = [];
+  for (const [key, entry] of Object.entries(NUTRITION_TABLE)) {
+    for (const raw of [key, ...(entry.aliases ?? [])]) {
+      const nc = normalizeName(raw);
+      if (nc) out.push({ key, entry, nc, raw });
+    }
+  }
+  return out;
+})();
+
+/** Exact normalized candidate → table entry. */
+const NUTRITION_EXACT = new Map<string, NutritionMatch>();
+for (const c of NUTRITION_CANDIDATES) {
+  // First write wins; candidates list key before aliases so canonical keys prefer.
+  if (!NUTRITION_EXACT.has(c.nc)) {
+    NUTRITION_EXACT.set(c.nc, { key: c.key, entry: c.entry });
+  }
+}
+
+const findNutritionEntryCache = new Map<string, NutritionMatch | null>();
+
 /** Find best built-in table entry for an ingredient name. */
 export function findNutritionEntry(
   name: string
-): { key: string; entry: NutritionTableEntry } | null {
+): NutritionMatch | null {
   const n = normalizeName(name);
   if (!n) return null;
 
-  // Score candidates: exact > phrase containment > loose alias match.
+  const cached = findNutritionEntryCache.get(n);
+  if (cached !== undefined) return cached;
+
+  // Exact hit — O(1), covers most pantry staples while typing.
+  const exact = NUTRITION_EXACT.get(n);
+  if (exact) {
+    findNutritionEntryCache.set(n, exact);
+    return exact;
+  }
+
+  // Score candidates: phrase containment > loose alias match.
   // Avoids "white rice" resolving to "brown rice" via shared alias family.
   let best: { key: string; entry: NutritionTableEntry; score: number } | null =
     null;
 
-  for (const [key, entry] of Object.entries(NUTRITION_TABLE)) {
-    const candidates = [key, ...(entry.aliases ?? [])];
-    for (const c of candidates) {
-      const nc = normalizeName(c);
-      if (!nc) continue;
-      let score = 0;
-      if (n === nc) {
-        score = 1000 + nc.length;
-      } else if (` ${n} `.includes(` ${nc} `) || ` ${nc} `.includes(` ${n} `)) {
-        score = 500 + Math.min(n.length, nc.length);
-      } else if (namesMatch(name, c)) {
-        score = 100 + Math.min(n.length, nc.length);
-      } else {
-        continue;
-      }
-      if (!best || score > best.score) {
-        best = { key, entry, score };
-      }
+  const padded = ` ${n} `;
+  for (const c of NUTRITION_CANDIDATES) {
+    let score = 0;
+    if (padded.includes(` ${c.nc} `) || ` ${c.nc} `.includes(padded)) {
+      score = 500 + Math.min(n.length, c.nc.length);
+    } else if (namesMatch(name, c.raw)) {
+      score = 100 + Math.min(n.length, c.nc.length);
+    } else {
+      continue;
+    }
+    if (!best || score > best.score) {
+      best = { key: c.key, entry: c.entry, score };
+      // Exact already handled; 500+ phrase is the best remaining tier for
+      // equal-length ties — keep scanning for a longer phrase hit.
     }
   }
 
-  return best ? { key: best.key, entry: best.entry } : null;
+  const result = best ? { key: best.key, entry: best.entry } : null;
+  findNutritionEntryCache.set(n, result);
+  return result;
 }
 
 /**

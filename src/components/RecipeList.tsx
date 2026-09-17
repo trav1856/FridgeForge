@@ -66,6 +66,39 @@ type Recipe = {
 
 type Scope = "all" | "mine" | "household" | "favorites";
 
+/** Local draft state so keystrokes do not re-render the full recipe grid. */
+function RecipeSearchBox({
+  qParam,
+  onSearch,
+}: {
+  qParam: string;
+  onSearch: (q: string) => void;
+}) {
+  const [qDraft, setQDraft] = useState(qParam);
+  useEffect(() => {
+    setQDraft(qParam);
+  }, [qParam]);
+  return (
+    <form
+      className="flex max-w-md flex-1 gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSearch(qDraft.trim());
+      }}
+    >
+      <input
+        className="input max-w-xs flex-1"
+        placeholder="Search recipes…"
+        value={qDraft}
+        onChange={(e) => setQDraft(e.target.value)}
+      />
+      <button type="submit" className="btn-secondary text-sm">
+        Search
+      </button>
+    </form>
+  );
+}
+
 function ChipRow({
   label,
   options,
@@ -250,13 +283,8 @@ export function RecipeList() {
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [qDraft, setQDraft] = useState(qParam);
   const [dietPrefs, setDietPrefs] = useState<DietaryUserPrefs | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setQDraft(qParam);
-  }, [qParam]);
 
   useEffect(() => {
     let cancelled = false;
@@ -392,23 +420,10 @@ export function RecipeList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <form
-          className="flex max-w-md flex-1 gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setParams({ q: qDraft.trim() || null });
-          }}
-        >
-          <input
-            className="input max-w-xs flex-1"
-            placeholder="Search recipes…"
-            value={qDraft}
-            onChange={(e) => setQDraft(e.target.value)}
-          />
-          <button type="submit" className="btn-secondary text-sm">
-            Search
-          </button>
-        </form>
+        <RecipeSearchBox
+          qParam={qParam}
+          onSearch={(q) => setParams({ q: q || null })}
+        />
         <div className="flex flex-wrap gap-2">
           <Link href="/recipes/new" className="btn-primary">
             Add / import recipe

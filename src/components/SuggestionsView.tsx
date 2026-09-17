@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+
 import { useStruggleMode } from "./StruggleModeProvider";
 import { StruggleBanner } from "./StruggleBanner";
 import { DealsBanner } from "./DealsBanner";
@@ -64,6 +65,57 @@ const TIME_OPTIONS: { label: string; value: number | null }[] = [
 function timeHeadline(maxMinutes: number | null): string {
   if (maxMinutes == null) return "What can you cook?";
   return `I’ve got ${maxMinutes} minutes — what can I make?`;
+}
+
+
+/** Local draft so craving keystrokes do not re-render suggestion cards. */
+function CravingSearchBox({
+  q,
+  onSearch,
+  onClear,
+}: {
+  q: string;
+  onSearch: (q: string) => void;
+  onClear: () => void;
+}) {
+  const [qDraft, setQDraft] = useState("");
+  return (
+    <div className="mt-4">
+      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-sage-500">
+        Craving search
+      </label>
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSearch(qDraft);
+        }}
+      >
+        <input
+          className="input max-w-sm flex-1"
+          placeholder='e.g. "potato", "noodles", "garlic"'
+          value={qDraft}
+          onChange={(e) => setQDraft(e.target.value)}
+          aria-label="Search by craving keyword"
+        />
+        <button type="submit" className="btn-secondary">
+          Search
+        </button>
+        {q && (
+          <button
+            type="button"
+            className="btn-ghost text-sm"
+            onClick={() => {
+              setQDraft("");
+              onClear();
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </form>
+    </div>
+  );
 }
 
 export function SuggestionsView() {
@@ -169,41 +221,11 @@ export function SuggestionsView() {
           more ingredients (still listed with what's missing).
         </p>
 
-        <div className="mt-4">
-          <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-sage-500">
-            Craving search
-          </label>
-          <form
-            className="flex flex-wrap gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setQ(qDraft);
-            }}
-          >
-            <input
-              className="input max-w-sm flex-1"
-              placeholder='e.g. "potato", "noodles", "garlic"'
-              value={qDraft}
-              onChange={(e) => setQDraft(e.target.value)}
-              aria-label="Search by craving keyword"
-            />
-            <button type="submit" className="btn-secondary">
-              Search
-            </button>
-            {q && (
-              <button
-                type="button"
-                className="btn-ghost text-sm"
-                onClick={() => {
-                  setQ("");
-                  setQDraft("");
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </form>
-        </div>
+        <CravingSearchBox
+          q={q}
+          onSearch={setQ}
+          onClear={() => setQ("")}
+        />
 
         <div className="mt-4">
           <div className="mb-2 text-xs font-bold uppercase tracking-wide text-sage-500">

@@ -33,9 +33,11 @@ export function Nav() {
       .then((data) => {
         const n =
           typeof data?.pendingCount === "number" ? data.pendingCount : 0;
-        setPendingRequestCount(n);
+        setPendingRequestCount((prev) => (prev === n ? prev : n));
       })
-      .catch(() => setPendingRequestCount(0));
+      .catch(() =>
+        setPendingRequestCount((prev) => (prev === 0 ? prev : 0))
+      );
   }, []);
 
   useEffect(() => {
