@@ -15,6 +15,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
+import { RecipeStoryMediaEditor } from "./RecipeStoryMediaEditor";
+import type { StoryMediaItem } from "@/lib/origin-story-media";
 import {
   RecipePhotoUpload,
   uploadRecipePhotoAfterCreate,
@@ -50,6 +52,8 @@ export type RecipeFormDraft = {
   origins?: string[];
   meatType?: string | null;
   originStory?: string | null;
+  /** Existing story media (edit mode); managed by RecipeStoryMediaEditor, not the form payload. */
+  originStoryMedia?: StoryMediaItem[];
   servings?: number;
   isStruggleMeal?: boolean;
   kosherEligible?: boolean;
@@ -1180,6 +1184,10 @@ export function RecipeForm({
           <p className="mt-1 text-xs text-sage-500">
             Appears under Learn more on the recipe detail page. Leave blank to hide.
           </p>
+          <RecipeStoryMediaEditor
+            recipeId={isEdit ? recipeId : undefined}
+            initialMedia={initialDraft?.originStoryMedia}
+          />
         </div>
 
         <div>

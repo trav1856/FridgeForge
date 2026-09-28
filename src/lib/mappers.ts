@@ -1,5 +1,6 @@
 import type { PantryItem, Recipe, RecipeIngredient } from "@prisma/client";
 import { parseStringArray } from "./json";
+import { parseStoryMedia } from "./origin-story-media";
 import type { CostTier, PantrySnapshot, RecipeForMatch } from "./types";
 
 export function toPantrySnapshot(item: PantryItem): PantrySnapshot {
@@ -84,6 +85,9 @@ export function serializeRecipe(
     origins: parseStringArray(recipe.origins),
     meatType: (recipe as { meatType?: string | null }).meatType ?? null,
     originStory: recipe.originStory ?? null,
+    originStoryMedia: parseStoryMedia(
+      (recipe as { originStoryMedia?: string | null }).originStoryMedia
+    ),
     dishKey: recipe.dishKey ?? null,
     allergenTags: parseStringArray(recipe.allergenTags),
     techniqueTips: parseStringArray(recipe.techniqueTips),

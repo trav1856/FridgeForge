@@ -83,6 +83,7 @@ export default async function EditRecipePage({ params }: Props) {
           foodCategories: recipe.foodCategories,
           origins: recipe.origins,
           originStory: recipe.originStory,
+          originStoryMedia: recipe.originStoryMedia,
           servings: recipe.servings,
           isStruggleMeal: recipe.isStruggleMeal,
           kosherEligible: recipe.kosherEligible,

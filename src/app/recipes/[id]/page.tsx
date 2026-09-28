@@ -568,7 +568,11 @@ export default async function RecipeDetailPage({ params }: Props) {
         </div>
       )}
 
-      <RecipeOriginStory title={recipe.title} originStory={recipe.originStory} />
+      <RecipeOriginStory
+        title={recipe.title}
+        originStory={recipe.originStory}
+        media={recipe.originStoryMedia}
+      />
       <RecipeReviews recipeId={recipe.id} recipeTitle={recipe.title} />
 
     </article>
