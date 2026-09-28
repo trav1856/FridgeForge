@@ -9,17 +9,34 @@ import {
   ORIGIN_OPTIONS,
   ORIGIN_REGIONS,
   matchesTaxonomyFilters,
+  originLabel,
 } from "@/lib/recipe-taxonomy";
 import {
   nextVisibility,
+  normalizeVisibility,
   visibilityLabel,
 } from "@/lib/recipe-visibility";
-import { hasRecipePhoto } from "@/lib/recipe-image";
-import { RecipeShareManager } from "./RecipeShareManager";
+import { hasRecipePhoto, RECIPE_PLACEHOLDER_PATH } from "@/lib/recipe-image";
+import {
+  ADMIN_FLAG_GROUPS,
+  ADMIN_FLAG_KEYS,
+  formatAdminDate,
+  ownerDisplay,
+  type AdminFlagKey,
+} from "@/lib/admin-recipe-display";
+import {
+  AdminFlagChips,
+  AdminFlagToggles,
+  AdminTaxonomyEditor,
+  adminDeleteRecipe,
+  adminPatchRecipe,
+  visibilityClasses,
+} from "./AdminRecipeControls";
 
-type RecipeRow = {
+export type AdminRecipeRow = {
   id: string;
   title: string;
+  description?: string | null;
   visibility: string;
   costTier: string;
   isStruggleMeal: boolean;
@@ -45,9 +62,64 @@ type RecipeRow = {
   originStory?: string | null;
   tags?: string[];
   imageUrl?: string | null;
+  ingredients?: { name: string }[];
+  owner?: { id: string; name: string | null; email: string } | null;
+  /** ISO strings (serialized on the server). */
+  createdAt?: string;
+  updatedAt?: string;
 };
 
-type Props = { initial: RecipeRow[] };
+type Props = { initial: AdminRecipeRow[] };
+
+type Panel = { id: string; tab: "flags" | "taxonomy" } | null;
+
+const PATCH_KEYS = [
+  "visibility",
+  "title",
+  ...ADMIN_FLAG_KEYS,
+  "kosherAdaptNote",
+  "veganAdaptNote",
+  "vegetarianAdaptNote",
+  "cuisine",
+  "course",
+  "foodCategories",
+  "origins",
+  "originStory",
+  "tags",
+  "updatedAt",
+] as const;
+
+function mergePatch(r: AdminRecipeRow, data: Record<string, unknown>): AdminRecipeRow {
+  const next: Record<string, unknown> = { ...r };
+  for (const k of PATCH_KEYS) {
+    if (data[k] !== undefined) {
+      next[k] =
+        k === "updatedAt" && data[k] instanceof Date
+          ? (data[k] as Date).toISOString()
+          : data[k];
+    }
+  }
+  return next as AdminRecipeRow;
+}
+
+function Thumb({ src, alt }: { src?: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const ok = hasRecipePhoto(src) && !failed;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={ok ? src! : RECIPE_PLACEHOLDER_PATH}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="h-14 w-14 flex-none rounded-lg bg-cream-100 object-cover ring-1 ring-cream-300"
+    />
+  );
+}
+
+const smallBtn =
+  "rounded-lg px-2 py-1 text-xs font-semibold text-sage-700 transition hover:bg-sage-100 disabled:opacity-50";
 
 export function AdminRecipesPanel({ initial }: Props) {
   const [rows, setRows] = useState(initial);
@@ -59,80 +131,64 @@ export function AdminRecipesPanel({ initial }: Props) {
   const [foodCategory, setFoodCategory] = useState("");
   const [origin, setOrigin] = useState("");
   const [photoFilter, setPhotoFilter] = useState<"" | "has" | "missing">("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCuisine, setEditCuisine] = useState("");
-  const [editCourse, setEditCourse] = useState("");
-  const [editFoodCats, setEditFoodCats] = useState<string[]>([]);
-  const [editOrigins, setEditOrigins] = useState<string[]>([]);
-  const [editOriginStory, setEditOriginStory] = useState("");
+  const [visFilter, setVisFilter] = useState("");
+  const [flagFilter, setFlagFilter] = useState<"" | AdminFlagKey>("");
+  const [panel, setPanel] = useState<Panel>(null);
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((r) => {
-        if (
-          !matchesTaxonomyFilters(r, {
-            q,
-            cuisine: cuisine || null,
-            course: course || null,
-            foodCategory: foodCategory || null,
-            origin: origin || null,
-          })
-        ) {
-          return false;
-        }
-        if (photoFilter === "has") return hasRecipePhoto(r.imageUrl);
-        if (photoFilter === "missing") return !hasRecipePhoto(r.imageUrl);
-        return true;
-      }),
-    [rows, q, cuisine, course, foodCategory, origin, photoFilter]
-  );
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      const ownerHit =
+        needle &&
+        [r.owner?.name, r.owner?.email]
+          .filter(Boolean)
+          .some((s) => s!.toLowerCase().includes(needle));
+      if (
+        !matchesTaxonomyFilters(r, {
+          q: ownerHit ? null : q,
+          cuisine: cuisine || null,
+          course: course || null,
+          foodCategory: foodCategory || null,
+          origin: origin || null,
+        })
+      ) {
+        return false;
+      }
+      if (visFilter && normalizeVisibility(r.visibility) !== visFilter) return false;
+      if (flagFilter && !r[flagFilter]) return false;
+      if (photoFilter === "has") return hasRecipePhoto(r.imageUrl);
+      if (photoFilter === "missing") return !hasRecipePhoto(r.imageUrl);
+      return true;
+    });
+  }, [rows, q, cuisine, course, foodCategory, origin, photoFilter, visFilter, flagFilter]);
 
-  async function patch(id: string, body: Record<string, unknown>) {
+  const anyFilter =
+    q || cuisine || course || foodCategory || origin || photoFilter || visFilter || flagFilter;
+
+  function clearFilters() {
+    setQ("");
+    setCuisine("");
+    setCourse("");
+    setFoodCategory("");
+    setOrigin("");
+    setPhotoFilter("");
+    setVisFilter("");
+    setFlagFilter("");
+  }
+
+  async function patch(id: string, body: Record<string, unknown>, closePanel = false) {
     setBusyId(id);
     setStatus(null);
     try {
-      const res = await fetch("/api/admin/recipes", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...body }),
-      });
-      const data = await res.json();
+      const res = await adminPatchRecipe(id, body);
       if (!res.ok) {
-        setStatus(data.error || "Update failed");
+        setStatus(res.error);
         return;
       }
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                visibility: data.visibility ?? r.visibility,
-                title: data.title ?? r.title,
-                isStruggleMeal: data.isStruggleMeal ?? r.isStruggleMeal,
-                kosherEligible: data.kosherEligible ?? r.kosherEligible,
-                halalEligible: data.halalEligible ?? r.halalEligible,
-                vegetarianEligible: data.vegetarianEligible ?? r.vegetarianEligible,
-                pescatarianEligible: data.pescatarianEligible ?? r.pescatarianEligible,
-                veganEligible: data.veganEligible ?? r.veganEligible,
-                carnivoreEligible: data.carnivoreEligible ?? r.carnivoreEligible,
-                atkinsEligible: data.atkinsEligible ?? r.atkinsEligible,
-                lowCarbEligible: data.lowCarbEligible ?? r.lowCarbEligible,
-                lowSugarEligible: data.lowSugarEligible ?? r.lowSugarEligible,
-                lowSodiumEligible: data.lowSodiumEligible ?? r.lowSodiumEligible,
-                kosherAdaptNote: data.kosherAdaptNote !== undefined ? data.kosherAdaptNote : r.kosherAdaptNote,
-                veganAdaptNote: data.veganAdaptNote !== undefined ? data.veganAdaptNote : r.veganAdaptNote,
-                vegetarianAdaptNote: data.vegetarianAdaptNote !== undefined ? data.vegetarianAdaptNote : r.vegetarianAdaptNote,
-                cuisine: data.cuisine ?? r.cuisine,
-                course: data.course ?? r.course,
-                foodCategories: data.foodCategories ?? r.foodCategories,
-                origins: data.origins ?? r.origins,
-                originStory: data.originStory ?? r.originStory,
-                tags: data.tags ?? r.tags,
-              }
-            : r
-        )
-      );
-      setEditingId(null);
+      setRows((prev) => prev.map((r) => (r.id === id ? mergePatch(r, res.data) : r)));
+      if (closePanel) setPanel(null);
+    } catch {
+      setStatus("Update failed");
     } finally {
       setBusyId(null);
     }
@@ -143,56 +199,48 @@ export function AdminRecipesPanel({ initial }: Props) {
     setBusyId(id);
     setStatus(null);
     try {
-      const res = await fetch("/api/admin/recipes", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      const data = await res.json();
+      const res = await adminDeleteRecipe(id);
       if (!res.ok) {
-        setStatus(typeof data.error === "string" ? data.error : "Delete failed");
+        setStatus(res.error);
         return;
       }
       setRows((prev) => prev.filter((r) => r.id !== id));
+      if (panel?.id === id) setPanel(null);
+    } catch {
+      setStatus("Delete failed");
     } finally {
       setBusyId(null);
     }
   }
 
-  function cycleVisibility(v: string) {
-    return nextVisibility(v);
-  }
-
-  function startEdit(r: RecipeRow) {
-    setEditingId(r.id);
-    setEditCuisine(r.cuisine || "");
-    setEditCourse(r.course || "");
-    setEditFoodCats(r.foodCategories || []);
-    setEditOrigins(r.origins || []);
-    setEditOriginStory(r.originStory || "");
-  }
-
-  function toggleIn(list: string[], id: string): string[] {
-    return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+  function togglePanel(id: string, tab: "flags" | "taxonomy") {
+    setPanel((p) => (p && p.id === id && p.tab === tab ? null : { id, tab }));
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-sage-600">
-        {filtered.length} of {rows.length} recipes — search, filter, edit taxonomy,
-        visibility, photo status, struggle flag, or delete.
-      </p>
-
-      <div className="card space-y-2 p-3">
-        <input
-          className="input max-w-md"
-          placeholder="Search title, tags, origins…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2">
+      <div className="card space-y-3 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input min-w-0 flex-1 sm:max-w-md"
+            placeholder="Search title, owner, tags, origins, ingredients…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <p className="text-sm text-sage-600">
+            <span className="font-semibold text-sage-900">{filtered.length}</span> of{" "}
+            {rows.length} recipes
+          </p>
+          {anyFilter ? (
+            <button type="button" className={smallBtn} onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           <select
-            className="input max-w-[10rem] text-sm"
+            aria-label="Cuisine"
+            className="input py-2 text-xs"
             value={cuisine}
             onChange={(e) => setCuisine(e.target.value)}
           >
@@ -204,7 +252,8 @@ export function AdminRecipesPanel({ initial }: Props) {
             ))}
           </select>
           <select
-            className="input max-w-[10rem] text-sm"
+            aria-label="Course"
+            className="input py-2 text-xs"
             value={course}
             onChange={(e) => setCourse(e.target.value)}
           >
@@ -216,11 +265,12 @@ export function AdminRecipesPanel({ initial }: Props) {
             ))}
           </select>
           <select
-            className="input max-w-[10rem] text-sm"
+            aria-label="Food type"
+            className="input py-2 text-xs"
             value={foodCategory}
             onChange={(e) => setFoodCategory(e.target.value)}
           >
-            <option value="">Food type</option>
+            <option value="">Any food type</option>
             {FOOD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -228,351 +278,242 @@ export function AdminRecipesPanel({ initial }: Props) {
             ))}
           </select>
           <select
-            className="input max-w-[16rem] text-sm"
+            aria-label="Origin"
+            className="input py-2 text-xs"
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
           >
             <option value="">Any origin</option>
             {ORIGIN_REGIONS.map((region) => (
               <optgroup key={region.id} label={region.label}>
-                {ORIGIN_OPTIONS.filter((o) => o.regionId === region.id).map(
-                  (o) => (
-                    <option key={o.id} value={o.id}>
-                      {"—".repeat(o.depth)}
-                      {o.depth ? " " : ""}
-                      {o.label}
-                    </option>
-                  )
-                )}
+                {ORIGIN_OPTIONS.filter((o) => o.regionId === region.id).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {"—".repeat(o.depth)}
+                    {o.depth ? " " : ""}
+                    {o.label}
+                  </option>
+                ))}
               </optgroup>
             ))}
           </select>
           <select
-            className="input max-w-[12rem] text-sm"
-            value={photoFilter}
-            onChange={(e) =>
-              setPhotoFilter(e.target.value as "" | "has" | "missing")
-            }
+            aria-label="Visibility"
+            className="input py-2 text-xs"
+            value={visFilter}
+            onChange={(e) => setVisFilter(e.target.value)}
           >
-            <option value="">Any photo status</option>
+            <option value="">Any visibility</option>
+            <option value="global">Global</option>
+            <option value="household">Household</option>
+            <option value="shared">Shared</option>
+          </select>
+          <select
+            aria-label="Flag"
+            className="input py-2 text-xs"
+            value={flagFilter}
+            onChange={(e) => setFlagFilter(e.target.value as "" | AdminFlagKey)}
+          >
+            <option value="">Any flag</option>
+            {ADMIN_FLAG_GROUPS.map((g) => (
+              <optgroup key={g.id} label={g.label}>
+                {g.flags.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <select
+            aria-label="Photo status"
+            className="input py-2 text-xs"
+            value={photoFilter}
+            onChange={(e) => setPhotoFilter(e.target.value as "" | "has" | "missing")}
+          >
+            <option value="">Any photo</option>
             <option value="has">Has photo</option>
             <option value="missing">Missing photo</option>
           </select>
         </div>
       </div>
 
-      {status && <p className="text-sm text-ember-700">{status}</p>}
-      <ul className="space-y-2">
-        {filtered.map((r) => (
-          <li key={r.id} className="card space-y-2 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/recipes/${r.id}`}
-                  className="font-semibold text-sage-900 hover:text-ember-700"
-                >
-                  {r.title}
-                </Link>
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-sage-500">
-                  <span
-                    className={`rounded-full px-2 py-0.5 font-medium ${
-                      hasRecipePhoto(r.imageUrl)
-                        ? "bg-sage-100 text-sage-800"
-                        : "bg-ember-100 text-ember-800"
-                    }`}
-                  >
-                    {hasRecipePhoto(r.imageUrl) ? "Has photo" : "Missing photo"}
-                  </span>
-                  <span>
-                  {r.costTier}
-                  {r.isStruggleMeal ? " · struggle" : ""}
-                  {r.kosherEligible ? " · kosher*" : ""}
-                  {r.halalEligible ? " · halal*" : ""}
-                  {r.veganEligible ? " · vegan" : ""}
-                  {r.vegetarianEligible && !r.veganEligible ? " · vegetarian" : ""}
-                  {r.pescatarianEligible && !r.vegetarianEligible && !r.veganEligible ? " · pescatarian" : ""}
-                  {r.carnivoreEligible ? " · carnivore" : ""}
-                  {r.atkinsEligible ? " · atkins" : ""}
-                  {r.lowCarbEligible ? " · low carb" : ""}
-                  {r.lowSugarEligible ? " · low sugar" : ""}
-                  {r.lowSodiumEligible ? " · low sodium" : ""}
-                  {r.householdId ? "" : " · shared catalog"}
-                  {" · "}
-                  {r.reviewCount} reviews
-                  {r.cuisine ? ` · ${r.cuisine}` : ""}
-                  {r.course ? ` · ${r.course}` : ""}
-                  {(r.foodCategories || []).length
-                    ? ` · ${(r.foodCategories || []).join(", ")}`
-                    : ""}
-                  {(r.origins || []).length
-                    ? ` · origins: ${(r.origins || []).join(", ")}`
-                    : ""}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { visibility: cycleVisibility(r.visibility) })
-                }
-                title="Cycle private → household → public"
-              >
-                {visibilityLabel(r.visibility)}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { isStruggleMeal: !r.isStruggleMeal })
-                }
-              >
-                {r.isStruggleMeal ? "Unflag struggle" : "Flag struggle"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { kosherEligible: !r.kosherEligible })
-                }
-              >
-                {r.kosherEligible ? "Unflag kosher*" : "Flag kosher*"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { halalEligible: !r.halalEligible })
-                }
-              >
-                {r.halalEligible ? "Unflag halal*" : "Flag halal*"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { veganEligible: !r.veganEligible })
-                }
-              >
-                {r.veganEligible ? "Unflag vegan" : "Flag vegan"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { vegetarianEligible: !r.vegetarianEligible })
-                }
-              >
-                {r.vegetarianEligible ? "Unflag vegetarian" : "Flag vegetarian"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { carnivoreEligible: !r.carnivoreEligible })
-                }
-              >
-                {r.carnivoreEligible ? "Unflag carnivore" : "Flag carnivore"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { atkinsEligible: !r.atkinsEligible })
-                }
-              >
-                {r.atkinsEligible ? "Unflag atkins" : "Flag atkins"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { lowCarbEligible: !r.lowCarbEligible })
-                }
-              >
-                {r.lowCarbEligible ? "Unflag low carb" : "Flag low carb"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { lowSugarEligible: !r.lowSugarEligible })
-                }
-              >
-                {r.lowSugarEligible ? "Unflag low sugar" : "Flag low sugar"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { lowSodiumEligible: !r.lowSodiumEligible })
-                }
-              >
-                {r.lowSodiumEligible ? "Unflag low sodium" : "Flag low sodium"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  patch(r.id, { pescatarianEligible: !r.pescatarianEligible })
-                }
-              >
-                {r.pescatarianEligible ? "Unflag pescatarian" : "Flag pescatarian"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                disabled={busyId === r.id}
-                onClick={() =>
-                  editingId === r.id ? setEditingId(null) : startEdit(r)
-                }
-              >
-                {editingId === r.id ? "Cancel" : "Edit"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs text-ember-700"
-                disabled={busyId === r.id}
-                onClick={() => remove(r.id, r.title)}
-              >
-                Delete
-              </button>
-            </div>
+      {status && (
+        <p
+          role="alert"
+          className="rounded-xl border border-ember-200 bg-ember-50 px-3 py-2 text-sm text-ember-800"
+        >
+          {status}
+        </p>
+      )}
 
-            {editingId === r.id && (
-              <div className="space-y-2 border-t border-cream-200 pt-2 text-sm">
-                <div className="flex flex-wrap gap-2">
-                  <label className="flex flex-col gap-0.5">
-                    <span className="text-[11px] text-sage-500">Cuisine</span>
-                    <select
-                      className="input text-sm"
-                      value={editCuisine}
-                      onChange={(e) => setEditCuisine(e.target.value)}
-                    >
-                      <option value="">—</option>
-                      {CUISINES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-0.5">
-                    <span className="text-[11px] text-sage-500">Course</span>
-                    <select
-                      className="input text-sm"
-                      value={editCourse}
-                      onChange={(e) => setEditCourse(e.target.value)}
-                    >
-                      <option value="">—</option>
-                      {COURSES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div>
-                  <span className="text-[11px] text-sage-500">Food categories</span>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {FOOD_CATEGORIES.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          editFoodCats.includes(c)
-                            ? "bg-sage-800 text-cream-50"
-                            : "border border-cream-300 bg-cream-50"
-                        }`}
-                        onClick={() =>
-                          setEditFoodCats(toggleIn(editFoodCats, c))
-                        }
+      <div className="card overflow-hidden">
+        {/* Column header (laptop+) */}
+        <div className="hidden grid-cols-[minmax(0,1fr)_9rem_6rem_minmax(0,12rem)_8.5rem] gap-3 border-b border-cream-200 bg-cream-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-sage-500 lg:grid">
+          <span>Recipe</span>
+          <span>Owner · updated</span>
+          <span>Visibility</span>
+          <span>Flags</span>
+          <span className="text-right">Actions</span>
+        </div>
+
+        {filtered.length === 0 && (
+          <p className="px-4 py-8 text-center text-sm text-sage-500">
+            No recipes match these filters.
+          </p>
+        )}
+
+        <ul className="divide-y divide-cream-200">
+          {filtered.map((r) => {
+            const busy = busyId === r.id;
+            const open = panel?.id === r.id ? panel.tab : null;
+            const meta = [
+              r.cuisine,
+              r.course,
+              r.costTier,
+              `${r.reviewCount} review${r.reviewCount === 1 ? "" : "s"}`,
+            ].filter(Boolean);
+            return (
+              <li key={r.id} className={open ? "bg-cream-50/60" : undefined}>
+                <div className="grid grid-cols-1 gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_9rem_6rem_minmax(0,12rem)_8.5rem] lg:items-center">
+                  {/* Recipe */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Thumb src={r.imageUrl} alt={r.title} />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/recipes/${r.id}`}
+                        className="line-clamp-2 break-words font-semibold leading-snug text-sage-900 hover:text-ember-700"
                       >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[11px] text-sage-500">
-                    Origins (by region)
-                  </span>
-                  <div className="mt-1 max-h-40 space-y-2 overflow-y-auto">
-                    {ORIGIN_REGIONS.map((region) => (
-                      <div key={region.id}>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-sage-500">
-                          {region.label}
-                        </p>
-                        <div className="mt-0.5 flex flex-wrap gap-1">
-                          {ORIGIN_OPTIONS.filter(
-                            (o) => o.regionId === region.id
-                          ).map((o) => (
-                            <button
-                              key={o.id}
-                              type="button"
-                              className={`rounded-full px-2 py-0.5 text-xs ${
-                                editOrigins.includes(o.id)
-                                  ? "bg-sage-800 text-cream-50"
-                                  : "border border-cream-300 bg-cream-50"
-                              }`}
-                              onClick={() =>
-                                setEditOrigins(toggleIn(editOrigins, o.id))
-                              }
-                            >
-                              {o.depth ? "· ".repeat(o.depth) : ""}
-                              {o.label}
-                            </button>
-                          ))}
-                        </div>
+                        {r.title}
+                      </Link>
+                      <p className="mt-0.5 truncate text-xs text-sage-500">
+                        {meta.join(" · ")}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {!hasRecipePhoto(r.imageUrl) && (
+                          <span className="rounded-full bg-ember-100 px-2 py-0.5 text-[10px] font-semibold text-ember-800">
+                            Missing photo
+                          </span>
+                        )}
+                        {(r.origins || []).slice(0, 3).map((o) => (
+                          <span
+                            key={o}
+                            className="rounded-full bg-cream-200 px-2 py-0.5 text-[10px] font-medium text-sage-700"
+                          >
+                            {originLabel(o)}
+                          </span>
+                        ))}
+                        {(r.origins || []).length > 3 && (
+                          <span className="text-[10px] text-sage-500">
+                            +{(r.origins || []).length - 3}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                  </div>
+
+                  {/* Owner + dates */}
+                  <div className="min-w-0 text-xs">
+                    <p className="truncate">
+                      <span className="mr-1 font-semibold text-sage-500 lg:hidden">Owner:</span>
+                      <span
+                        className={r.owner ? "text-sage-800" : "italic text-sage-500"}
+                        title={r.owner?.email || undefined}
+                      >
+                        {ownerDisplay(r.owner)}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-sage-500">
+                      Updated {formatAdminDate(r.updatedAt)}
+                    </p>
+                    <p className="text-[10px] text-sage-400">
+                      Created {formatAdminDate(r.createdAt)}
+                    </p>
+                  </div>
+
+                  {/* Visibility (click cycles, same as before) */}
+                  <div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        patch(r.id, { visibility: nextVisibility(r.visibility) })
+                      }
+                      title={`Click to change to ${visibilityLabel(nextVisibility(r.visibility))} (cycles Global → Household → Shared)`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset transition hover:brightness-95 disabled:opacity-50 ${visibilityClasses(r.visibility)}`}
+                    >
+                      {visibilityLabel(r.visibility)}
+                      <span aria-hidden className="text-[9px] opacity-60">
+                        ⇄
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Flags */}
+                  <div className="min-w-0">
+                    <AdminFlagChips values={r} />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap items-center gap-0.5 lg:justify-end">
+                    <Link href={`/admin/recipes/${r.id}`} className={smallBtn}>
+                      Details
+                    </Link>
+                    <Link href={`/recipes/${r.id}`} className={smallBtn}>
+                      View
+                    </Link>
+                    <button
+                      type="button"
+                      className={`${smallBtn} ${open === "flags" ? "bg-sage-100" : ""}`}
+                      aria-expanded={open === "flags"}
+                      disabled={busy}
+                      onClick={() => togglePanel(r.id, "flags")}
+                    >
+                      Flags
+                    </button>
+                    <button
+                      type="button"
+                      className={`${smallBtn} ${open === "taxonomy" ? "bg-sage-100" : ""}`}
+                      aria-expanded={open === "taxonomy"}
+                      disabled={busy}
+                      onClick={() => togglePanel(r.id, "taxonomy")}
+                    >
+                      {open === "taxonomy" ? "Cancel" : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${smallBtn} text-ember-700 hover:bg-ember-50`}
+                      disabled={busy}
+                      onClick={() => remove(r.id, r.title)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-                <div>
-                  <span className="text-[11px] text-sage-500">
-                    Story behind this food
-                  </span>
-                  <textarea
-                    className="input mt-1 min-h-[88px] text-sm"
-                    value={editOriginStory}
-                    onChange={(e) => setEditOriginStory(e.target.value)}
-                    placeholder="Short cultural/history blurb…"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn-primary text-sm"
-                  disabled={busyId === r.id}
-                  onClick={() =>
-                    patch(r.id, {
-                      cuisine: editCuisine || null,
-                      course: editCourse || null,
-                      foodCategories: editFoodCats,
-                      origins: editOrigins,
-                      originStory: editOriginStory.trim() || null,
-                    })
-                  }
-                >
-                  Save taxonomy
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+
+                {open === "flags" && (
+                  <div className="border-t border-cream-200 px-4 py-3">
+                    <AdminFlagToggles
+                      values={r}
+                      disabled={busy}
+                      onToggle={(key, next) => patch(r.id, { [key]: next })}
+                    />
+                  </div>
+                )}
+                {open === "taxonomy" && (
+                  <div className="border-t border-cream-200 px-4 py-3">
+                    <AdminTaxonomyEditor
+                      initial={r}
+                      busy={busy}
+                      onCancel={() => setPanel(null)}
+                      onSave={(body) => patch(r.id, body, true)}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }

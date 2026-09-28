@@ -308,6 +308,17 @@ const ORIGIN_BY_ID = new Map(
   ORIGIN_OPTIONS.map((o) => [o.id, o] as const)
 );
 
+/** Human label for an origin id (falls back to a title-cased id for legacy values). */
+export function originLabel(id: string): string {
+  const hit = ORIGIN_BY_ID.get(id);
+  if (hit) return hit.label;
+  return id
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 /** parent id → direct child ids */
 const ORIGIN_CHILDREN = new Map<string, string[]>();
 function indexChildren(nodes: OriginNode[]): void {
