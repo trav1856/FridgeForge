@@ -22,6 +22,7 @@ import {
 } from "@/lib/recipe-taxonomy";
 import { satisfiesHalal } from "@/lib/dietary";
 import { inferAllergenTags } from "@/lib/allergens";
+import { dishKeyForTitle } from "@/lib/dish-key";
 import { sanitizeRecipeWritePayload } from "@/lib/sanitize-recipe-text";
 
 const ingredientSchema = z.object({
@@ -298,6 +299,8 @@ export async function POST(req: NextRequest) {
         foodCategories: stringifyArray(tax.foodCategories),
         origins: stringifyArray(tax.origins),
         meatType: tax.meatType,
+        // Same dish-family key the PATCH route sets on title change (variants / similar).
+        dishKey: dishKeyForTitle(data.title),
         originStory: data.originStory?.trim() || null,
         servings: data.servings,
         cookTimeMinutes: data.cookTimeMinutes ?? null,

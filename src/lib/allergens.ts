@@ -4,6 +4,8 @@
  * to the signed-in user who flagged those allergens.
  */
 
+import { stripNonDairyPhrases } from "@/lib/ingredient-phrases";
+
 export const COMMON_ALLERGENS = [
   { id: "milk", label: "Milk / dairy" },
   { id: "eggs", label: "Eggs" },
@@ -18,16 +20,18 @@ export const COMMON_ALLERGENS = [
 
 export type CommonAllergenId = (typeof COMMON_ALLERGENS)[number]["id"];
 
+// Plural-tolerant (walnuts, prawns, anchovies, sardines, …); milk ignores
+// non-dairy compounds (peanut butter, coconut milk) via stripNonDairyPhrases.
 const ALLERGEN_PATTERNS: Record<CommonAllergenId, RegExp> = {
-  milk: /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|dairy)\b/i,
+  milk: /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|dairy)s?\b/i,
   eggs: /\b(egg\b|eggs\b|mayonnaise|mayo\b)\b/i,
-  fish: /\b(fish|salmon|tuna|cod|tilapia|trout|sardine|anchov|halibut|mahi|fish sauce)\b/i,
+  fish: /\b(?:fish|salmon|tuna|cod|tilapia|trout|sardine|anchov(?:y|ies)|halibut|mahi|fish sauce)(?:s|es)?\b/i,
   shellfish:
-    /\b(shellfish|shrimp|prawn|crab\b|lobster|clam\b|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish)\b/i,
+    /\b(?:shellfish|shrimp|prawn|crab|lobster|clam|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish)(?:s|es)?\b/i,
   tree_nuts:
-    /\b(almond|walnut|cashew|pecan|pistachio|hazelnut|macadamia|brazil nut|tree nut|pine nut)\b/i,
+    /\b(?:almond|walnut|cashew|pecan|pistachio|hazelnut|macadamia|brazil nut|tree nut|pine nut)(?:s|es)?\b/i,
   peanuts: /\b(peanut|peanuts|groundnut)\b/i,
-  wheat: /\b(wheat|flour|bread|pasta|noodle|gluten|soy sauce|tortilla|bagel|bun\b|cracker)\b/i,
+  wheat: /\b(?:wheat|flour|bread|pasta|noodle|gluten|soy sauce|tortilla|bagel|bun|cracker)s?\b/i,
   soy: /\b(soy\b|soya|tofu|edamame|miso|tempeh|soy sauce)\b/i,
   sesame: /\b(sesame|tahini)\b/i,
 };
@@ -100,7 +104,8 @@ export function inferAllergenTags(input: {
   const blob = blobFrom(input);
   const found: string[] = [];
   for (const a of COMMON_ALLERGENS) {
-    if (ALLERGEN_PATTERNS[a.id].test(blob)) found.push(a.id);
+    const text = a.id === "milk" ? stripNonDairyPhrases(blob) : blob;
+    if (ALLERGEN_PATTERNS[a.id].test(text)) found.push(a.id);
   }
   return found;
 }

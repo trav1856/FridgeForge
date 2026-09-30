@@ -37,6 +37,7 @@ import {
   ensureParentCuisineOrigins,
 } from "@/lib/recipe-taxonomy";
 import { COMMON_ALLERGENS, inferAllergenTags } from "@/lib/allergens";
+import { inferDietaryEligibility } from "@/lib/dietary";
 import { decodeRecipeTextFields } from "@/lib/html-entities";
 
 type Ing = { name: string; quantity: string; unit: string; optional: boolean };
@@ -294,6 +295,36 @@ const NutritionPreview = memo(function NutritionPreview({
 });
 
 
+type ImportDietaryFlags = {
+  kosherEligible: boolean;
+  halalEligible: boolean;
+  vegetarianEligible: boolean;
+  pescatarianEligible: boolean;
+  veganEligible: boolean;
+};
+
+/** Dietary flags inferred from imported recipe text (title/description/tags/ingredients). */
+function importDietaryFlags(input: {
+  title?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  ingredients?: { name: string }[] | null;
+}): ImportDietaryFlags {
+  const d = inferDietaryEligibility({
+    title: input.title,
+    description: input.description,
+    tags: input.tags,
+    ingredients: input.ingredients,
+  });
+  return {
+    kosherEligible: d.kosherEligible,
+    halalEligible: d.halalEligible,
+    vegetarianEligible: d.vegetarianEligible,
+    pescatarianEligible: d.pescatarianEligible,
+    veganEligible: d.veganEligible,
+  };
+}
+
 function applyRecipeToForm(
   r: {
     title?: string;
@@ -321,6 +352,8 @@ function applyRecipeToForm(
     setFoodCategories?: (v: string[]) => void;
     setOrigins?: (v: string[]) => void;
     setMeatType?: (v: string) => void;
+    /** Kosher/halal/vegetarian/pescatarian/vegan from the imported ingredients. */
+    setDietary?: (d: ImportDietaryFlags) => void;
   }
 ) {
   const decoded = decodeRecipeTextFields({
@@ -347,6 +380,16 @@ function applyRecipeToForm(
     }))
   );
   setters.setStepsText((r.steps || []).join("\n"));
+  // Imported text replaces the form, so re-derive the dietary flags from it
+  // (the blank-form defaults would otherwise mark e.g. bacon dishes kosher/vegetarian).
+  setters.setDietary?.(
+    importDietaryFlags({
+      title: r.title,
+      description: r.description,
+      tags: r.tags,
+      ingredients: r.ingredients,
+    })
+  );
 
   // Fill blank cuisine (and related taxonomy) from inference on import draft apply
   const cuisineBlank = !(r.cuisine || "").trim();
@@ -452,23 +495,35 @@ export function RecipeForm({
       ? String(initialDraft.cookTimeMinutes)
       : ""
   );
+  // Create-mode draft with ingredients (scan/OCR import) but no explicit flags:
+  // start from flags inferred from its text instead of the blank-form defaults.
+  const [draftDiet] = useState<ImportDietaryFlags | null>(() =>
+    !isEdit && initialDraft?.ingredients?.length
+      ? importDietaryFlags({
+          title: initialDraft.title,
+          description: initialDraft.description,
+          tags: initialDraft.tags,
+          ingredients: initialDraft.ingredients,
+        })
+      : null
+  );
   const [isStruggleMeal, setIsStruggleMeal] = useState(
     initialDraft?.isStruggleMeal ?? true
   );
   const [kosherEligible, setKosherEligible] = useState(
-    initialDraft?.kosherEligible ?? true
+    initialDraft?.kosherEligible ?? draftDiet?.kosherEligible ?? true
   );
   const [halalEligible, setHalalEligible] = useState(
-    initialDraft?.halalEligible ?? true
+    initialDraft?.halalEligible ?? draftDiet?.halalEligible ?? true
   );
   const [vegetarianEligible, setVegetarianEligible] = useState(
-    initialDraft?.vegetarianEligible ?? true
+    initialDraft?.vegetarianEligible ?? draftDiet?.vegetarianEligible ?? true
   );
   const [pescatarianEligible, setPescatarianEligible] = useState(
-    initialDraft?.pescatarianEligible ?? true
+    initialDraft?.pescatarianEligible ?? draftDiet?.pescatarianEligible ?? true
   );
   const [veganEligible, setVeganEligible] = useState(
-    initialDraft?.veganEligible ?? false
+    initialDraft?.veganEligible ?? draftDiet?.veganEligible ?? false
   );
   const [carnivoreEligible, setCarnivoreEligible] = useState(
     initialDraft?.carnivoreEligible ?? false
@@ -542,6 +597,13 @@ export function RecipeForm({
     setFoodCategories,
     setOrigins,
     setMeatType,
+    setDietary: (d: ImportDietaryFlags) => {
+      setKosherEligible(d.kosherEligible);
+      setHalalEligible(d.halalEligible);
+      setVegetarianEligible(d.vegetarianEligible);
+      setPescatarianEligible(d.pescatarianEligible);
+      setVeganEligible(d.veganEligible);
+    },
   };
 
   async function tryImport() {

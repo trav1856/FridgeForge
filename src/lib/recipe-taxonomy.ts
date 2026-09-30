@@ -4,6 +4,8 @@
  * Used by UI chips, admin forms, API filters, and seed/backfill heuristics.
  */
 
+import { stripNonDairyPhrases } from "@/lib/ingredient-phrases";
+
 export const CUISINES = [
   "American",
   "Mexican",
@@ -626,243 +628,270 @@ function blob(input: InferInput): string {
     ...((input.ingredients || []).map((i) => i.name) || []),
     ...(input.steps || []),
   ]
-    .join(" ")
+    .join(" \n ")
     .toLowerCase();
 }
 
-function has(text: string, words: string[]): boolean {
-  return words.some((w) => text.includes(w));
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Heuristic backfill from title/tags/ingredients.
- * Origins left empty when unclear — never invent wrong cultural labels.
+const WORD_RE_CACHE = new Map<string, RegExp>();
+function wordRe(word: string): RegExp {
+  let re = WORD_RE_CACHE.get(word);
+  if (!re) {
+    // Whole word / phrase with an optional plural: "nut" ≠ "minutes",
+    // "pie" ≠ "pieces", "cake" ≠ "pancakes", "pea" ≠ "repeat", "egg" ≠ "eggplant".
+    re = new RegExp(`(?<![a-z])${escapeRe(word)}(?:s|es)?(?![a-z])`);
+    WORD_RE_CACHE.set(word, re);
+  }
+  return re;
+}
+
+/** Whole-word / whole-phrase match (never bare substrings). */
+function has(text: string, words: string[]): boolean {
+  return words.some((w) => wordRe(w).test(text));
+}
+
+/*
+ * Compound phrases whose parts must not count on their own (peanut butter is not
+ * dairy, vegetable oil is not a vegetable, black pepper is not a bell pepper,
+ * noodle cakes are not dessert, …). They are blanked out before matching.
  */
-export function inferRecipeTaxonomy(input: InferInput): {
-  cuisine: Cuisine;
-  course: Course;
-  foodCategories: FoodCategory[];
-  origins: string[];
-  meatType: MeatType | null;
-} {
-  const text = blob(input);
-  const tags = (input.tags || []).map((t) => t.toLowerCase());
+const NON_VEGETABLE_PHRASES =
+  /\bvegetable\s+(?:oil|shortening|spray)\b|\b(?:black|white|ground|cayenne|lemon)\s+pepper\b|\b(?:red\s+)?pepper\s*(?:corns?|flakes?)\b|\bsalt\s*(?:and|&)\s*pepper\b/g;
+const NON_DESSERT_PHRASES =
+  /\b(?:noodle|ramen|rice|fish|crab|potato|salmon|corn|griddle|hot)\s+cakes?\b|\bpancakes?\b|\bpot\s+pies?\b|\b(?:chicken|beef|meat|shepherd'?s|cottage|pork)\s+pies?\b/g;
+const NON_LEGUME_PHRASES = /\b(?:vanilla|coffee|cocoa|jelly)\s+beans?\b/g;
+const NON_GRAIN_PHRASES = /\brice\s+(?:vinegar|wine)\b/g;
+const NON_FRUIT_PHRASES = /\b(?:apple\s+cider\s+vinegar|grape\s*seed\s+oil|lemon\s+pepper)\b/g;
+const NON_SEAFOOD_PHRASES = /\bfish\s+sauce\b/g;
 
-  let cuisine: Cuisine = "American";
-  const origins = new Set<string>();
+function strip(text: string, ...res: RegExp[]): string {
+  let out = text;
+  for (const re of res) out = out.replace(re, " ");
+  return out;
+}
 
-  // Slow cooker / crock pot — method-as-cuisine label (checked first).
-  const slowCookerCue =
-    tags.some((t) =>
-      ["slow cooker", "slow-cooker", "crockpot", "crock pot", "crock-pot"].includes(t)
-    ) ||
-    /\b(slow\s*cooker|crock\s*pot|crockpot)\b/.test(text);
+/** Title + tags + ingredient names: what the dish is made of (no steps/description). */
+function ingredientBlob(input: InferInput): string {
+  return [
+    input.title,
+    ...(input.tags || []),
+    ...((input.ingredients || []).map((i) => i.name) || []),
+  ]
+    .join(" \n ")
+    .toLowerCase();
+}
 
-  if (slowCookerCue) {
-    cuisine = "Slow cooker";
-  } else {
+/** Title + tags (+ description when asked): dish identity, never steps. */
+function identityBlob(input: InferInput, withDescription: boolean): string {
+  return [
+    input.title,
+    ...(input.tags || []),
+    ...(withDescription ? [input.description || ""] : []),
+  ]
+    .join(" \n ")
+    .toLowerCase();
+}
+
+type CuisineHit = { cuisine: Cuisine; origins: string[] };
+
+/**
+ * One pass of cuisine cues over `text`. `titlePass` = title/tags only (strongest),
+ * where e.g. "ramen" in the dish name is trusted; in the full-text pass instant
+ * ramen noodles alone never make a dish Japanese.
+ */
+function detectCuisine(
+  text: string,
+  tags: string[],
+  title: string,
+  titlePass: boolean
+): CuisineHit | null {
+  const tagHas = (...ts: string[]) => ts.some((t) => tags.includes(t));
+  if (
+    tagHas("slow cooker", "slow-cooker", "crockpot", "crock pot", "crock-pot") ||
+    /\b(slow\s*cooker|crock\s*pot|crockpot)\b/.test(text)
+  ) {
+    return { cuisine: "Slow cooker", origins: [] };
+  }
   // Mexican only from strong dish/tag cues — not "chili" as a seasoning word.
-  const mexicanCue =
-    tags.some((t) =>
-      ["tacos", "taco", "chili", "mexican", "tex-mex", "empanada", "empanadas"].includes(t)
-    ) ||
+  if (
+    tagHas("tacos", "taco", "chili", "mexican", "tex-mex", "empanada", "empanadas") ||
     /\b(taco|tacos|burrito|enchilada|quesadilla|mexican|tex-mex|empanada|empanadas)\b/.test(
       text
     ) ||
     /\bchili\s*\/\s*taco\b/.test(text) ||
-    /^chili\b/i.test(input.title.trim());
-
-  if (mexicanCue) {
-    cuisine = "Mexican";
-    origins.add("mexican");
-    origins.add("latin-american");
+    /^chili\b/i.test(title.trim())
+  ) {
+    const origins = ["mexican", "latin-american"];
     if (/\b(taco|chili|tex-mex)\b/.test(text) || tags.includes("tacos")) {
-      origins.add("tex-mex");
+      origins.push("tex-mex");
     }
-  } else if (
-    has(text, ["pasta", "spaghetti", "parmesan", "italian", "pizza", "risotto"])
-  ) {
-    cuisine = "Italian";
-    origins.add("italian");
-    origins.add("european");
-  } else if (
-    has(text, ["sushi", "teriyaki", "ramen", "miso", "udon", "tempura", "japanese"]) ||
-    tags.includes("japanese")
-  ) {
-    cuisine = "Japanese";
-    origins.add("japanese");
-    origins.add("asian");
-  } else if (
-    has(text, ["kimchi", "gochujang", "bulgogi", "bibimbap", "korean"]) ||
-    tags.includes("korean")
-  ) {
-    cuisine = "Korean";
-    origins.add("korean");
-    origins.add("asian");
-  } else if (
-    has(text, ["pad thai", "green curry", "thai basil", "thai"]) ||
-    tags.includes("thai")
-  ) {
-    cuisine = "Thai";
-    origins.add("thai");
-    origins.add("asian");
-  } else if (
-    has(text, ["pho", "banh mi", "vietnamese", "nuoc cham"]) ||
-    tags.includes("vietnamese")
-  ) {
-    cuisine = "Vietnamese";
-    origins.add("vietnamese");
-    origins.add("asian");
-  } else if (
+    return { cuisine: "Mexican", origins };
+  }
+  // Unambiguous Italian dish words (plain pasta/spaghetti is checked after Asian cues).
+  if (
     has(text, [
-      "adobo",
-      "lumpia",
-      "pancit",
-      "sinigang",
-      "filipino",
-      "philippine",
-      "philippines",
+      "italian",
+      "parmesan",
+      "pizza",
+      "risotto",
+      "lasagna",
+      "lasagne",
+      "marinara",
+      "pesto",
+      "carbonara",
+      "alfredo",
+      "bolognese",
+      "gnocchi",
+    ])
+  ) {
+    return { cuisine: "Italian", origins: ["italian", "european"] };
+  }
+  // Named Chinese dishes win over incidental Japanese sauces (e.g. teriyaki in lo mein).
+  if (
+    has(text, [
+      "lo mein",
+      "chow mein",
+      "mongolian beef",
+      "mongolian",
+      "kung pao",
+      "general tso",
+      "mapo",
+      "char siu",
+      "dim sum",
+    ])
+  ) {
+    return { cuisine: "Chinese", origins: ["chinese", "asian"] };
+  }
+  if (
+    has(text, [
+      "sushi",
+      "teriyaki",
+      "miso",
+      "udon",
+      "tempura",
+      "japanese",
+      ...(titlePass ? ["ramen"] : []),
     ]) ||
-    tags.includes("filipino") ||
-    tags.includes("philippine")
+    tagHas("japanese")
   ) {
-    cuisine = "Filipino";
-    origins.add("filipino");
-    origins.add("asian");
-  } else if (
+    return { cuisine: "Japanese", origins: ["japanese", "asian"] };
+  }
+  if (has(text, ["kimchi", "gochujang", "bulgogi", "bibimbap", "korean"]) || tagHas("korean")) {
+    return { cuisine: "Korean", origins: ["korean", "asian"] };
+  }
+  if (has(text, ["pad thai", "green curry", "thai basil", "thai"]) || tagHas("thai")) {
+    return { cuisine: "Thai", origins: ["thai", "asian"] };
+  }
+  if (has(text, ["pho", "banh mi", "vietnamese", "nuoc cham"]) || tagHas("vietnamese")) {
+    return { cuisine: "Vietnamese", origins: ["vietnamese", "asian"] };
+  }
+  if (
+    has(text, ["adobo", "lumpia", "pancit", "sinigang", "filipino", "philippine", "philippines"]) ||
+    tagHas("filipino", "philippine")
+  ) {
+    return { cuisine: "Filipino", origins: ["filipino", "asian"] };
+  }
+  if (
     has(text, ["amok", "lok lak", "loc lac", "cambodian", "khmer"]) ||
-    tags.includes("cambodian") ||
-    tags.includes("khmer")
+    tagHas("cambodian", "khmer")
   ) {
-    cuisine = "Cambodian";
-    origins.add("asian");
-  } else if (
+    return { cuisine: "Cambodian", origins: ["asian"] };
+  }
+  if (
     has(text, [
       "stir-fry",
       "stir fry",
       "fried rice",
-      "chow mein",
-      "kung pao",
       "szechuan",
       "sichuan",
-      "dim sum",
+      "hoisin",
       "chinese",
     ]) ||
-    tags.includes("stir-fry") ||
-    tags.includes("chinese")
+    tagHas("stir-fry", "chinese")
   ) {
-    cuisine = "Chinese";
-    origins.add("chinese");
-    origins.add("asian");
-  } else if (
-    has(text, ["asian", "sesame", "soy", "soy sauce"]) ||
-    tags.includes("asian")
+    return { cuisine: "Chinese", origins: ["chinese", "asian"] };
+  }
+  if (has(text, ["asian", "sesame", "soy", "soy sauce"]) || tagHas("asian")) {
+    return { cuisine: "Asian", origins: ["asian"] };
+  }
+  // Plain pasta is a weak cue (lo mein / peanut noodles are often made with
+  // spaghetti): only in the full-text pass, after every Asian cue.
+  if (
+    !titlePass &&
+    has(text, [
+      "pasta",
+      "spaghetti",
+      "penne",
+      "linguine",
+      "fettuccine",
+      "rigatoni",
+      "macaroni",
+    ])
   ) {
-    cuisine = "Asian";
-    origins.add("asian");
-  } else if (has(text, ["curry", "tikka", "masala", "indian", "naan", "butter chicken", "biryani", "vindaloo"])) {
-    cuisine = "Indian";
-    origins.add("indian");
-    origins.add("asian");
-  } else if (
-    has(text, ["hummus", "falafel", "shawarma", "tahini", "zaatar", "za'atar"])
+    return { cuisine: "Italian", origins: ["italian", "european"] };
+  }
+  if (
+    has(text, ["curry", "tikka", "masala", "indian", "naan", "butter chicken", "biryani", "vindaloo"])
   ) {
-    cuisine = "Middle Eastern";
-    origins.add("middle-eastern");
-    origins.add("levantine");
-    origins.add("arabic");
+    return { cuisine: "Indian", origins: ["indian", "asian"] };
+  }
+  if (has(text, ["hummus", "falafel", "shawarma", "tahini", "zaatar", "za'atar"])) {
+    const origins = ["middle-eastern", "levantine", "arabic"];
     // Shared Levantine foodways — overlapping origins intentional
-    if (has(text, ["hummus", "falafel"])) {
-      origins.add("israeli");
-      origins.add("jewish");
-      origins.add("muslim-friendly");
-    }
-  } else if (
-    has(text, ["mediterranean", "tzatziki", "greek"])
+    if (has(text, ["hummus", "falafel"])) origins.push("israeli", "jewish", "muslim-friendly");
+    return { cuisine: "Middle Eastern", origins };
+  }
+  if (has(text, ["mediterranean", "tzatziki", "greek"])) {
+    const origins = ["mediterranean"];
+    if (has(text, ["greek", "tzatziki"])) origins.push("greek", "european");
+    return { cuisine: "Mediterranean", origins };
+  }
+  if (
+    has(text, ["jerk", "caribbean", "haitian", "jamaican", "cuban", "plantain", "sofrito"]) ||
+    tagHas("caribbean", "jerk")
   ) {
-    cuisine = "Mediterranean";
-    origins.add("mediterranean");
-    if (has(text, ["greek", "tzatziki"])) {
-      origins.add("greek");
-      origins.add("european");
-    }
-  } else if (
-    has(text, [
-      "jerk",
-      "caribbean",
-      "haitian",
-      "jamaican",
-      "cuban",
-      "plantain",
-      "sofrito",
-    ]) ||
-    tags.includes("caribbean") ||
-    tags.includes("jerk")
+    // Caribbean is its own foodway (not Latin American / Mexican).
+    return { cuisine: "Caribbean", origins: ["caribbean"] };
+  }
+  if (
+    has(text, ["native american", "indigenous", "three sisters", "frybread", "fry bread", "navajo"]) ||
+    tagHas("native american")
   ) {
-    cuisine = "Caribbean";
-    origins.add("caribbean");
-  } else if (
-    has(text, [
-      "native american",
-      "indigenous",
-      "three sisters",
-      "frybread",
-      "fry bread",
-      "navajo",
-    ]) ||
-    tags.includes("native american")
-  ) {
-    cuisine = "Native American";
-    // No forced wrong origin — leave origins sparse unless tagged elsewhere
-  } else if (has(text, ["french", "croissant", "béchamel", "bechamel"])) {
-    cuisine = "French";
-    origins.add("french");
-    origins.add("european");
-  } else if (
-    has(text, ["varenyky", "vareniki", "ukrainian", "holubtsi"]) ||
-    tags.includes("ukrainian")
-  ) {
-    cuisine = "Ukrainian";
-    origins.add("eastern-european");
-  } else if (
+    // Its own foodway — no forced (wrong) American/Latin origin.
+    return { cuisine: "Native American", origins: [] };
+  }
+  if (has(text, ["french", "croissant", "béchamel", "bechamel"])) {
+    return { cuisine: "French", origins: ["french", "european"] };
+  }
+  if (has(text, ["varenyky", "vareniki", "ukrainian", "holubtsi"]) || tagHas("ukrainian")) {
+    return { cuisine: "Ukrainian", origins: ["eastern-european"] };
+  }
+  if (
     has(text, ["pierogi", "kielbasa", "bigos", "polish", "golabki", "gołąbki"]) ||
-    tags.includes("polish")
+    tagHas("polish")
   ) {
-    cuisine = "Polish";
-    origins.add("eastern-european");
-  } else if (
-    has(text, ["belarusian", "draniki", "machanka"]) ||
-    tags.includes("belarusian")
-  ) {
-    cuisine = "Belarusian";
-    origins.add("eastern-european");
-  } else if (
-    has(text, [
-      "borscht",
-      "borshch",
-      "stroganoff",
-      "beef stroganoff",
-      "russian",
-      "pelmeni",
-      "blini",
-    ]) ||
-    tags.includes("russian")
+    return { cuisine: "Polish", origins: ["eastern-european"] };
+  }
+  if (has(text, ["belarusian", "draniki", "machanka"]) || tagHas("belarusian")) {
+    return { cuisine: "Belarusian", origins: ["eastern-european"] };
+  }
+  if (
+    has(text, ["borscht", "borshch", "stroganoff", "russian", "pelmeni", "blini"]) ||
+    tagHas("russian")
   ) {
     // Russian is Eastern European (not Asian).
-    cuisine = "Russian";
-    origins.add("eastern-european");
-  } else if (
-    has(text, ["eastern european", "eastern-european"]) ||
-    tags.includes("eastern european")
-  ) {
-    cuisine = "Eastern European";
-    origins.add("eastern-european");
-  } else if (has(text, ["goulash", "paprikash", "hungarian"])) {
-    cuisine = "Other";
-    origins.add("hungarian");
-    origins.add("european");
-    origins.add("eastern-european");
-  } else if (
+    return { cuisine: "Russian", origins: ["eastern-european"] };
+  }
+  if (has(text, ["eastern european", "eastern-european"]) || tagHas("eastern european")) {
+    return { cuisine: "Eastern European", origins: ["eastern-european"] };
+  }
+  if (has(text, ["goulash", "paprikash", "hungarian"])) {
+    return { cuisine: "Other", origins: ["hungarian", "european", "eastern-european"] };
+  }
+  if (
     has(text, [
       "bagel",
       "latke",
@@ -876,70 +905,122 @@ export function inferRecipeTaxonomy(input: InferInput): {
     ])
   ) {
     // Ashkenazi sweets/staples: American cuisine label + Jewish origins (not Middle Eastern).
-    cuisine = "American";
-    origins.add("jewish");
-    origins.add("ashkenazi-jewish");
-  } else if (
-    has(text, ["apple pie", "grilled cheese", "pancake", "mashed potato", "roast chicken", "banana bread", "chocolate chip"])
+    return { cuisine: "American", origins: ["jewish", "ashkenazi-jewish"] };
+  }
+  if (
+    has(text, [
+      "apple pie",
+      "grilled cheese",
+      "pancake",
+      "mashed potato",
+      "roast chicken",
+      "banana bread",
+      "chocolate chip",
+    ])
   ) {
-    cuisine = "American";
-    origins.add("american");
-  } else if (has(text, ["rice"]) && tags.includes("side")) {
-    cuisine = "Asian";
-    origins.add("asian");
+    return { cuisine: "American", origins: ["american"] };
   }
+  if (has(text, ["rice"]) && tags.includes("side")) {
+    return { cuisine: "Asian", origins: ["asian"] };
+  }
+  return null;
+}
 
-  }
+/**
+ * Heuristic backfill from title/tags/ingredients.
+ * Origins left empty when unclear — never invent wrong cultural labels.
+ *
+ * Matching is whole-word only, and each field reads the text that describes it:
+ * cuisine checks the title/tags first, then the full text; course reads
+ * title/tags/description; food categories and meat read title/tags/ingredients.
+ * Steps never drive course or categories ("minutes", "pieces", "repeat", …).
+ */
+export function inferRecipeTaxonomy(input: InferInput): {
+  cuisine: Cuisine;
+  course: Course;
+  foodCategories: FoodCategory[];
+  origins: string[];
+  meatType: MeatType | null;
+} {
+  const text = blob(input);
+  const tags = (input.tags || []).map((t) => t.toLowerCase());
+  const title = input.title || "";
+
+  const hit =
+    detectCuisine(identityBlob(input, false), tags, title, true) ??
+    detectCuisine(text, tags, title, false);
+  const cuisine: Cuisine = hit?.cuisine ?? "American";
+  const origins = new Set<string>(hit?.origins ?? []);
+
+  const titleText = identityBlob(input, false);
+  const courseText = strip(identityBlob(input, true), NON_DESSERT_PHRASES);
+  const dessertWords = [
+    "dessert",
+    "cookie",
+    "pie",
+    "cake",
+    "cupcake",
+    "cheesecake",
+    "brownie",
+    "banana bread",
+    "hamantaschen",
+  ];
 
   let course: Course = "main";
-  if (
-    tags.includes("dessert") ||
-    has(text, ["dessert", "cookie", "cookies", "pie", "cake", "brownie", "banana bread"])
-  ) {
+  if (tags.includes("dessert")) {
     course = "dessert";
   } else if (
     tags.includes("breakfast") ||
     tags.includes("brunch") ||
-    has(text, ["pancake", "scrambled egg", "breakfast", "brunch"])
+    has(titleText, [
+      "pancake",
+      "waffle",
+      "french toast",
+      "scrambled egg",
+      "omelet",
+      "omelette",
+      "breakfast",
+      "brunch",
+    ])
   ) {
     course = "breakfast";
+  } else if (has(courseText, dessertWords)) {
+    course = "dessert";
   } else if (
     tags.includes("side") ||
-    has(text, ["mashed potato", "side dish", "steamed rice", "boiled / steamed rice"])
+    has(courseText, ["mashed potato", "side dish", "steamed rice", "boiled / steamed rice"])
   ) {
     course = "side";
-  } else if (tags.includes("snack") || has(text, ["snack"])) {
+  } else if (tags.includes("snack") || has(courseText, ["snack"])) {
     course = "snack";
   } else if (
     tags.includes("drink") ||
-    has(text, ["smoothie", "cocktail", "beverage", "drink"])
+    has(courseText, ["smoothie", "cocktail", "beverage", "drink"])
   ) {
     course = "drink";
   } else if (
     tags.includes("starter") ||
     tags.includes("appetizer") ||
-    has(text, ["appetizer", "starter", "hummus"])
+    has(courseText, ["appetizer", "starter", "hummus"])
   ) {
     course = "starter";
   } else if (tags.includes("lunch") && !tags.includes("dinner")) {
     course = "lunch";
   } else if (tags.includes("dinner")) {
     course = "dinner";
-  } else if (has(text, ["soup"]) && !has(text, ["dessert"])) {
-    course = has(text, ["chicken soup", "chili"]) ? "main" : "starter";
-  } else if (has(text, ["sandwich", "grilled cheese", "melt"])) {
+  } else if (has(courseText, ["soup"])) {
+    course = has(courseText, ["chicken soup", "chili"]) ? "main" : "starter";
+  } else if (has(courseText, ["sandwich", "grilled cheese", "melt"])) {
     course = "lunch";
   }
 
+  const ing = ingredientBlob(input);
   const foodCategories = new Set<FoodCategory>();
-  if (
-    course === "dessert" ||
-    has(text, ["dessert", "cookie", "pie", "cake", "banana bread"])
-  ) {
+  if (course === "dessert" || has(strip(identityBlob(input, false), NON_DESSERT_PHRASES), dessertWords)) {
     foodCategories.add("dessert");
   }
   // Land meat vs seafood: fish/shrimp stay seafood only (never meatType).
-  const seafoodCue = has(text, [
+  const seafoodCue = has(strip(ing, NON_SEAFOOD_PHRASES), [
     "tuna",
     "salmon",
     "fish",
@@ -949,44 +1030,53 @@ export function inferRecipeTaxonomy(input: InferInput): {
     "tilapia",
     "halibut",
     "prawn",
+    "crab",
+    "lobster",
+    "clam",
+    "mussel",
+    "oyster",
+    "scallop",
+    "squid",
+    "sardine",
+    "anchovy",
+    "anchovies",
   ]);
   let meatType: MeatType | null = null;
-  if (
-    /\b(ground\s+beef|beef|steak|brisket|short\s*rib|ribeye|sirloin)\b/.test(text)
-  ) {
+  if (/\b(ground\s+beef|beef|steak|brisket|short\s*rib|ribeye|sirloin)\b/.test(ing)) {
     meatType = "beef";
-  } else if (/\b(pork|bacon|ham|prosciutto|pancetta|pulled\s+pork)\b/.test(text)) {
+  } else if (
+    /\b(pork|(?<!turkey\s)bacon|ham|prosciutto|pancetta|pulled\s+pork)\b/.test(ing)
+  ) {
     meatType = "pork";
-  } else if (/\b(chicken|hen)\b/.test(text)) {
+  } else if (/\b(chicken|hen)\b/.test(ing)) {
     meatType = "chicken";
   } else if (
-    /\b(lamb|goat|venison|turkey|duck|bison|veal|rabbit|meat|sausage)\b/.test(text)
+    /\b(lamb|goat|venison|turkey|duck|bison|veal|rabbit|meat|sausage)\b/.test(ing)
   ) {
     // turkey/duck/etc. → other (not chicken); generic "meat"/"sausage" → other
     meatType = "other";
   }
-  if (meatType) {
-    foodCategories.add("meat");
-  }
-  if (seafoodCue) {
-    foodCategories.add("seafood");
-  }
-  if (has(text, ["egg", "eggs"])) foodCategories.add("egg");
+  if (meatType) foodCategories.add("meat");
+  if (seafoodCue) foodCategories.add("seafood");
+  if (has(ing, ["egg"])) foodCategories.add("egg");
   if (
-    has(text, [
+    has(stripNonDairyPhrases(ing), [
       "cheese",
       "milk",
+      "buttermilk",
       "butter",
       "yogurt",
       "cream",
       "cheddar",
+      "mozzarella",
+      "parmesan",
       "dairy",
     ])
   ) {
     foodCategories.add("dairy");
   }
   if (
-    has(text, [
+    has(strip(ing, NON_GRAIN_PHRASES), [
       "rice",
       "pasta",
       "spaghetti",
@@ -994,40 +1084,92 @@ export function inferRecipeTaxonomy(input: InferInput): {
       "flour",
       "tortilla",
       "noodle",
+      "ramen",
       "oat",
+      "oats",
       "grain",
+      "couscous",
+      "quinoa",
+      "barley",
     ])
   ) {
     foodCategories.add("grain");
   }
-  if (has(text, ["bean", "beans", "lentil", "chickpea", "legume", "pea"])) {
+  if (
+    has(strip(ing, NON_LEGUME_PHRASES), ["bean", "lentil", "chickpea", "legume", "pea"])
+  ) {
     foodCategories.add("legume");
   }
   if (
-    has(text, ["apple", "banana", "berry", "lemon", "fruit", "orange", "peach"])
+    has(strip(ing, NON_FRUIT_PHRASES), [
+      "apple",
+      "banana",
+      "berry",
+      "berries",
+      "lemon",
+      "lime",
+      "fruit",
+      "orange",
+      "peach",
+      "prune",
+      "apricot",
+      "raisin",
+      "mango",
+      "pineapple",
+    ])
   ) {
     foodCategories.add("fruit");
   }
   if (
-    has(text, [
+    has(strip(ing, NON_VEGETABLE_PHRASES), [
       "potato",
+      "potatoes",
       "onion",
       "carrot",
       "cabbage",
       "broccoli",
       "pepper",
       "tomato",
+      "tomatoes",
       "vegetable",
       "celery",
       "garlic",
+      "pumpkin",
+      "spinach",
+      "zucchini",
+      "mushroom",
+      "kimchi",
     ])
   ) {
     foodCategories.add("vegetable");
   }
-  if (has(text, ["peanut", "almond", "walnut", "nut"])) {
+  if (
+    has(ing, [
+      "peanut",
+      "almond",
+      "walnut",
+      "pecan",
+      "cashew",
+      "pistachio",
+      "hazelnut",
+      "nut",
+    ])
+  ) {
     foodCategories.add("nut");
   }
-  if (has(text, ["soy sauce", "vinegar", "chili flake", "condiment"])) {
+  if (
+    has(ing, [
+      "soy sauce",
+      "vinegar",
+      "chili flake",
+      "condiment",
+      "hoisin",
+      "ketchup",
+      "mustard",
+      "hot sauce",
+      "teriyaki sauce",
+    ])
+  ) {
     foodCategories.add("condiment");
   }
 

@@ -12,6 +12,8 @@
  * plant prefs. Atkins does NOT auto-force preferLowCarb.
  */
 
+import { stripNonDairyPhrases } from "@/lib/ingredient-phrases";
+
 export type DietaryUserPrefs = {
   isJewish?: boolean | null;
   isObservant?: boolean | null;
@@ -644,28 +646,31 @@ export function matchesPlantPreference(
   return true;
 }
 
+// Word lists are plural-tolerant ("prawns", "sausages", "anchovies") and
+// dairy tests ignore non-dairy compounds (peanut butter, coconut milk) via
+// stripNonDairyPhrases.
 const KOSHER_INELIGIBLE =
-  /\b(pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami|shellfish|shrimp|prawn|crab\b|lobster|clam\b|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish|eel\b)\b/i;
+  /\b(?:pork|bacon|ham|prosciutto|pancetta|lard|pepperoni|salami|shellfish|shrimp|prawn|crab|lobster|clam|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish|eel)(?:s|es)?\b/i;
 
 /** Alcohol / intoxicants that block the kosher-without-alcohol ⇒ halal path. */
 const ALCOHOL_IN_RECIPE =
   /\b(wine\b|red wine|white wine|beer\b|rum\b|whiskey|whisky|vodka|brandy|sherry|bourbon|champagne|mirin|sake\b|alcohol|liqueur|cognac|tequila|gin\b)\b/i;
 
 const HALAL_INELIGIBLE =
-  /\b(pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami|wine\b|red wine|white wine|beer\b|rum\b|whiskey|whisky|vodka|brandy|sherry|bourbon|champagne|mirin|sake\b|alcohol)\b/i;
+  /\b(?:pork|bacon|ham|prosciutto|pancetta|lard|pepperoni|salami|wine|red wine|white wine|beer|rum|whiskey|whisky|vodka|brandy|sherry|bourbon|champagne|mirin|sake|alcohol)s?\b/i;
 
 const LAND_MEAT =
-  /\b(beef|steak|ground beef|pork|bacon|ham\b|prosciutto|pancetta|lard\b|pepperoni|salami|chicken|turkey|duck|lamb|mutton|veal|venison|sausage|hot dog|meatball|pepperoni|chorizo|brisket|ribs|bacon|prosciutto|gelatin)\b/i;
+  /\b(?:beef|steak|ground beef|pork|bacon|ham|prosciutto|pancetta|lard|pepperoni|salami|chicken|turkey|duck|lamb|mutton|veal|venison|sausage|hot dog|meatball|chorizo|brisket|ribs|gelatin)s?\b/i;
 
 const FISH_SEAFOOD =
-  /\b(fish|salmon|tuna|cod|tilapia|trout|sardine|anchov|halibut|mahi|shrimp|prawn|crab\b|lobster|clam\b|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish|seafood|fish sauce)\b/i;
+  /\b(?:fish|salmon|tuna|cod|tilapia|trout|sardine|anchov(?:y|ies)|halibut|mahi|shrimp|prawn|crab|lobster|clam|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish|seafood|fish sauce)(?:s|es)?\b/i;
 
 const ANIMAL_DAIRY_EGG =
-  /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|egg\b|eggs\b|mayonnaise|mayo\b|honey)\b/i;
+  /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|egg|mayonnaise|mayo|honey)s?\b/i;
 
 /** Dairy only (not egg/honey) — for classic meat+dairy kosher conflict. */
 const DAIRY_ONLY =
-  /\b(milk|butter|cheese|cream|yogurt|yoghurt|whey|casein|ghee|cheddar|mozzarella|parmesan|swiss|provolone|ricotta|sour cream|half[- ]and[- ]half|queso|feta|brie|gouda|monterey jack|american cheese)\b/i;
+  /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|cheddar|mozzarella|parmesan|swiss|provolone|ricotta|sour cream|half[- ]and[- ]half|queso|feta|brie|gouda|monterey jack|american cheese)s?\b/i;
 
 /**
  * Curated substitution suggestions (not a hechsher / certification claim).
@@ -731,7 +736,7 @@ export function recipeHasMeatAndDairy(recipe: {
   steps?: string[] | string | null;
 }): boolean {
   const blob = blobFromInput(recipe);
-  return LAND_MEAT.test(blob) && DAIRY_ONLY.test(blob);
+  return LAND_MEAT.test(blob) && DAIRY_ONLY.test(stripNonDairyPhrases(blob));
 }
 
 export function recipeHasDairy(recipe: {
@@ -741,7 +746,7 @@ export function recipeHasDairy(recipe: {
   ingredients?: { name: string }[] | string[] | null;
   steps?: string[] | string | null;
 }): boolean {
-  return DAIRY_ONLY.test(blobFromInput(recipe));
+  return DAIRY_ONLY.test(stripNonDairyPhrases(blobFromInput(recipe)));
 }
 
 /**
@@ -781,13 +786,14 @@ export function inferDietaryEligibility(input: {
   const blob = blobFromInput(input);
   const hasLandMeat = LAND_MEAT.test(blob);
   const hasFish = FISH_SEAFOOD.test(blob);
-  const hasDairy = DAIRY_ONLY.test(blob);
+  const dairyBlob = stripNonDairyPhrases(blob);
+  const hasDairy = DAIRY_ONLY.test(dairyBlob);
   const hasMeatAndDairy = hasLandMeat && hasDairy;
   // Pork/shellfish bans + classic meat+dairy mix are not kosher as written.
   const kosherEligible =
     !KOSHER_INELIGIBLE.test(blob) && !hasMeatAndDairy;
   const halalEligible = !HALAL_INELIGIBLE.test(blob);
-  const hasAnimalDairyEgg = ANIMAL_DAIRY_EGG.test(blob);
+  const hasAnimalDairyEgg = ANIMAL_DAIRY_EGG.test(dairyBlob);
   const hasEgg = EGG_ONLY.test(blob);
   const hasCarbHeavy = CARB_HEAVY.test(blob);
   const hasSugarHeavy = SUGAR_HEAVY.test(blob);
@@ -865,7 +871,7 @@ export function inferAdaptNotes(input: {
   }
 
   if (!diet.veganEligible && diet.vegetarianEligible) {
-    if (/\b(butter|cheese|cream|milk|yogurt|yoghurt)\b/i.test(blob)) {
+    if (/\b(butter|cheese|cream|milk|yogurt|yoghurt)\b/i.test(stripNonDairyPhrases(blob))) {
       veganAdaptNote =
         "Swap dairy for plant butter/milk/cheese (or omit cheese).";
     } else if (/\begg\b|eggs\b|mayonnaise|mayo\b/i.test(blob)) {
