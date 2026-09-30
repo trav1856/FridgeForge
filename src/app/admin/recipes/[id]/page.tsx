@@ -349,6 +349,12 @@ export default async function AdminRecipeDetailPage({ params }: Props) {
                 origins: recipe.origins,
                 originStory: recipe.originStory,
               }}
+              adaptNotes={{
+                kosherAdaptNote: recipe.kosherAdaptNote ?? null,
+                halalAdaptNote: recipe.halalAdaptNote ?? null,
+                veganAdaptNote: recipe.veganAdaptNote ?? null,
+                vegetarianAdaptNote: recipe.vegetarianAdaptNote ?? null,
+              }}
             />
           </section>
 

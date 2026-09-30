@@ -63,3 +63,53 @@ describe("admin recipe display helpers", () => {
     expect(formatMinutes(null)).toBe("—");
   });
 });
+
+import {
+  ADAPT_NOTE_FIELDS,
+  ADAPT_NOTE_MAX,
+  adaptNoteError,
+  adaptNotesPatch,
+  normalizeAdaptNote,
+} from "@/lib/admin-recipe-display";
+
+describe("adapt note helpers", () => {
+  it("covers all four adapt note fields", () => {
+    expect(ADAPT_NOTE_FIELDS.map((f) => f.key)).toEqual([
+      "kosherAdaptNote",
+      "halalAdaptNote",
+      "veganAdaptNote",
+      "vegetarianAdaptNote",
+    ]);
+  });
+
+  it("normalizes: undefined untouched, blank → null, text trimmed", () => {
+    expect(normalizeAdaptNote(undefined)).toBeUndefined();
+    expect(normalizeAdaptNote(null)).toBeNull();
+    expect(normalizeAdaptNote("   \n ")).toBeNull();
+    expect(normalizeAdaptNote("  Use halal beef.  ")).toBe("Use halal beef.");
+  });
+
+  it("validates length after trimming", () => {
+    expect(adaptNoteError("x".repeat(ADAPT_NOTE_MAX))).toBeNull();
+    expect(adaptNoteError(`  ${"x".repeat(ADAPT_NOTE_MAX)}  `)).toBeNull();
+    expect(adaptNoteError("x".repeat(ADAPT_NOTE_MAX + 1))).toMatch(/500/);
+  });
+
+  it("patches only notes whose normalized value changed", () => {
+    const initial = {
+      kosherAdaptNote: "Keep meat and dairy separate.",
+      halalAdaptNote: null,
+      veganAdaptNote: "Swap dairy.",
+      vegetarianAdaptNote: null,
+    };
+    expect(
+      adaptNotesPatch(initial, {
+        kosherAdaptNote: "  Keep meat and dairy separate. ",
+        halalAdaptNote: "  Omit mirin. ",
+        veganAdaptNote: "   ",
+        vegetarianAdaptNote: "",
+      })
+    ).toEqual({ halalAdaptNote: "Omit mirin.", veganAdaptNote: null });
+    expect(adaptNotesPatch(initial, {})).toEqual({});
+  });
+});

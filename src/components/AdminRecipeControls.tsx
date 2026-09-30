@@ -10,8 +10,14 @@ import {
 } from "@/lib/recipe-taxonomy";
 import { normalizeVisibility, visibilityLabel } from "@/lib/recipe-visibility";
 import {
+  ADAPT_NOTE_FIELDS,
+  ADAPT_NOTE_MAX,
   ADMIN_FLAG_GROUPS,
   activeAdminFlags,
+  adaptNoteError,
+  adaptNotesPatch,
+  type AdaptNoteKey,
+  type AdaptNoteValues,
   type AdminFlagGroup,
   type AdminFlagKey,
   type AdminFlagValues,
@@ -345,6 +351,114 @@ export function AdminTaxonomyEditor({
           <button type="button" className="btn-ghost text-sm" onClick={onCancel}>
             Cancel
           </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Adapt notes editor (kosher / halal / vegan / vegetarian)            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Edit the "how to adapt" notes. Sends only changed notes (trimmed; blank clears)
+ * to the admin PATCH endpoint via `onSave`, which resolves to an error string or null.
+ */
+export function AdminAdaptNotesEditor({
+  initial,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  initial: AdaptNoteValues;
+  busy?: boolean;
+  onSave: (body: AdaptNoteValues) => Promise<string | null>;
+  onCancel?: () => void;
+}) {
+  const [draft, setDraft] = useState<Record<AdaptNoteKey, string>>(() => ({
+    kosherAdaptNote: initial.kosherAdaptNote ?? "",
+    halalAdaptNote: initial.halalAdaptNote ?? "",
+    veganAdaptNote: initial.veganAdaptNote ?? "",
+    vegetarianAdaptNote: initial.vegetarianAdaptNote ?? "",
+  }));
+  const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string } | null>(
+    null
+  );
+  const errors = Object.fromEntries(
+    ADAPT_NOTE_FIELDS.map(({ key }) => [key, adaptNoteError(draft[key])])
+  ) as Record<AdaptNoteKey, string | null>;
+  const invalid = Object.values(errors).some(Boolean);
+  const changes = adaptNotesPatch(initial, draft);
+  const dirty = Object.keys(changes).length > 0;
+
+  async function save() {
+    if (invalid) return;
+    if (!dirty) {
+      setStatus({ tone: "ok", text: "No changes to save." });
+      return;
+    }
+    setStatus(null);
+    const err = await onSave(changes);
+    setStatus(err ? { tone: "error", text: err } : { tone: "ok", text: "Saved ✓" });
+  }
+
+  return (
+    <div className="space-y-3 text-sm">
+      {ADAPT_NOTE_FIELDS.map(({ key, label }) => {
+        const len = draft[key].trim().length;
+        return (
+          <label key={key} className="block">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-sage-500">
+                {label}
+              </span>
+              <span
+                className={`text-[10px] ${errors[key] ? "text-ember-700" : "text-sage-400"}`}
+              >
+                {len}/{ADAPT_NOTE_MAX}
+              </span>
+            </span>
+            <textarea
+              className="input mt-1 min-h-[64px] text-sm"
+              value={draft[key]}
+              maxLength={ADAPT_NOTE_MAX + 50}
+              disabled={busy}
+              aria-invalid={Boolean(errors[key])}
+              onChange={(e) => {
+                const v = e.target.value;
+                setStatus(null);
+                setDraft((d) => ({ ...d, [key]: v }));
+              }}
+              placeholder={`How to adapt this recipe to ${label.toLowerCase()} (blank = none)`}
+            />
+            {errors[key] && (
+              <span className="mt-0.5 block text-[11px] text-ember-700">{errors[key]}</span>
+            )}
+          </label>
+        );
+      })}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn-primary text-sm"
+          disabled={busy || invalid}
+          onClick={() => void save()}
+        >
+          {busy ? "Saving…" : "Save notes"}
+        </button>
+        {onCancel && (
+          <button type="button" className="btn-ghost text-sm" onClick={onCancel}>
+            {dirty ? "Cancel" : "Close"}
+          </button>
+        )}
+        {status && (
+          <span
+            role={status.tone === "error" ? "alert" : "status"}
+            className={`text-xs ${status.tone === "error" ? "text-ember-700" : "text-emerald-700"}`}
+          >
+            {status.text}
+          </span>
         )}
       </div>
     </div>

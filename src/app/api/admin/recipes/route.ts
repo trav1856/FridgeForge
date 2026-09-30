@@ -4,6 +4,11 @@ import { prisma } from "@/lib/db";
 import { adminErrorResponse, requireAdmin } from "@/lib/admin";
 import { serializeRecipe } from "@/lib/mappers";
 import { deleteOrphanedRecipeImages } from "@/lib/recipe-image-cleanup";
+import {
+  ADAPT_NOTE_MAX,
+  normalizeAdaptNote,
+  type AdaptNoteKey,
+} from "@/lib/admin-recipe-display";
 import { stringifyArray } from "@/lib/json";
 import { normalizeVisibility } from "@/lib/recipe-visibility";
 import {
@@ -65,9 +70,10 @@ const patchSchema = z.object({
   lowCarbEligible: z.boolean().optional(),
   lowSugarEligible: z.boolean().optional(),
   lowSodiumEligible: z.boolean().optional(),
-  kosherAdaptNote: z.string().max(500).optional().nullable(),
-  veganAdaptNote: z.string().max(500).optional().nullable(),
-  vegetarianAdaptNote: z.string().max(500).optional().nullable(),
+  kosherAdaptNote: z.string().max(ADAPT_NOTE_MAX).optional().nullable(),
+  halalAdaptNote: z.string().max(ADAPT_NOTE_MAX).optional().nullable(),
+  veganAdaptNote: z.string().max(ADAPT_NOTE_MAX).optional().nullable(),
+  vegetarianAdaptNote: z.string().max(ADAPT_NOTE_MAX).optional().nullable(),
   cuisine: z.string().max(80).optional().nullable(),
   course: z.string().max(40).optional().nullable(),
   foodCategories: z.array(z.string()).optional(),
@@ -80,7 +86,32 @@ export async function PATCH(req: NextRequest) {
   try {
     await requireAdmin();
     const data = patchSchema.parse(await req.json());
-    const { id, foodCategories, origins, cuisine, course, tags, originStory, visibility, ...rest } = data;
+    const {
+      id,
+      foodCategories,
+      origins,
+      cuisine,
+      course,
+      tags,
+      originStory,
+      visibility,
+      kosherAdaptNote,
+      halalAdaptNote,
+      veganAdaptNote,
+      vegetarianAdaptNote,
+      ...rest
+    } = data;
+    // Adapt notes: trimmed; blank clears to null; omitted stays untouched.
+    const adaptNotes = Object.fromEntries(
+      Object.entries({
+        kosherAdaptNote,
+        halalAdaptNote,
+        veganAdaptNote,
+        vegetarianAdaptNote,
+      })
+        .map(([k, v]) => [k, normalizeAdaptNote(v)] as const)
+        .filter(([, v]) => v !== undefined)
+    ) as Partial<Record<AdaptNoteKey, string | null>>;
     const existing = await prisma.recipe.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -89,6 +120,7 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: {
         ...rest,
+        ...adaptNotes,
         ...(visibility !== undefined
           ? { visibility: normalizeVisibility(visibility) }
           : {}),

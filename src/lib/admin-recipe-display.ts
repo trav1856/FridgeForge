@@ -142,3 +142,59 @@ export function formatMinutes(min: number | null | undefined): string {
   const m = min % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Adapt notes (kosher / halal / vegan / vegetarian)                   */
+/* ------------------------------------------------------------------ */
+
+export type AdaptNoteKey =
+  | "kosherAdaptNote"
+  | "halalAdaptNote"
+  | "veganAdaptNote"
+  | "vegetarianAdaptNote";
+
+export const ADAPT_NOTE_FIELDS: { key: AdaptNoteKey; label: string }[] = [
+  { key: "kosherAdaptNote", label: "Kosher" },
+  { key: "halalAdaptNote", label: "Halal" },
+  { key: "veganAdaptNote", label: "Vegan" },
+  { key: "vegetarianAdaptNote", label: "Vegetarian" },
+];
+
+/** Same limit as the recipe PATCH schemas. */
+export const ADAPT_NOTE_MAX = 500;
+
+export type AdaptNoteValues = Partial<Record<AdaptNoteKey, string | null>>;
+
+/** undefined → untouched; null / blank → cleared (null); otherwise trimmed text. */
+export function normalizeAdaptNote(
+  value: string | null | undefined
+): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const t = value.trim();
+  return t ? t : null;
+}
+
+/** Validation message for one note, or null when OK. */
+export function adaptNoteError(value: string | null | undefined): string | null {
+  const n = normalizeAdaptNote(value);
+  if (n && n.length > ADAPT_NOTE_MAX) {
+    return `Keep it under ${ADAPT_NOTE_MAX} characters (${n.length}).`;
+  }
+  return null;
+}
+
+/** Only the notes whose normalized value changed — the body to PATCH. */
+export function adaptNotesPatch(
+  initial: AdaptNoteValues,
+  draft: AdaptNoteValues
+): AdaptNoteValues {
+  const out: AdaptNoteValues = {};
+  for (const { key } of ADAPT_NOTE_FIELDS) {
+    if (draft[key] === undefined) continue;
+    const next = normalizeAdaptNote(draft[key]) ?? null;
+    const prev = normalizeAdaptNote(initial[key] ?? null) ?? null;
+    if (next !== prev) out[key] = next;
+  }
+  return out;
+}
