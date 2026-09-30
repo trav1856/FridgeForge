@@ -666,7 +666,7 @@ const FISH_SEAFOOD =
   /\b(?:fish|salmon|tuna|cod|tilapia|trout|sardine|anchov(?:y|ies)|halibut|mahi|shrimp|prawn|crab|lobster|clam|mussel|oyster|scallop|calamari|squid|octopus|crawfish|crayfish|seafood|fish sauce)(?:s|es)?\b/i;
 
 const ANIMAL_DAIRY_EGG =
-  /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|egg|mayonnaise|mayo|honey)s?\b/i;
+  /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|parmesan|mozzarella|cheddar|ricotta|feta|paneer|egg|mayonnaise|mayo|honey)s?\b/i;
 
 /** Dairy only (not egg/honey) — for classic meat+dairy kosher conflict. */
 const DAIRY_ONLY =

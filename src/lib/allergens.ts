@@ -23,7 +23,7 @@ export type CommonAllergenId = (typeof COMMON_ALLERGENS)[number]["id"];
 // Plural-tolerant (walnuts, prawns, anchovies, sardines, …); milk ignores
 // non-dairy compounds (peanut butter, coconut milk) via stripNonDairyPhrases.
 const ALLERGEN_PATTERNS: Record<CommonAllergenId, RegExp> = {
-  milk: /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|dairy)s?\b/i,
+  milk: /\b(?:milk|buttermilk|butter|buttercream|cheese|cream|yogurt|yoghurt|whey|casein|ghee|dairy|parmesan|mozzarella|cheddar|ricotta|feta|paneer)s?\b/i,
   eggs: /\b(egg\b|eggs\b|mayonnaise|mayo\b)\b/i,
   fish: /\b(?:fish|salmon|tuna|cod|tilapia|trout|sardine|anchov(?:y|ies)|halibut|mahi|fish sauce)(?:s|es)?\b/i,
   shellfish:
@@ -31,7 +31,7 @@ const ALLERGEN_PATTERNS: Record<CommonAllergenId, RegExp> = {
   tree_nuts:
     /\b(?:almond|walnut|cashew|pecan|pistachio|hazelnut|macadamia|brazil nut|tree nut|pine nut)(?:s|es)?\b/i,
   peanuts: /\b(peanut|peanuts|groundnut)\b/i,
-  wheat: /\b(?:wheat|flour|bread|pasta|noodle|gluten|soy sauce|tortilla|bagel|bun|cracker)s?\b/i,
+  wheat: /\b(?:wheat|flour|bread|breadcrumb|pasta|spaghetti|macaroni|penne|linguine|fettuccine|lasagna|ramen|udon|couscous|semolina|noodle|gluten|soy sauce|tortilla|bagel|bun|cracker)s?\b/i,
   soy: /\b(soy\b|soya|tofu|edamame|miso|tempeh|soy sauce)\b/i,
   sesame: /\b(sesame|tahini)\b/i,
 };

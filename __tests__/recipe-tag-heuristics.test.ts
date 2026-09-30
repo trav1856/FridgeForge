@@ -155,6 +155,14 @@ describe("allergens: plural + non-dairy compounds", () => {
     expect(inferAllergenTags({ ingredients: ["buttermilk"] })).toContain("milk");
   });
 
+  it("named cheeses and pasta shapes are detected", () => {
+    const a = inferAllergenTags({ ingredients: ["12 oz Spaghetti", "1 oz Parmesan"] });
+    expect(a).toEqual(expect.arrayContaining(["milk", "wheat"]));
+    expect(inferDietaryEligibility({ ingredients: ["Spaghetti", "Parmesan"] }).veganEligible).toBe(
+      false
+    );
+  });
+
   it("plural nuts / shellfish / fish are detected", () => {
     expect(inferAllergenTags({ ingredients: ["chopped walnuts"] })).toContain("tree_nuts");
     expect(inferAllergenTags({ ingredients: ["prawns"] })).toContain("shellfish");
