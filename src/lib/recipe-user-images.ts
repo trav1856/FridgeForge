@@ -77,6 +77,79 @@ export async function saveRecipeUserImageFile(
   return recipeUserImagePublicPath(filename);
 }
 
+/** Minimal recipe shape for image-reference checks. */
+export type RecipeImageRefs = {
+  imageUrl?: string | null;
+  /** Raw DB JSON string (or parsed array) of story media items. */
+  originStoryMedia?: unknown;
+};
+
+function storyMediaImageUrls(value: unknown): string[] {
+  let arr: unknown = value;
+  if (typeof value === "string") {
+    try {
+      arr = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: string[] = [];
+  for (const m of arr) {
+    if (!m || typeof m !== "object") continue;
+    const url = (m as { url?: unknown }).url;
+    // Any item carrying a managed url counts as a reference (be conservative:
+    // kind is not required, so a malformed-but-present reference still protects the file).
+    if (typeof url === "string" && isManagedRecipeUserImagePath(url)) out.push(url);
+  }
+  return out;
+}
+
+/** Pure: managed /recipe-images/user/ files a recipe points at (main photo + story photos), deduped. */
+export function managedImageUrlsForRecipe(recipe: RecipeImageRefs): string[] {
+  const urls = [
+    ...(isManagedRecipeUserImagePath(recipe.imageUrl) ? [recipe.imageUrl as string] : []),
+    ...storyMediaImageUrls(recipe.originStoryMedia),
+  ];
+  return [...new Set(urls)];
+}
+
+const MANAGED_REF_IN_TEXT_RE = /\/recipe-images\/user\/([A-Za-z0-9._-]+)/g;
+
+/** Conservative: any managed file named anywhere in a string (absolute URL, escaped JSON, …). */
+function managedRefsInText(value: unknown): string[] {
+  if (typeof value !== "string" || !value) return [];
+  const text = value.replace(/\\\//g, "/"); // JSON-escaped slashes
+  return [...text.matchAll(MANAGED_REF_IN_TEXT_RE)].map(
+    (m) => `/recipe-images/user/${m[1]}`
+  );
+}
+
+/**
+ * Pure: which candidate files are NOT referenced by any of `others`
+ * (their imageUrl or any story media item). Only these are safe to unlink.
+ * References are matched conservatively (a managed filename appearing anywhere
+ * in imageUrl or the story media JSON keeps the file).
+ */
+export function unreferencedManagedImageUrls(
+  candidates: string[],
+  others: RecipeImageRefs[]
+): string[] {
+  const referenced = new Set<string>();
+  for (const r of others) {
+    for (const u of managedImageUrlsForRecipe(r)) referenced.add(u);
+    for (const u of managedRefsInText(r.imageUrl)) referenced.add(u);
+    const media =
+      typeof r.originStoryMedia === "string"
+        ? r.originStoryMedia
+        : JSON.stringify(r.originStoryMedia ?? null);
+    for (const u of managedRefsInText(media)) referenced.add(u);
+  }
+  return [...new Set(candidates)].filter(
+    (u) => isManagedRecipeUserImagePath(u) && !referenced.has(u)
+  );
+}
+
 /** Best-effort delete of a managed local user recipe image. */
 export async function deleteManagedRecipeUserImage(
   url: string | null | undefined

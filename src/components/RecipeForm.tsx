@@ -16,6 +16,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RecipeImage } from "./RecipeImage";
 import { RecipeStoryMediaEditor } from "./RecipeStoryMediaEditor";
+import {
+  describeStagedFailures,
+  uploadStagedStoryMedia,
+  type StagedStoryMediaItem,
+} from "@/lib/story-media-staging";
 import type { StoryMediaItem } from "@/lib/origin-story-media";
 import {
   RecipePhotoUpload,
@@ -520,6 +525,10 @@ export function RecipeForm({
   const [showPaste, setShowPaste] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Create mode: story photos/links staged by RecipeStoryMediaEditor, uploaded after POST. */
+  const storyStagedRef = useRef<StagedStoryMediaItem[]>([]);
+  /** Recipe was created but some follow-up uploads failed; user must acknowledge. */
+  const [savedWithIssues, setSavedWithIssues] = useState<string | null>(null);
 
   const formSetters = {
     setTitle,
@@ -607,6 +616,8 @@ export function RecipeForm({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    // Already created (follow-up upload failed): never create a duplicate on Enter.
+    if (savedWithIssues) return;
     setError(null);
     setSaving(true);
     const steps = stepsText
@@ -684,19 +695,36 @@ export function RecipeForm({
         throw new Error(data.error ? JSON.stringify(data.error) : "Save failed");
       }
       const saved = await res.json();
+      let photoError: string | null = null;
       if (pendingPhoto) {
         const up = await uploadRecipePhotoAfterCreate(saved.id, pendingPhoto);
-        if (!up.ok) {
+        if (!up.ok) photoError = up.error;
+      }
+      // Story media staged on the create form: upload now that the recipe exists.
+      const staged = isEdit ? [] : storyStagedRef.current;
+      if (staged.length) {
+        const { failures } = await uploadStagedStoryMedia(saved.id, staged);
+        if (failures.length) {
+          // Don't navigate/reset: keep the failure visible until the user continues.
           setError(
-            `Recipe saved, but photo failed: ${up.error}. You can add a photo on the recipe page.`
+            `Recipe saved, but ${describeStagedFailures(failures)}` +
+              (photoError ? ` Photo also failed: ${photoError}.` : "")
           );
+          setSavedWithIssues(saved.id);
           setSaving(false);
-          onSaved?.({ id: saved.id });
-          if (!stayAfterSave) {
-            router.push(`/recipes/${saved.id}`);
-          }
           return;
         }
+      }
+      if (photoError) {
+        setError(
+          `Recipe saved, but photo failed: ${photoError}. You can add a photo on the recipe page.`
+        );
+        setSaving(false);
+        onSaved?.({ id: saved.id });
+        if (!stayAfterSave) {
+          router.push(`/recipes/${saved.id}`);
+        }
+        return;
       }
       onSaved?.({ id: saved.id });
       if (!stayAfterSave) {
@@ -1187,6 +1215,7 @@ export function RecipeForm({
           <RecipeStoryMediaEditor
             recipeId={isEdit ? recipeId : undefined}
             initialMedia={initialDraft?.originStoryMedia}
+            stagedRef={isEdit ? undefined : storyStagedRef}
           />
         </div>
 
@@ -1279,11 +1308,29 @@ export function RecipeForm({
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
         <NutritionPreview ingredients={ingredients} servings={servings} />
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Saving…" : isEdit ? "Update recipe" : "Save recipe"}
-        </button>
+        {savedWithIssues ? (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              const id = savedWithIssues;
+              onSaved?.({ id });
+              if (!stayAfterSave) router.push(`/recipes/${id}`);
+            }}
+          >
+            {stayAfterSave ? "Continue" : "Open saved recipe"}
+          </button>
+        ) : (
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Update recipe" : "Save recipe"}
+          </button>
+        )}
       </form>
     </div>
   );

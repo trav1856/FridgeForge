@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { adminErrorResponse, requireAdmin } from "@/lib/admin";
 import { serializeRecipe } from "@/lib/mappers";
+import { deleteOrphanedRecipeImages } from "@/lib/recipe-image-cleanup";
 import { stringifyArray } from "@/lib/json";
 import { normalizeVisibility } from "@/lib/recipe-visibility";
 import {
@@ -131,6 +132,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     await prisma.recipe.delete({ where: { id: data.id } });
+    // Remove its uploaded photo/story files unless another recipe still uses them.
+    await deleteOrphanedRecipeImages(existing);
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

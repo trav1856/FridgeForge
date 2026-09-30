@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import {
   STORY_MEDIA_MAX_ITEMS,
   parseStoryMedia,
@@ -9,6 +16,11 @@ import {
   youtubeWatchUrl,
   type StoryMediaItem,
 } from "@/lib/origin-story-media";
+import {
+  stageImage,
+  stageYoutube,
+  type StagedStoryMediaItem,
+} from "@/lib/story-media-staging";
 
 /** Keep in sync with RECIPE_USER_IMAGE_MAX_BYTES in recipe-user-images.ts */
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -18,6 +30,12 @@ type Props = {
   /** Existing recipe id. Media saves immediately via /api/recipes/[id]/story-media. */
   recipeId?: string;
   initialMedia?: StoryMediaItem[] | null;
+  /**
+   * Create mode (no recipeId yet): items are staged locally and mirrored into this
+   * ref; RecipeForm uploads them right after the recipe is created. Pass a stable
+   * useRef object so the memoized editor never re-renders while the form types.
+   */
+  stagedRef?: MutableRefObject<StagedStoryMediaItem[]>;
 };
 
 /**
@@ -28,7 +46,17 @@ type Props = {
 export const RecipeStoryMediaEditor = memo(function RecipeStoryMediaEditor({
   recipeId,
   initialMedia,
+  stagedRef,
 }: Props) {
+  if (!recipeId && stagedRef) return <StagedStoryMediaEditor stagedRef={stagedRef} />;
+  return <SavedStoryMediaEditor recipeId={recipeId} initialMedia={initialMedia} />;
+});
+
+/** Edit mode: every change saves immediately through the story-media API. */
+function SavedStoryMediaEditor({
+  recipeId,
+  initialMedia,
+}: Pick<Props, "recipeId" | "initialMedia">) {
   const [items, setItems] = useState<StoryMediaItem[]>(() =>
     parseStoryMedia(initialMedia ?? [])
   );
@@ -250,4 +278,203 @@ export const RecipeStoryMediaEditor = memo(function RecipeStoryMediaEditor({
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
-});
+}
+
+/**
+ * Create mode: photos + YouTube links are staged locally (nothing is uploaded
+ * until the recipe exists). Items are mirrored into `stagedRef` so RecipeForm
+ * can upload them after POST /api/recipes without re-rendering this editor.
+ */
+function StagedStoryMediaEditor({
+  stagedRef,
+}: {
+  stagedRef: MutableRefObject<StagedStoryMediaItem[]>;
+}) {
+  const [items, setItems] = useState<StagedStoryMediaItem[]>([]);
+  const [ytUrl, setYtUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const itemsRef = useRef<StagedStoryMediaItem[]>(items);
+
+  // Single write path: local state + the ref RecipeForm reads on submit (synchronously,
+  // so a submit right after adding an item can never miss it).
+  const commit = useCallback(
+    (next: StagedStoryMediaItem[]) => {
+      itemsRef.current = next;
+      stagedRef.current = next;
+      setItems(next);
+    },
+    [stagedRef]
+  );
+
+  // Start clean for this form instance.
+  useEffect(() => {
+    stagedRef.current = itemsRef.current;
+  }, [stagedRef]);
+
+  // Release local previews when the form goes away (after save/navigation).
+  useEffect(
+    () => () => {
+      for (const m of itemsRef.current) {
+        if (m.kind === "image") URL.revokeObjectURL(m.previewUrl);
+      }
+    },
+    []
+  );
+
+  const addFile = useCallback((file: File | null) => {
+    setError(null);
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    const res = stageImage(itemsRef.current, file, previewUrl);
+    if (!res.ok) {
+      URL.revokeObjectURL(previewUrl);
+      setError(res.error);
+      return;
+    }
+    commit(res.items);
+  }, [commit]);
+
+  const addYoutube = useCallback(() => {
+    setError(null);
+    const res = stageYoutube(itemsRef.current, ytUrl);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    commit(res.items);
+    setYtUrl("");
+  }, [ytUrl, commit]);
+
+  const remove = useCallback((itemId: string) => {
+    setError(null);
+    const gone = itemsRef.current.find((m) => m.id === itemId);
+    if (gone?.kind === "image") URL.revokeObjectURL(gone.previewUrl);
+    commit(itemsRef.current.filter((m) => m.id !== itemId));
+  }, [commit]);
+
+  const full = items.length >= STORY_MEDIA_MAX_ITEMS;
+
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-cream-200 bg-cream-50/60 p-3">
+      <div>
+        <p className="text-sm font-semibold text-sage-800">Story photos &amp; videos</p>
+        <p className="text-xs text-sage-500">
+          Added to the story section when you save the recipe.
+        </p>
+      </div>
+
+      {items.length > 0 && (
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {items.map((m) => (
+            <li
+              key={m.id}
+              className="relative overflow-hidden rounded-lg border border-cream-200 bg-white"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={m.kind === "image" ? m.previewUrl : youtubeThumbnailUrl(m.videoId)}
+                alt={m.kind === "image" ? "Story photo (not saved yet)" : "YouTube video"}
+                className="aspect-video w-full object-cover"
+              />
+              <div className="flex items-center justify-between gap-1 px-2 py-1 text-xs">
+                {m.kind === "youtube" ? (
+                  <a
+                    href={youtubeWatchUrl(m.videoId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-ember-700 underline"
+                  >
+                    ▶ YouTube
+                  </a>
+                ) : (
+                  <span className="truncate text-sage-600" title={m.file.name}>
+                    Photo
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="font-medium text-red-600 hover:underline"
+                  onClick={() => remove(m.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          disabled={full}
+          onClick={() => cameraRef.current?.click()}
+        >
+          Take photo
+        </button>
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          disabled={full}
+          onClick={() => galleryRef.current?.click()}
+        >
+          Upload photo
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="url"
+          inputMode="url"
+          className="input flex-1"
+          placeholder="Paste a YouTube link (youtube.com, youtu.be, Shorts)"
+          value={ytUrl}
+          disabled={full}
+          onChange={(e) => setYtUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addYoutube();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          disabled={full || !ytUrl.trim()}
+          onClick={addYoutube}
+        >
+          Add video
+        </button>
+      </div>
+      {full && (
+        <p className="text-xs text-sage-500">
+          Limit reached ({STORY_MEDIA_MAX_ITEMS}). Remove one to add more.
+        </p>
+      )}
+
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => addFile(e.target.files?.[0] ?? null)}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => addFile(e.target.files?.[0] ?? null)}
+      />
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}

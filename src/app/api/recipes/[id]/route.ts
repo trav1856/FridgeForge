@@ -15,6 +15,7 @@ import {
 import { parseStringArray, stringifyArray } from "@/lib/json";
 import { inferAllergenTags } from "@/lib/allergens";
 import { canEditRecipe } from "@/lib/recipe-user-images";
+import { deleteOrphanedRecipeImages } from "@/lib/recipe-image-cleanup";
 import { dishKeyForTitle } from "@/lib/dish-key";
 import { sanitizeRecipeWritePayload } from "@/lib/sanitize-recipe-text";
 
@@ -312,6 +313,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       );
     }
     await prisma.recipe.delete({ where: { id } });
+    // Remove its uploaded photo/story files unless another recipe still uses them.
+    await deleteOrphanedRecipeImages(recipe);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
