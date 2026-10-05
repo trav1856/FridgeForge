@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 type Ctx = {
@@ -71,8 +72,30 @@ export function StruggleModeProvider({
   );
 }
 
+const noopSubscribe = () => () => {};
+
+/**
+ * True only after this component has hydrated. Consumers inside a Suspense
+ * boundary (e.g. Nav) hydrate after the provider's effect has already read
+ * localStorage, so they must render the server value (off) during hydration
+ * or React throws a hydration mismatch when Struggle Mode is ON.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
+}
+
 export function useStruggleMode() {
   const ctx = useContext(StruggleModeContext);
   if (!ctx) throw new Error("useStruggleMode must be used within provider");
-  return ctx;
+  const hydrated = useHydrated();
+  const struggleMode = hydrated && ctx.struggleMode;
+  return useMemo(
+    () =>
+      struggleMode === ctx.struggleMode ? ctx : { ...ctx, struggleMode },
+    [ctx, struggleMode]
+  );
 }
