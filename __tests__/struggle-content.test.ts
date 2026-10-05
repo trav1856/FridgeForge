@@ -153,9 +153,12 @@ describe("Struggle Mode visibility gate", () => {
   it("nav Struggle link is struggleMode-gated (not always listed)", () => {
     const src = source("src/components/Nav.tsx");
     expect(src).toMatch(/struggleLink/);
+    // Multi-line array is fine (more gated links like Kosher/Halal may follow).
     expect(src).toMatch(
-      /\[\.\.\.baseLinks,\s*\.\.\.\(struggleMode\s*\?\s*\[struggleLink\]\s*:\s*\[\]\)\]/
+      /\[\s*\.\.\.baseLinks,\s*\.\.\.\(struggleMode\s*\?\s*\[struggleLink\]\s*:\s*\[\]\)/
     );
+    // Only the declaration + the gated spread reference it (never listed unconditionally).
+    expect(src.match(/struggleLink/g)?.length).toBe(2);
     const baseBlock = src.slice(
       src.indexOf("const baseLinks"),
       src.indexOf("const struggleLink")
