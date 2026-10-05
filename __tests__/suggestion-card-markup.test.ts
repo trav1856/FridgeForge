@@ -54,3 +54,29 @@ describe("DealsBanner compact coupon links", () => {
     expect(src).toMatch(/onClick=\{\(e\) => e\.stopPropagation\(\)\}/);
   });
 });
+
+describe("Cook Now ranking score badge", () => {
+  it("renders the score badge only for admins", () => {
+    const src = source("src/components/SuggestionsView.tsx");
+    const section = src.slice(src.indexOf("function Section("));
+    const scoreIdx = section.indexOf("score {Math.round(s.score)}");
+    expect(scoreIdx).toBeGreaterThan(-1);
+    const before = section.slice(Math.max(0, scoreIdx - 400), scoreIdx);
+    expect(before).toMatch(/\{showScore && \(/);
+    expect(before).toContain('title="Ranking score (admin only)"');
+    // Exactly one place renders the score in the component.
+    expect(src.match(/Math\.round\(s\.score\)/g)?.length).toBe(1);
+    // Admin flag comes from /api/auth/me role and defaults to false.
+    expect(src).toMatch(/useState\(false\)/);
+    expect(src).toMatch(/setIsAdminUser\(data\?\.user\?\.role === "admin"\)/);
+  });
+
+  it("keeps % match visible for everyone", () => {
+    const src = source("src/components/SuggestionsView.tsx");
+    const section = src.slice(src.indexOf("function Section("));
+    const matchIdx = section.indexOf("% match");
+    expect(matchIdx).toBeGreaterThan(-1);
+    const before = section.slice(Math.max(0, matchIdx - 200), matchIdx);
+    expect(before).not.toMatch(/showScore/);
+  });
+});

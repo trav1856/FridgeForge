@@ -131,6 +131,8 @@ export function SuggestionsView() {
   const [tonightPickId, setTonightPickId] = useState<string | null>(null);
   const [flashPick, setFlashPick] = useState(false);
   const [dietPrefs, setDietPrefs] = useState<DietaryUserPrefs | null>(null);
+  /** Ranking score badge is admin-only; false until /api/auth/me resolves (client-only, no SSR mismatch). */
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const lastSurpriseId = useRef<string | null>(null);
   const pickCardRef = useRef<HTMLLIElement | null>(null);
 
@@ -139,10 +141,14 @@ export function SuggestionsView() {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled) setDietPrefs(data?.user ?? null);
+        if (cancelled) return;
+        setDietPrefs(data?.user ?? null);
+        setIsAdminUser(data?.user?.role === "admin");
       })
       .catch(() => {
-        if (!cancelled) setDietPrefs(null);
+        if (cancelled) return;
+        setDietPrefs(null);
+        setIsAdminUser(false);
       });
     return () => {
       cancelled = true;
@@ -383,6 +389,7 @@ export function SuggestionsView() {
             flash={flashPick}
             pickCardRef={pickCardRef}
             dietPrefs={dietPrefs}
+            showScore={isAdminUser}
           />
           <Section
             title="Almost there (1–2 cheap staples)"
@@ -392,6 +399,7 @@ export function SuggestionsView() {
             flash={flashPick}
             pickCardRef={pickCardRef}
             dietPrefs={dietPrefs}
+            showScore={isAdminUser}
           />
           <Section
             title="Need more ingredients"
@@ -405,6 +413,7 @@ export function SuggestionsView() {
             flash={flashPick}
             pickCardRef={pickCardRef}
             dietPrefs={dietPrefs}
+            showScore={isAdminUser}
           />
         </>
       )}
@@ -420,6 +429,7 @@ function Section({
   flash,
   pickCardRef,
   dietPrefs,
+  showScore,
 }: {
   title: string;
   items: Suggestion[];
@@ -428,6 +438,8 @@ function Section({
   flash: boolean;
   pickCardRef: MutableRefObject<HTMLLIElement | null>;
   dietPrefs: DietaryUserPrefs | null;
+  /** Admin-only: show the internal ranking score badge. */
+  showScore: boolean;
 }) {
   return (
     <section>
@@ -471,9 +483,15 @@ function Section({
                           Tonight’s pick
                         </span>
                       )}
-                      <span className="badge bg-sage-800 text-cream-50">
-                        score {Math.round(s.score)}
-                      </span>
+                      {showScore && (
+                        <span
+                          className="badge bg-sage-800 text-cream-50"
+                          title="Ranking score (admin only)"
+                          data-testid="admin-score-badge"
+                        >
+                          score {Math.round(s.score)}
+                        </span>
+                      )}
                       <span className="badge bg-sage-100 text-sage-800">
                         {Math.round(s.matchRatio * 100)}% match
                       </span>
