@@ -61,6 +61,7 @@ describe("inferRecipeTaxonomy: whole-word matching, field-appropriate text", () 
     expect(t.origins).toContain("asian");
     expect(t.foodCategories).not.toContain("dairy");
     expect(t.foodCategories).toContain("nut");
+    expect(t.foodCategories).toContain("legume"); // peanuts are legumes
   });
 
   it("plain spaghetti dishes stay Italian", () => {

@@ -1096,7 +1096,8 @@ export function inferRecipeTaxonomy(input: InferInput): {
     foodCategories.add("grain");
   }
   if (
-    has(strip(ing, NON_LEGUME_PHRASES), ["bean", "lentil", "chickpea", "legume", "pea"])
+    // Peanuts are botanically legumes (they also get the "nut" category below).
+    has(strip(ing, NON_LEGUME_PHRASES), ["bean", "lentil", "chickpea", "legume", "pea", "peanut"])
   ) {
     foodCategories.add("legume");
   }
