@@ -4,10 +4,17 @@ import { StruggleHomeStrip } from "@/components/StruggleHomeStrip";
 import { YourKitchenStrip } from "@/components/YourKitchenStrip";
 import { RecipeOfTheWeek } from "@/components/RecipeOfTheWeek";
 import { PopularThisWeek } from "@/components/PopularThisWeek";
+import { Splash } from "@/components/splash/Splash";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Signed-out visitors get the splash; decided server-side from the session
+  // cookie so there is no client-side auth flip / hydration mismatch.
+  const user = await getCurrentUser();
+  if (!user) return <Splash />;
+
   return (
     <div className="space-y-8">
       <StruggleBanner />

@@ -20,6 +20,16 @@ body {
   min-height: 100vh;
 }
 
+/* Signed-out splash at "/" brings its own full-bleed header/footer:
+   hide the app Nav (and its Suspense fallback) and the narrow <main> frame. */
+body:has(.ff-splash) > header {
+  display: none;
+}
+body:has(.ff-splash) > main {
+  max-width: none;
+  padding: 0;
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ember-500 focus-visible:ring-offset-2 disabled:opacity-50;

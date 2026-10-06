@@ -33,7 +33,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body className={`${display.variable} ${sans.variable} font-sans antialiased`}>
         <StruggleModeProvider>
           <Suspense fallback={<header className="h-24 border-b border-cream-300/70 bg-cream-50/90" />}>
