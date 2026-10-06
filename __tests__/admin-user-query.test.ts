@@ -159,7 +159,7 @@ describe("paging + hrefs", () => {
   it("chips remove one filter each and reset paging", () => {
     const p = parseUserListParams({ plan: "pro", active: "30", page: "3" });
     const chips = activeFilterChips(p);
-    expect(chips.map((c) => c.label)).toEqual(["Plan: Pro", "Last active: 30 days"]);
+    expect(chips.map((c) => c.label)).toEqual(["Plan: Premium", "Last active: 30 days"]);
     expect(chips[0]!.href).toBe("/admin/users?active=30");
     expect(chips[1]!.href).toBe("/admin/users?plan=pro");
   });

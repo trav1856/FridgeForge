@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         name: data.name?.trim() || null,
         profileSlug,
         passwordHash,
-        plan: "community",
+        plan: "free",
       },
     });
 

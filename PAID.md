@@ -10,8 +10,8 @@ Guest mode (no login) remains fully usable; paid features layer on top.
 - Cookie session auth (ff_session) via /api/auth/*
 - Household create / join / list APIs
 - Account page (/account) for sign-up, sign-in, households, invite codes
-- Edition stub: canAccessLiveCoupons(user) — Pro only; demo coupons always visible
-- Soft Coupons upsell banner for non-Pro
+- Edition stub: canAccessLiveCoupons(user) — Premium (pro) only; demo coupons always visible
+- Soft Coupons upsell banner for non-Premium
 
 ## Try it
 
@@ -22,7 +22,7 @@ npm run dev
 ```
 
 1. Open http://localhost:3000/account
-2. Sign up, or use seed Pro: pro@fridgeforge.local / prodemo
+2. Sign up, or use seed Premium: pro@fridgeforge.local / prodemo
 3. Create a household (owner + invite code) or join with a code
 4. Pantry/recipes GET+POST scope to first household when signed in
 5. Sign out — guest path uses householdId null again
@@ -43,8 +43,8 @@ npm run dev
 
 - Visibility: `private` (default) | `household` | `public` | `invite` (selected households / share link)
 - Public recipes can be free to clone into another household’s book
-- Cross-household sharing is a cloud/network feature (Pro / Free+ads), not required for guest use
-- Monetization lean: cloud Free may use light ads or caps; Pro = no ads + network (live coupons, sharing, later F&B pulse)
+- Cross-household sharing is a cloud/network feature (Premium / Free+ads), not required for guest use
+- Monetization lean: cloud Free may use light ads or caps; Premium = no ads + network (live coupons, sharing, later F&B pulse)
 
 ## Pricing (working — 2026-09-05)
 
@@ -52,6 +52,6 @@ npm run dev
 |------|-------|----------------|
 | **Self-host Network** | **$1.99/mo** | Self-hosted install + join the network (shared recipes, live deals, later F&B pulse) |
 | **Cloud Free** | Free | Full hosted app + light **manufacturer banner ads** (non-obstructive) |
-| **Cloud Pro** | **$4.99/mo** | No ads + Pro perks (live coupons, sharing network, priority support) |
+| **Cloud Premium** | **$4.99/mo** | No ads + Premium perks (live coupons, sharing network, priority support) |
 
 Ads: major food manufacturers / CPG — not independent growers (growers belong in marketplace listings). Never disguise an ad as a coupon or deal.

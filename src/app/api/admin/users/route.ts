@@ -43,7 +43,7 @@ const patchSchema = z.object({
   disabled: z.boolean().optional(),
   /** Required when disabled=true (suspend). */
   reason: z.string().max(SUSPEND_REASON_MAX).optional(),
-  plan: z.enum(["community", "pro"]).optional(),
+  plan: z.enum(["free", "pro"]).optional(),
 });
 
 /** Role / plan / suspend. Guards + audit live in lib/admin-users. */

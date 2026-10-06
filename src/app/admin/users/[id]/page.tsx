@@ -307,7 +307,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               <dt className="text-sage-600">Email</dt>
               <dd className="break-all text-sage-900">{user.email}</dd>
               <dt className="text-sage-600">Plan</dt>
-              <dd className="text-sage-900">{user.plan === "pro" ? "Pro" : "Community"}</dd>
+              <dd className="text-sage-900">{user.plan === "pro" ? "Premium" : "Free"}</dd>
               <dt className="text-sage-600">Password</dt>
               <dd className="text-sage-900">{user.passwordHash ? "Set" : "Not set"}</dd>
               <dt className="text-sage-600">Dietary prefs</dt>

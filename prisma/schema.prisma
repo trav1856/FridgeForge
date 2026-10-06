@@ -14,7 +14,7 @@ model User {
   /** Public profile URL segment (/u/[profileSlug]); unique when set. */
   profileSlug  String?           @unique
   passwordHash String?
-  plan         String            @default("community") // community | pro
+  plan         String            @default("free") // free | pro (pro displays as Premium)
   /** user | admin */
   role         String            @default("user")
   /** Soft-disable: blocked from sign-in when true */

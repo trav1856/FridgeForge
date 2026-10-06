@@ -7,10 +7,9 @@ export function RoleBadge({ role }: { role: string }) {
 }
 
 export function PlanBadge({ plan }: { plan: string }) {
-  return plan === "pro" ? (
-    <span className="badge bg-ember-100 font-semibold text-ember-800">Pro</span>
-  ) : (
-    <span className="badge bg-cream-200 font-semibold text-sage-800">Community</span>
+  if (plan !== "pro") return null; // free tier: no plan pill
+  return (
+    <span className="badge bg-ember-100 font-semibold text-ember-800">Premium</span>
   );
 }
 

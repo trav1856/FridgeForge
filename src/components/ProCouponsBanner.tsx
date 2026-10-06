@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-/** Soft upsell when signed-in plan is community (demo coupons remain). */
+/** Soft upsell when signed-in plan is free (demo coupons remain). */
 export function ProCouponsBanner() {
   const [show, setShow] = useState(false);
 
@@ -15,7 +15,7 @@ export function ProCouponsBanner() {
         if (cancelled) return;
         const user = data?.user;
         const live = data?.features?.liveCoupons;
-        // Show for guests and community; hide for pro
+        // Show for guests and free; hide for premium (pro)
         setShow(!live);
       })
       .catch(() => {
@@ -30,7 +30,7 @@ export function ProCouponsBanner() {
 
   return (
     <div className="mb-4 rounded-2xl border border-ember-200/80 bg-gradient-to-r from-ember-50 to-cream-50 px-4 py-3 text-sm text-sage-800">
-      <span className="font-semibold text-ember-800">Pro unlocks live manufacturer deals.</span>{" "}
+      <span className="font-semibold text-ember-800">Premium unlocks live manufacturer deals.</span>{" "}
       Demo coupons below stay free.{" "}
       <Link href="/account" className="font-semibold text-ember-700 underline-offset-2 hover:underline">
         View account / plan

@@ -135,7 +135,7 @@ async function main() {
           email: String(r.email),
           name: (r.name as string) ?? null,
           passwordHash: (r.passwordHash as string) ?? null,
-          plan: String(r.plan ?? "community"),
+          plan: String(r.plan ?? "free"),
           createdAt: asDateRequired(r.createdAt, "User.createdAt"),
           updatedAt: asDateRequired(r.updatedAt, "User.updatedAt"),
         },

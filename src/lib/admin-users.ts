@@ -157,7 +157,7 @@ export async function setUserRole(actorId: string, targetId: string, role: "user
   }, SERIALIZABLE);
 }
 
-export async function setUserPlan(actorId: string, targetId: string, plan: "community" | "pro") {
+export async function setUserPlan(actorId: string, targetId: string, plan: "free" | "pro") {
   return prisma.$transaction(async (tx) => {
     const t = await loadTarget(tx, targetId);
     if (t.plan === plan) return t;

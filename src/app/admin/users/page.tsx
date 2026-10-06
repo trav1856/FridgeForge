@@ -249,7 +249,13 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
                   <span>{fmtRelative(u.lastActiveAt, now)}</span>
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-sage-600">
-                  Joined {fmtDate(u.createdAt)} · <PlanBadge plan={u.plan} />
+                  Joined {fmtDate(u.createdAt)}
+                  {u.plan === "pro" ? (
+                    <>
+                      {" · "}
+                      <PlanBadge plan={u.plan} />
+                    </>
+                  ) : null}
                 </div>
               </Link>
             ))}

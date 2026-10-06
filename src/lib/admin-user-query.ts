@@ -8,7 +8,7 @@ import type { Prisma } from "@prisma/client";
 export const USER_LIST_PAGE_SIZE = 25;
 
 export const ROLE_FILTERS = ["", "admin", "user"] as const;
-export const PLAN_FILTERS = ["", "community", "pro"] as const;
+export const PLAN_FILTERS = ["", "free", "pro"] as const;
 export const STATUS_FILTERS = ["", "active", "suspended"] as const;
 export const ACTIVE_FILTERS = ["", "7", "30", "90", "never"] as const;
 export const SIGNED_UP_FILTERS = ["", "7", "30", "90", "365", "custom"] as const;
@@ -249,7 +249,7 @@ export function activeFilterChips(p: UserListParams): ActiveChip[] {
   if (p.role)
     chips.push({ key: "role", label: `Role: ${p.role === "admin" ? "Admin" : "User"}`, href: userListHref(p, { ...base, role: "" }) });
   if (p.plan)
-    chips.push({ key: "plan", label: `Plan: ${p.plan === "pro" ? "Pro" : "Community"}`, href: userListHref(p, { ...base, plan: "" }) });
+    chips.push({ key: "plan", label: `Plan: ${p.plan === "pro" ? "Premium" : "Free"}`, href: userListHref(p, { ...base, plan: "" }) });
   if (p.status)
     chips.push({ key: "status", label: `Status: ${p.status === "active" ? "Active" : "Suspended"}`, href: userListHref(p, { ...base, status: "" }) });
   if (p.active)

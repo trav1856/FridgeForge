@@ -63,7 +63,7 @@ describe("household scoping helpers", () => {
 describe("edition gate", () => {
   it("only pro can access live coupons", () => {
     expect(canAccessLiveCoupons(null)).toBe(false);
-    expect(canAccessLiveCoupons({ plan: "community" } as never)).toBe(false);
+    expect(canAccessLiveCoupons({ plan: "free" } as never)).toBe(false);
     expect(canAccessLiveCoupons({ plan: "pro" } as never)).toBe(true);
   });
 });

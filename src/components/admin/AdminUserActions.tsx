@@ -363,14 +363,14 @@ export function AdminUserActions({ user, isSelf, isLastAdmin, activeSessions, de
             aria-label="Plan"
             data-testid="plan-select"
           >
-            <option value="community">Community</option>
-            <option value="pro">Pro</option>
+            <option value="free">Free</option>
+            <option value="pro">Premium</option>
           </select>
           <button
             type="button"
             className={smBtn}
             disabled={!!busy || plan === user.plan}
-            onClick={() => patch("plan", { plan }, `Plan changed to ${plan === "pro" ? "Pro" : "Community"}.`)}
+            onClick={() => patch("plan", { plan }, `Plan changed to ${plan === "pro" ? "Premium" : "Free"}.`)}
             data-testid="btn-plan-save"
           >
             Save

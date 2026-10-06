@@ -29,7 +29,7 @@
 
 **Platform.** Web/PWA first — phones, tablets, Echo Show browser, desktop. Native iOS/Android later. No separate Show app.
 
-**Business model (proposed open-core freemium).** Free/community tier (including optional self-host of core): pantry, barcode, recipes, struggle meals, suggestions, basic Learn later. Cloud subscription **~$4.99/mo (proposed)** for manufacturer coupons, smarter deals, priority support, household sharing, synced Learn certificates. Optional self-host supporter **~$1.99/mo (proposed)** — lower price because the customer brings infrastructure, still pays for coupon/deals network access. **No manufacturer contracts claimed today**; those are a go-to-market objective.
+**Business model (proposed open-core freemium).** Free tier (including optional self-host of core): pantry, barcode, recipes, struggle meals, suggestions, basic Learn later. Cloud subscription **~$4.99/mo (proposed)** for manufacturer coupons, smarter deals, priority support, household sharing, synced Learn certificates. Optional self-host supporter **~$1.99/mo (proposed)** — lower price because the customer brings infrastructure, still pays for coupon/deals network access. **No manufacturer contracts claimed today**; those are a go-to-market objective.
 
 **Ask.** Seed amount **TBD**. Sample use-of-funds outline with blanks is in §12. Traction metrics and revenue are **not** invented here — the product is early MVP; this document uses clearly labeled projections and assumptions only.
 
@@ -140,7 +140,7 @@ Most meal software starts with a recipe catalog or a weekly plan that assumes yo
 
 | Tier | Proposed price | Includes (directionally) |
 |------|----------------|---------------------------|
-| **Free / community** | $0 | Pantry, barcode intake, recipes, struggle meals, suggestions; optional self-host of **core**; basic Learn later |
+| **Free** | $0 | Pantry, barcode intake, recipes, struggle meals, suggestions; optional self-host of **core**; basic Learn later |
 | **Cloud subscription** | **~$4.99/mo (proposed)** | Manufacturer coupons & smarter deals, priority support, household sharing, synced Learn certificates |
 | **Self-host supporter** | **~$1.99/mo (proposed)** | Lower price because customer brings infra; still pays for **coupon / deals network** access |
 

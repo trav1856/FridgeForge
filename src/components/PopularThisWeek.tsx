@@ -164,7 +164,7 @@ export async function PopularThisWeek() {
     <section className="space-y-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-ember-700">
-          Community
+          Shared
         </p>
         <h2 className="mt-1 font-display text-2xl font-bold text-sage-900 sm:text-3xl">
           Popular this week

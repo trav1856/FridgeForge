@@ -107,8 +107,8 @@ export function UserFilters({ params }: { params: UserListParams }) {
             onChange={(e) => go({ plan: e.target.value as UserListParams["plan"] })}
           >
             <option value="">Any plan</option>
-            <option value="community">Community</option>
-            <option value="pro">Pro</option>
+            <option value="free">Free</option>
+            <option value="pro">Premium</option>
           </select>
         </div>
         <div className={clsx(!more && "hidden", "lg:block")}>

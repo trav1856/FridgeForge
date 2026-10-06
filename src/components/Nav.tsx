@@ -46,8 +46,8 @@ export function Nav() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data?.user?.plan === "pro") setPlanLabel("Pro");
-        else if (data?.user) setPlanLabel("Community");
+        if (data?.user?.plan === "pro") setPlanLabel("Premium");
+        else if (data?.user) setPlanLabel(""); // free tier: no plan name
         else setPlanLabel(null);
         setIsAdminUser(data?.user?.role === "admin");
         if (data?.user) {
@@ -97,9 +97,11 @@ export function Nav() {
                 FridgeForge
               </div>
               <div className="truncate text-[10px] font-medium uppercase tracking-wider text-sage-500">
-                {planLabel
-                  ? `${planLabel} · signed in`
-                  : "Cook what you have"}
+                {planLabel === null
+                  ? "Cook what you have"
+                  : planLabel
+                    ? `${planLabel} · signed in`
+                    : "signed in"}
               </div>
             </div>
           </Link>

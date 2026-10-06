@@ -342,16 +342,9 @@ export default function AccountPage() {
                 </div>
                 <div className="text-sm text-sage-600">{user.email}</div>
               </div>
-              <span
-                className={clsx(
-                  "badge",
-                  user.plan === "pro"
-                    ? "bg-ember-100 text-ember-800"
-                    : "bg-sage-100 text-sage-700"
-                )}
-              >
-                {user.plan === "pro" ? "Pro" : "Community"}
-              </span>
+              {user.plan === "pro" ? (
+                <span className="badge bg-ember-100 text-ember-800">Premium</span>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {user.profileSlug ? (
