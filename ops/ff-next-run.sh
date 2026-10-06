@@ -21,11 +21,14 @@ if [[ -f "$ROOT/.env" ]]; then
 fi
 set +a
 
+# Production mode: Secure cookies, optimized server (not next dev).
+export NODE_ENV=production
+
 mkdir -p "$ROOT/ops/logs"
-echo "$(date '+%Y-%m-%d %H:%M:%S %Z') ff-next-run: starting next dev on :3000 (pid $$)"
+echo "$(date '+%Y-%m-%d %H:%M:%S %Z') ff-next-run: starting next start on 127.0.0.1:3000 (NODE_ENV=production, pid $$)"
 
 # exec next directly so LaunchAgent KeepAlive watches the server process
 # (not an npm parent that can outlive a crashed next-server child).
-# Bind :: so mDNS/corelia.local (often IPv6-first in Chrome) can connect.
-# On macOS/Node this dual-stacks unless ipv6Only is forced.
-exec "$ROOT/node_modules/.bin/next" dev --port 3000 --hostname ::
+# Bind 127.0.0.1 to match Tailscale Funnel proxy target (127.0.0.1:3000).
+# Note: LAN / corelia.local no longer reaches :3000 directly; use Funnel URL.
+exec "$ROOT/node_modules/.bin/next" start --port 3000 --hostname 127.0.0.1

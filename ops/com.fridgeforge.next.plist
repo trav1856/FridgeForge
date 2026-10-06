@@ -20,9 +20,9 @@
 	<key>ProcessType</key>
 	<string>Interactive</string>
 	<key>StandardOutPath</key>
-	<string>/Users/trav/FridgeForge/ops/logs/next-dev.log</string>
+	<string>/Users/trav/FridgeForge/ops/logs/next.log</string>
 	<key>StandardErrorPath</key>
-	<string>/Users/trav/FridgeForge/ops/logs/next-dev.log</string>
+	<string>/Users/trav/FridgeForge/ops/logs/next.log</string>
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PATH</key>
