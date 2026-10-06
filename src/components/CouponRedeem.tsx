@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { CouponCode } from "./CouponCode";
+import { SampleCodePlaceholder, SampleWatermark } from "./SampleCouponArt";
 import type { CouponDTO } from "@/lib/coupons";
 
 type Props = { id: string };
@@ -86,6 +87,51 @@ export function CouponRedeem({ id }: Props) {
 
   if (!coupon) {
     return <p className="text-sm text-sage-600">Loading redeem view…</p>;
+  }
+
+  if (coupon.sample) {
+    return (
+      <div className="mx-auto max-w-md space-y-5" data-testid="sample-coupon-detail">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/coupons" className="btn-ghost text-xs">
+            ← Coupons
+          </Link>
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-900">
+            Sample
+          </span>
+        </div>
+        <div className="relative overflow-hidden rounded-3xl border border-sage-200 bg-white p-5 shadow-card">
+          <SampleWatermark size="lg" />
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-ember-700">
+              Sample coupon
+            </p>
+            <h1 className="mt-1 font-display text-2xl font-bold text-sage-900">
+              {coupon.title}
+            </h1>
+            <p className="mt-3 text-4xl font-black leading-none tracking-tight text-sage-900">
+              {coupon.discountText}
+            </p>
+          </div>
+          <div className="mt-5 rounded-2xl border-2 border-dashed border-sage-300 bg-white p-4">
+            <SampleCodePlaceholder size="lg" />
+          </div>
+          {coupon.terms && (
+            <p className="mt-4 rounded-xl bg-cream-100/80 p-3 text-xs leading-relaxed text-sage-700">
+              {coupon.terms}
+            </p>
+          )}
+        </div>
+        <p className="text-center text-xs text-sage-600">
+          This is a sample that shows how coupons work in FridgeForge. It is not
+          valid in any store and can&apos;t be clipped, used, or printed.{" "}
+          <Link href="/account" className="font-semibold underline">
+            Sign in
+          </Link>{" "}
+          to keep your own household&apos;s coupons.
+        </p>
+      </div>
+    );
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { PANTRY_CATEGORIES } from "@/lib/categories";
+import { usePantryWriter } from "./PantryWriterContext";
 
 type NutritionSnap = {
   caloriesPer100g?: number | null;
@@ -55,6 +56,7 @@ const emptyConfirm: ConfirmForm = {
 type Props = { onAdded: () => void };
 
 export function BarcodeIntake({ onAdded }: Props) {
+  const writer = usePantryWriter();
   const [manualCode, setManualCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
@@ -139,22 +141,16 @@ export function BarcodeIntake({ onAdded }: Props) {
     imageUrl?: string | null;
     nutritionJson?: string | null;
   }) {
-    const res = await fetch("/api/pantry", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: payload.name.trim(),
-        quantity: payload.quantity || 1,
-        unit: payload.unit.trim() || "each",
-        category: payload.category || null,
-        barcode: payload.barcode || null,
-        imageUrl: payload.imageUrl || null,
-        nutritionJson: payload.nutritionJson || null,
-        merge: true,
-      }),
+    const data = await writer.add({
+      name: payload.name.trim(),
+      quantity: payload.quantity || 1,
+      unit: payload.unit.trim() || "each",
+      category: payload.category || null,
+      barcode: payload.barcode || null,
+      imageUrl: payload.imageUrl || null,
+      nutritionJson: payload.nutritionJson || null,
+      merge: true,
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Could not add item");
     const label = data.item?.name || payload.name;
     setStatus(
       data.merged

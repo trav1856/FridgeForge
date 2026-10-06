@@ -754,7 +754,13 @@ export function RecipeForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ? JSON.stringify(data.error) : "Save failed");
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : data.error
+              ? JSON.stringify(data.error)
+              : "Save failed"
+        );
       }
       const saved = await res.json();
       let photoError: string | null = null;

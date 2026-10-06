@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { PANTRY_CATEGORIES } from "@/lib/categories";
+import { usePantryWriter } from "./PantryWriterContext";
 
 type ApiReceiptItem = {
   name: string;
@@ -60,6 +61,7 @@ function toReview(items: ApiReceiptItem[]): ReviewItem[] {
 }
 
 export function ReceiptIntake({ onAdded }: Props) {
+  const writer = usePantryWriter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -177,22 +179,16 @@ export function ReceiptIntake({ onAdded }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/pantry/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: selected.map((r) => ({
-            name: r.name.trim(),
-            quantity: Number(r.quantity) || 1,
-            unit: r.unit.trim() || "each",
-            category: r.category || "Other",
-            tags: ["receipt"],
-            barcode: r.barcode || null,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Bulk add failed");
+      const data = await writer.bulkAdd(
+        selected.map((r) => ({
+          name: r.name.trim(),
+          quantity: Number(r.quantity) || 1,
+          unit: r.unit.trim() || "each",
+          category: r.category || "Other",
+          tags: ["receipt"],
+          barcode: r.barcode || null,
+        }))
+      );
       setStatus(
         `Added ${data.added} new · merged ${data.merged} existing pantry items`
       );

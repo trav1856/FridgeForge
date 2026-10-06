@@ -13,6 +13,7 @@ import {
   type CatalogItem,
 } from "@/lib/pantry-catalog";
 import { PantryPhotoUpload } from "./PantryPhotoUpload";
+import { usePantryWriter } from "./PantryWriterContext";
 import {
   defaultUnitForItem,
   unitsForItem,
@@ -64,6 +65,7 @@ export function ManualPantryIntake({
   onSaved,
   onItemsChanged,
 }: Props) {
+  const writer = usePantryWriter();
   const [chipId, setChipId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectableItem | null>(null);
   const [customName, setCustomName] = useState("");
@@ -84,6 +86,11 @@ export function ManualPantryIntake({
   );
 
   const loadCustoms = useCallback(async (category?: string) => {
+    // Demo pantry (guests) has no server-side custom staples.
+    if (writer.mode === "demo") {
+      setCustoms([]);
+      return;
+    }
     const qs = category
       ? `?category=${encodeURIComponent(category)}`
       : "";
@@ -95,7 +102,7 @@ export function ManualPantryIntake({
     } catch {
       /* ignore offline */
     }
-  }, []);
+  }, [writer.mode]);
 
   useEffect(() => {
     if (chip?.category) {
@@ -261,16 +268,7 @@ export function ManualPantryIntake({
           : null,
         merge: true,
       };
-      const res = await fetch("/api/pantry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data?.error;
-        throw new Error(typeof msg === "string" ? msg : "Save failed");
-      }
+      await writer.add(payload);
       setSelected(null);
       setCustomName("");
       setQuantity("");
@@ -606,6 +604,7 @@ function EditPantryForm({
   onSaved: () => void;
   onItemsChanged?: () => void;
 }) {
+  const writer = usePantryWriter();
   const [form, setForm] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -629,16 +628,7 @@ function EditPantryForm({
           ? new Date(form.expirationDate).toISOString()
           : null,
       };
-      const res = await fetch(`/api/pantry/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data?.error;
-        throw new Error(typeof msg === "string" ? msg : "Save failed");
-      }
+      await writer.update(editingId, payload);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save item");
@@ -650,13 +640,7 @@ function EditPantryForm({
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/pantry/${editingId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          typeof data?.error === "string" ? data.error : "Delete failed"
-        );
-      }
+      await writer.remove(editingId);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete item");
@@ -672,6 +656,7 @@ function EditPantryForm({
   return (
     <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3">
       <h2 className="font-display text-xl font-bold text-sage-900">Edit item</h2>
+      {writer.mode === "server" && (
       <PantryPhotoUpload
         itemId={editingId}
         imageUrl={form.imageUrl}
@@ -682,6 +667,7 @@ function EditPantryForm({
           onItemsChanged?.();
         }}
       />
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label">Name</label>

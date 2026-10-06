@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { DEMO_PANTRY_LABEL } from "@/lib/demo-pantry";
+import { resetDemoPantry, useDemoPantry } from "@/lib/demo-pantry-store";
+import { useViewer } from "@/lib/viewer-client";
 import { BarcodeIntake } from "./BarcodeIntake";
 import { ManualPantryIntake } from "./ManualPantryIntake";
 import { ReceiptIntake } from "./ReceiptIntake";
 import { PantryItemTile } from "./PantryItemTile";
+import {
+  demoPantryWriter,
+  PantryWriterProvider,
+  serverPantryWriter,
+} from "./PantryWriterContext";
 
 type PantryItem = {
   id: string;
@@ -34,79 +42,90 @@ type EditForm = {
 };
 
 export function PantryManager() {
-  const [items, setItems] = useState<PantryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const viewer = useViewer();
+  // Guests (and legacy accounts with no household) get the browser-only demo pantry.
+  const demo = viewer != null && viewer.kind !== "member";
+  const member = viewer?.kind === "member";
+  const demoItems = useDemoPantry(demo);
+  const [serverItems, setServerItems] = useState<PantryItem[]>([]);
+  const [serverLoading, setServerLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [tab, setTab] = useState<IntakeTab>("barcode");
-  // null = unknown yet; false = guest / no household (read-only pantry).
-  const [canSave, setCanSave] = useState<boolean | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [starterBusy, setStarterBusy] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        const households = data?.user?.households;
-        setCanSave(Array.isArray(households) && households.length > 0);
-      })
-      .catch(() => {
-        if (!cancelled) setCanSave(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const items: PantryItem[] = demo ? (demoItems ?? []) : serverItems;
+  const loading = viewer == null || (demo ? demoItems == null : serverLoading);
+  const writer = demo ? demoPantryWriter : serverPantryWriter;
 
-  const load = useCallback(async (opts?: { quiet?: boolean }) => {
-    if (!opts?.quiet) setLoading(true);
-    try {
-      const res = await fetch("/api/pantry");
-      const data = await res.json();
-      if (!res.ok) {
-        setError(typeof data?.error === "string" ? data.error : "Could not load pantry");
-        setItems([]);
-        return;
+  const load = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      if (!member) return; // demo pantry updates itself from localStorage
+      if (!opts?.quiet) setServerLoading(true);
+      try {
+        const res = await fetch("/api/pantry");
+        const data = await res.json();
+        if (!res.ok) {
+          setError(
+            typeof data?.error === "string" ? data.error : "Could not load pantry"
+          );
+          setServerItems([]);
+          return;
+        }
+        setServerItems(Array.isArray(data) ? data : []);
+      } catch {
+        setError("Could not load pantry");
+        setServerItems([]);
+      } finally {
+        if (!opts?.quiet) setServerLoading(false);
       }
-      setItems(Array.isArray(data) ? data : []);
-    } catch {
-      setError("Could not load pantry");
-      setItems([]);
-    } finally {
-      if (!opts?.quiet) setLoading(false);
-    }
-  }, []);
+    },
+    [member]
+  );
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   async function remove(id: string) {
     if (!confirm("Remove this pantry item?")) return;
     setNotice(null);
     try {
-      const res = await fetch(`/api/pantry/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setNotice(
-          res.status === 401
-            ? typeof data?.error === "string"
-              ? data.error
-              : "Sign in to save your pantry."
-            : "Could not remove that item."
-        );
-        if (res.status === 401) setCanSave(false);
-        return;
-      }
-    } catch {
-      setNotice("Could not remove that item.");
+      await writer.remove(id);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not remove that item.");
       return;
     }
     await load();
+  }
+
+  function resetDemo() {
+    if (!confirm("Reset the demo pantry back to its starting items?")) return;
+    clearEdit();
+    setNotice(null);
+    resetDemoPantry();
+  }
+
+  async function addStarterStaples() {
+    setStarterBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/pantry/starter", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data?.error === "string" ? data.error : "Could not add staples."
+        );
+      }
+      await load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not add staples.");
+    } finally {
+      setStarterBusy(false);
+    }
   }
 
   function startEdit(item: PantryItem) {
@@ -160,21 +179,35 @@ export function PantryManager() {
   ];
 
   return (
+    <PantryWriterProvider value={writer}>
     <div className="space-y-6">
-      {canSave === false && (
+      {demo && (
         <div
           role="status"
-          data-testid="pantry-signin-banner"
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:px-5"
+          data-testid="pantry-demo-banner"
+          className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:px-5"
         >
-          <p className="font-semibold">Sign in to save your pantry</p>
-          <p className="mt-0.5 text-xs text-amber-800">
-            You&apos;re browsing as a guest, so this pantry is read-only.{" "}
-            <Link href="/account" className="font-semibold underline">
-              Sign in or create an account
-            </Link>{" "}
-            to keep your own.
-          </p>
+          <div>
+            <p className="font-semibold">
+              {DEMO_PANTRY_LABEL} — sign in to save your own
+            </p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              Try anything here: add, edit or delete. Changes stay in this
+              browser only and never reach an account.{" "}
+              <Link href="/account" className="font-semibold underline">
+                Sign in or create an account
+              </Link>{" "}
+              to start your own (empty) pantry.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="pantry-demo-reset"
+            className="shrink-0 rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+            onClick={resetDemo}
+          >
+            Reset demo
+          </button>
         </div>
       )}
       {notice && (
@@ -185,7 +218,7 @@ export function PantryManager() {
         >
           <span>
             {notice}
-            {canSave === false && (
+            {viewer?.kind === "guest" && (
               <>
                 {" "}
                 <Link href="/account" className="font-semibold underline">
@@ -231,7 +264,7 @@ export function PantryManager() {
         ))}
       </div>
 
-      {tab === "barcode" && <BarcodeIntake onAdded={load} />}
+      {tab === "barcode" && <BarcodeIntake onAdded={() => void load()} />}
 
       <div id="pantry-edit-anchor" />
       {tab === "manual" && (
@@ -275,14 +308,17 @@ export function PantryManager() {
           </div>
         </summary>
         <div className="border-t border-sage-200/60 px-2 pb-2 pt-1 sm:px-3">
-          <ReceiptIntake onAdded={load} />
+          <ReceiptIntake onAdded={() => void load()} />
         </div>
       </details>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold text-sage-900">
-            Your pantry ({items.length})
+          <h2
+            className="font-display text-xl font-bold text-sage-900"
+            data-testid="pantry-heading"
+          >
+            {demo ? DEMO_PANTRY_LABEL : "Your pantry"} ({items.length})
           </h2>
           <p className="mt-0.5 text-xs text-sage-600">
             Photo tiles — tap a square to edit quantity.
@@ -298,10 +334,33 @@ export function PantryManager() {
 
       {loading ? (
         <p className="text-sm text-sage-600">Loading pantry…</p>
+      ) : items.length === 0 && member ? (
+        <div className="card p-6 text-center text-sage-600" data-testid="pantry-empty">
+          <p>
+            Your pantry is empty. Scan a barcode or add items manually to unlock
+            smart suggestions.
+          </p>
+          <p className="mt-3 text-xs text-sage-500">
+            Want a head start? Add a dozen common basics (rice, eggs, onion,
+            garlic…) to your own pantry. You can edit or remove them anytime.
+          </p>
+          <button
+            type="button"
+            data-testid="pantry-add-starter"
+            className="btn-primary mt-3"
+            disabled={starterBusy}
+            onClick={() => void addStarterStaples()}
+          >
+            {starterBusy ? "Adding…" : "Add starter staples"}
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <p className="card p-6 text-center text-sage-600">
-          No items yet. Scan a barcode or add a staple to unlock smart
-          suggestions.
+          {items.length === 0
+            ? demo
+              ? "The demo pantry is empty. Use Reset demo to bring the sample items back."
+              : "No items yet. Scan a barcode or add a staple to unlock smart suggestions."
+            : "No items match that filter."}
         </p>
       ) : (
         <div className="space-y-5">
@@ -325,5 +384,6 @@ export function PantryManager() {
         </div>
       )}
     </div>
+    </PantryWriterProvider>
   );
 }

@@ -15,15 +15,25 @@ const postSchema = z.object({
   items: z.array(itemSchema).min(1).max(100),
 });
 
+const GUEST_LIST_MESSAGE =
+  "Guest shopping lists are kept in this browser. Sign in to save yours.";
+
+/** Guests keep their list in localStorage; the server never stores anonymous rows. */
+function guestListBlocked() {
+  return NextResponse.json(
+    { error: GUEST_LIST_MESSAGE, code: "SIGN_IN_REQUIRED" },
+    { status: 401 }
+  );
+}
+
 export async function GET() {
   const householdId = await resolveHouseholdId();
   const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ items: [], local: true });
   const where =
     householdId != null
       ? { householdId }
-      : user
-        ? { userId: user.id, householdId: null }
-        : { userId: null, householdId: null };
+      : { userId: user.id, householdId: null };
 
   const items = await prisma.shoppingListItem.findMany({
     where,
@@ -36,6 +46,7 @@ export async function POST(req: NextRequest) {
   try {
     const householdId = await resolveHouseholdId();
     const user = await getCurrentUser();
+    if (!user) return guestListBlocked();
     const body = postSchema.parse(await req.json());
     let added = 0;
     for (const item of body.items) {
@@ -47,9 +58,7 @@ export async function POST(req: NextRequest) {
           checked: false,
           ...(householdId != null
             ? { householdId }
-            : user
-              ? { userId: user.id, householdId: null }
-              : { userId: null, householdId: null }),
+            : { userId: user.id, householdId: null }),
         },
       });
       if (existing) continue;
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
           recipeId: item.recipeId ?? null,
           recipeTitle: item.recipeTitle ?? null,
           householdId,
-          userId: user?.id ?? null,
+          userId: user.id,
         },
       });
       added += 1;
@@ -79,12 +88,11 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   const householdId = await resolveHouseholdId();
   const user = await getCurrentUser();
+  if (!user) return guestListBlocked();
   const where =
     householdId != null
       ? { householdId, checked: true }
-      : user
-        ? { userId: user.id, householdId: null, checked: true }
-        : { userId: null, householdId: null, checked: true };
+      : { userId: user.id, householdId: null, checked: true };
   const result = await prisma.shoppingListItem.deleteMany({ where });
   return NextResponse.json({ ok: true, deleted: result.count });
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RecipeForm } from "@/components/RecipeForm";
+import { GuestSignInNotice } from "@/components/GuestSignInNotice";
 
 export default function NewRecipePage() {
   return (
@@ -19,6 +20,10 @@ export default function NewRecipePage() {
           , or enter everything by hand.
         </p>
       </div>
+      <GuestSignInNotice
+        title="Sign in to save recipes"
+        body="Guests can browse every recipe; adding your own needs an account."
+      />
       <RecipeForm />
     </div>
   );

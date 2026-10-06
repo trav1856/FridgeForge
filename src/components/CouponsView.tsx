@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import type { CouponDTO } from "@/lib/coupons";
+import { useViewer } from "@/lib/viewer-client";
+import { SampleWatermark } from "./SampleCouponArt";
 
 type Filter = "all" | "active" | "clipped" | "expired" | "used";
 
@@ -12,6 +14,8 @@ export function CouponsView() {
   const [filter, setFilter] = useState<Filter>("active");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const viewer = useViewer();
+  const guest = viewer?.kind === "guest";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,22 +84,48 @@ export function CouponsView() {
             </button>
           ))}
         </div>
-        <Link href="/coupons/new" className="btn-secondary text-xs">
-          Create demo coupon
-        </Link>
+        {viewer?.kind === "member" && (
+          <Link href="/coupons/new" className="btn-secondary text-xs">
+            Add a coupon
+          </Link>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loading ? (
         <p className="text-sm text-sage-600">Loading coupons…</p>
       ) : items.length === 0 ? (
-        <p className="card p-6 text-center text-sage-600">
-          No coupons in this filter. Seed data or create a demo coupon.
-        </p>
+        <div className="card p-6 text-center text-sage-600" data-testid="coupons-empty">
+          {guest ? (
+            <p>
+              No sample coupons in this filter. Samples can&apos;t be clipped or
+              used.
+            </p>
+          ) : filter === "active" || filter === "all" ? (
+            <>
+              <p className="font-semibold text-sage-800">No coupons yet</p>
+              <p className="mt-1 text-sm">
+                Coupons you add for your household show up here.
+              </p>
+              {viewer?.kind === "member" && (
+                <Link href="/coupons/new" className="btn-secondary mt-3 inline-flex text-xs">
+                  Add a coupon
+                </Link>
+              )}
+            </>
+          ) : (
+            <p>No coupons in this filter.</p>
+          )}
+        </div>
       ) : (
         <ul className="space-y-3">
           {items.map((c) => (
-            <li key={c.id} className="card overflow-hidden">
+            <li
+              key={c.id}
+              className="card relative overflow-hidden"
+              data-testid={c.sample ? "sample-coupon" : "coupon-card"}
+            >
+              {c.sample && <SampleWatermark />}
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-xs font-bold uppercase tracking-wide text-ember-700">
@@ -119,7 +149,7 @@ export function CouponsView() {
                         c.status === "used" && "bg-ember-100 text-ember-800"
                       )}
                     >
-                      {c.status}
+                      {c.sample ? "sample" : c.status}
                     </span>
                     {c.clipped && (
                       <span className="badge bg-ember-50 text-ember-700">
@@ -133,6 +163,13 @@ export function CouponsView() {
                     )}
                   </div>
                 </div>
+                {c.sample ? (
+                  <div className="relative z-20 flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
+                    <Link href={`/coupons/${c.id}`} className="btn-secondary text-xs">
+                      View sample
+                    </Link>
+                  </div>
+                ) : (
                 <div className="flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
                   <Link href={`/coupons/${c.id}`} className="btn-primary text-xs">
                     Redeem view
@@ -152,6 +189,7 @@ export function CouponsView() {
                     {c.used ? "Mark unused" : "Mark used"}
                   </button>
                 </div>
+                )}
               </div>
             </li>
           ))}

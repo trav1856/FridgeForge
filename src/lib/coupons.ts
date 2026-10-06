@@ -16,6 +16,8 @@ export type CouponDTO = {
   updatedAt: string;
   expired: boolean;
   status: "active" | "expired" | "used";
+  /** Static guest sample (never a DB row, never redeemable). */
+  sample?: boolean;
 };
 
 export function serializeCoupon(c: Coupon): CouponDTO {

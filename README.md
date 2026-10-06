@@ -138,11 +138,12 @@ Limitations: OCR quality depends on lighting and print; heuristic parsing may mi
 
 ## Coupons
 
-1. Open **Coupons** in the nav
+1. Open **Coupons** in the nav (signed-in households see only their own coupons)
 2. Filter Active / Clipped / Expired / Used
 3. **Clip / save** or open **Redeem view** (large discount text + QR or Code128)
 4. Use **Bright mode** at the register; mark used when done
-5. **Create demo coupon** is a local manufacturer/admin stub (no auth)
+5. **Add a coupon** saves a coupon to your household (sign-in required)
+6. Guests see static **sample coupons** (`src/lib/sample-coupons.ts`): generic, no brands, no codes, a "SAMPLE — NOT VALID" watermark, and no clip/use/print/create
 
 ### Deals on recipes / suggestions
 
@@ -188,17 +189,17 @@ Recipes are scored by pantry match ratio, can-make-now / near-miss (at most 2 ch
 
 ## Paid track (in progress)
 
-Auth + households scaffold the paid tier. **Guest mode still works without login** (nullable householdId).
+Auth + households scaffold the paid tier. **Guests can still browse without logging in**: they get a browser-only demo pantry, a local shopping list and sample coupons. Guests never write to the database.
 
 - Sign up / sign in at **/account**
 - Create or join a household (invite code)
-- Seeded Pro demo: `pro@fridgeforge.local` / `prodemo`
-- Demo coupons remain free; Pro gates live manufacturer deals (`src/lib/edition.ts`)
+- New accounts get their own empty pantry (optional **Add starter staples**)
+- Sample coupons for guests; Pro gates live manufacturer deals (`src/lib/edition.ts`)
 - Details: [PAID.md](./PAID.md)
 
 ### Seed staples vs household starter pack
 
-Seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Prefer safe db:seed after pulling.
+Seed recipes use null householdId (the shared catalog). The seed no longer creates shared pantry items or coupons, and creates no demo login. Recipes tagged staple or classic clone into a new household on POST /api/households. Prefer safe db:seed after pulling.
 
 
 ## Pricing

@@ -5,6 +5,7 @@ import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { resolveDietarySuggestOptions } from "@/lib/dietary";
 import { householdWhere, recipeScopeWhere } from "@/lib/household";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
+import { parseGuestPantry } from "@/lib/guest-pantry";
 import { dedupeRecipesByTitle } from "@/lib/dedupe-recipes";
 import {
   buildWeeklyMenu,
@@ -16,15 +17,23 @@ import {
   MEAL_SLOTS,
 } from "@/lib/weekly-menu";
 
-async function loadMatchData(householdId: string | null) {
+/**
+ * Households: server pantry. Guests: the browser demo pantry they POST
+ * (read-only; never stored), or empty on GET.
+ */
+async function loadMatchData(householdId: string | null, guestPantryRaw?: unknown) {
   const [pantryItems, recipes] = await Promise.all([
-    prisma.pantryItem.findMany({ where: householdWhere(householdId) }),
+    householdId
+      ? prisma.pantryItem.findMany({ where: householdWhere(householdId) })
+      : Promise.resolve([]),
     prisma.recipe.findMany({
       where: recipeScopeWhere(householdId),
       include: { ingredients: true },
     }),
   ]);
-  const pantry = pantryItems.map(toPantrySnapshot);
+  const pantry = householdId
+    ? pantryItems.map(toPantrySnapshot)
+    : parseGuestPantry(guestPantryRaw);
   const recipeData = dedupeRecipesByTitle(recipes, householdId).map(
     toRecipeForMatch
   );
@@ -133,6 +142,7 @@ export async function GET(req: NextRequest) {
 
 const postSchema = z.object({
   action: z.enum([
+    "build",
     "remix",
     "remixSlot",
     "remixDay",
@@ -145,6 +155,8 @@ const postSchema = z.object({
   dayIndex: z.number().int().min(0).max(6).optional(),
   slot: z.enum(["breakfast", "lunch", "dinner"]).optional(),
   plan: z.any().optional(),
+  /** Guests only: browser demo pantry for the calculation (never stored). */
+  pantry: z.any().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -153,12 +165,20 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     const dietary = resolveDietarySuggestOptions(user);
     const body = postSchema.parse(await req.json());
-    const { pantry, recipeData } = await loadMatchData(householdId);
+    const { pantry, recipeData } = await loadMatchData(householdId, body.pantry);
     const struggleMode = Boolean(body.struggleMode);
 
     let plan: WeeklyMenuPlanData;
 
-    if (body.action === "remix" || body.action === "regenerate") {
+    if (body.action === "build") {
+      // Stable first build (same as GET without remix) for guests' demo pantry.
+      plan = buildWeeklyMenu(recipeData, pantry, {
+        struggleMode,
+        ...dietary,
+        maxMissing: 3,
+        randomize: false,
+      });
+    } else if (body.action === "remix" || body.action === "regenerate") {
       plan = buildWeeklyMenu(recipeData, pantry, {
         struggleMode,
         ...dietary,

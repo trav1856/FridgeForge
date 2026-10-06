@@ -16,6 +16,9 @@ import { DietaryBadges } from "./DietaryBadges";
 import { PersonalDietChrome } from "./PersonalDietChrome";
 import type { DietaryUserPrefs } from "@/lib/dietary";
 import type { DealCouponSummary } from "@/lib/deals";
+import { toCalcPantry } from "@/lib/demo-pantry";
+import { useDemoPantry } from "@/lib/demo-pantry-store";
+import { useViewer } from "@/lib/viewer-client";
 import { buildMoodChips, pickSurprise, type MoodDef } from "@/lib/moods";
 
 type Suggestion = {
@@ -155,7 +158,13 @@ export function SuggestionsView() {
     };
   }, []);
 
+  const viewer = useViewer();
+  // Guests score against their browser-only demo pantry (read-only POST).
+  const demo = viewer != null && viewer.kind !== "member";
+  const demoItems = useDemoPantry(demo);
+
   const load = useCallback(async () => {
+    if (viewer == null || (demo && demoItems == null)) return;
     setLoading(true);
     setTonightPickId(null);
     const params = new URLSearchParams({
@@ -171,7 +180,14 @@ export function SuggestionsView() {
     if (q.trim()) {
       params.set("q", q.trim());
     }
-    const res = await fetch(`/api/suggestions?${params.toString()}`);
+    const url = `/api/suggestions?${params.toString()}`;
+    const res = demo
+      ? await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pantry: toCalcPantry(demoItems ?? []) }),
+        })
+      : await fetch(url);
     const data = await res.json();
     setSuggestions(data.suggestions || []);
     setPantryCount(data.pantryCount || 0);
@@ -179,7 +195,7 @@ export function SuggestionsView() {
       Array.isArray(data.availableTags) ? data.availableTags : []
     );
     setLoading(false);
-  }, [struggleMode, maxMinutes, mood, q]);
+  }, [struggleMode, maxMinutes, mood, q, viewer, demo, demoItems]);
 
   useEffect(() => {
     load();
@@ -217,8 +233,28 @@ export function SuggestionsView() {
           {timeHeadline(maxMinutes)}
         </h1>
         <p className="mt-1 text-sm text-sage-600">
-          Scored from your {pantryCount} pantry item
-          {pantryCount === 1 ? "" : "s"} — match quality, affordability
+          {demo ? (
+            <>
+              Scored from the{" "}
+              <span
+                className="font-semibold text-amber-800"
+                data-testid="suggestions-demo-label"
+              >
+                Demo pantry
+              </span>{" "}
+              ({pantryCount} item{pantryCount === 1 ? "" : "s"},{" "}
+              <Link href="/account" className="underline">
+                sign in
+              </Link>{" "}
+              to use your own)
+            </>
+          ) : (
+            <>
+              Scored from your {pantryCount} pantry item
+              {pantryCount === 1 ? "" : "s"}
+            </>
+          )}{" "}
+          — match quality, affordability
           {struggleMode ? ", and struggle-meal priority" : ""}
           {maxMinutes != null ? ", and cook time" : ""}
           {mood !== "any" ? ", and mood" : ""}

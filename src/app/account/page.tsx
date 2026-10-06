@@ -150,7 +150,7 @@ export default function AccountPage() {
     setBusy(true);
     await fetch("/api/auth/signout", { method: "POST" });
     setUser(null);
-    setMessage("Signed out. You're browsing as a guest.");
+    setMessage("Signed out. You're browsing as a guest (demo pantry only).");
     setBusy(false);
   }
 
@@ -246,8 +246,10 @@ export default function AccountPage() {
       <div>
         <h1 className="font-display text-3xl font-bold text-sage-900">Account</h1>
         <p className="mt-1 text-sm text-sage-600">
-          Guests can browse recipes, the demo pantry, and coupons without an
-          account. Sign in to save your own pantry.
+          Guests can browse recipes and try a demo pantry and sample coupons
+          that stay in their browser. Create an account to start your own
+          pantry (it begins empty, with optional starter staples), shopping
+          list, recipes, and coupons.
         </p>
       </div>
 

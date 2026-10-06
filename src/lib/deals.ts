@@ -9,6 +9,7 @@ export type CouponMatchInput = {
   codeValue: string;
   used: boolean;
   expiresAt: Date | string | null;
+  sample?: boolean;
 };
 
 export type DealCouponSummary = {
@@ -17,6 +18,8 @@ export type DealCouponSummary = {
   title: string;
   discountText: string;
   matchedIngredients: string[];
+  /** Guest sample coupon: label as SAMPLE, never redeemable. */
+  sample?: boolean;
 };
 
 const STOP_WORDS = new Set([
@@ -185,6 +188,7 @@ export function findDealsForMissingIngredients(
           title: coupon.title,
           discountText: coupon.discountText,
           matchedIngredients: [ingredient],
+          ...(coupon.sample ? { sample: true } : {}),
         });
       }
     }

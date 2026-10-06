@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { resolveDietarySuggestOptions } from "@/lib/dietary";
-import { householdWhere, recipeScopeWhere, sharedOrHouseholdWhere } from "@/lib/household";
+import { householdWhere, recipeScopeWhere } from "@/lib/household";
+import { parseGuestPantry } from "@/lib/guest-pantry";
+import { sampleCouponsForMatching } from "@/lib/sample-coupons";
+import type { PantrySnapshot } from "@/lib/types";
 import { findDealsForMissingIngredients } from "@/lib/deals";
 import { toPantrySnapshot, toRecipeForMatch } from "@/lib/mappers";
 import { collectAvailableTags, parseMoodParam } from "@/lib/moods";
@@ -13,7 +16,22 @@ import {
   reviewStatsFor,
 } from "@/lib/recipe-review-stats";
 
+/** GET: signed-in households (server pantry). Guests without a body get an empty pantry. */
 export async function GET(req: NextRequest) {
+  return suggest(req, undefined);
+}
+
+/**
+ * POST { pantry }: read-only calculation for guests using their browser-local
+ * demo pantry. Nothing is written. Signed-in households ignore the body and
+ * use their own server pantry.
+ */
+export async function POST(req: NextRequest) {
+  const body = (await req.json().catch(() => null)) as { pantry?: unknown } | null;
+  return suggest(req, body?.pantry);
+}
+
+async function suggest(req: NextRequest, guestPantryRaw: unknown) {
   const householdId = await resolveHouseholdId();
   const user = await getCurrentUser();
   const dietary = resolveDietarySuggestOptions(user);
@@ -36,19 +54,25 @@ export async function GET(req: NextRequest) {
   const qRaw = req.nextUrl.searchParams.get("q");
   const q = qRaw?.trim() ? qRaw.trim() : undefined;
 
-  const couponWhere = sharedOrHouseholdWhere(householdId);
-
-  // Recipes: shared catalog + household. Pantry: exact household (or guest null).
-  const [pantryItems, recipes, coupons] = await Promise.all([
-    prisma.pantryItem.findMany({ where: householdWhere(householdId) }),
+  // Recipes: shared catalog + household. Pantry + coupons: the household's own;
+  // guests use their posted demo pantry and the static sample coupons.
+  const [pantryItems, recipes, dbCoupons] = await Promise.all([
+    householdId
+      ? prisma.pantryItem.findMany({ where: householdWhere(householdId) })
+      : Promise.resolve([]),
     prisma.recipe.findMany({
       where: recipeScopeWhere(householdId),
       include: { ingredients: true },
     }),
-    prisma.coupon.findMany({ where: couponWhere }),
+    householdId
+      ? prisma.coupon.findMany({ where: householdWhere(householdId) })
+      : Promise.resolve([]),
   ]);
 
-  const pantry = pantryItems.map(toPantrySnapshot);
+  const pantry: PantrySnapshot[] = householdId
+    ? pantryItems.map(toPantrySnapshot)
+    : parseGuestPantry(guestPantryRaw);
+  const coupons = householdId ? dbCoupons : sampleCouponsForMatching();
   const recipeData = dedupeRecipesByTitle(recipes, householdId).map(toRecipeForMatch);
   const ranked = suggestMeals(recipeData, pantry, {
     struggleMode,
@@ -86,6 +110,7 @@ export async function GET(req: NextRequest) {
     mood: mood ?? "any",
     q: q ?? null,
     pantryCount: pantry.length,
+    demoPantry: !householdId,
     availableTags,
     suggestions,
   });

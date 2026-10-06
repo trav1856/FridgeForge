@@ -179,7 +179,7 @@ model PantryItem {
   householdId    String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  household      Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  household      Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([barcode])
   @@index([householdId])
@@ -330,7 +330,7 @@ model Coupon {
   householdId  String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  household    Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  household    Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([brand])
   @@index([expiresAt])
@@ -348,7 +348,7 @@ model CustomPantryStaple {
   householdId String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([householdId, name, category])
   @@index([householdId])

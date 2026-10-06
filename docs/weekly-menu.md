@@ -19,6 +19,6 @@ Builds a **7-day** breakfast / lunch / dinner plan from the **active pantry** an
 
 ## Persistence
 
-`WeeklyMenuPlan` (Prisma) stores `planJson` per household (or per user without household). Guests get an in-session plan only.
+`WeeklyMenuPlan` (Prisma) stores `planJson` per household (or per user without household). Guests get an in-session plan only, built from the browser demo pantry they send with each request (never stored).
 
 API: `GET/POST /api/weekly-menu`

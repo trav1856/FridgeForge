@@ -3,7 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { serializeCoupon } from "@/lib/coupons";
 import { resolveHouseholdId } from "@/lib/auth";
-import { recipeRowMatchesScope, rowMatchesScope } from "@/lib/household";
+import { rowMatchesScope } from "@/lib/household";
+import { findSampleCoupon, isSampleCouponId } from "@/lib/sample-coupons";
 import { notFoundResponse, requireWriteScope } from "@/lib/write-scope";
 
 const patchSchema = z.object({
@@ -23,10 +24,14 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const householdId = await resolveHouseholdId();
+  // Guests: static samples only. Households: their own coupons only.
+  if (isSampleCouponId(id)) {
+    const sample = householdId ? null : findSampleCoupon(id);
+    return sample ? NextResponse.json(sample) : notFoundResponse();
+  }
+  if (!householdId) return notFoundResponse();
   const coupon = await prisma.coupon.findUnique({ where: { id } });
-  // Read scope mirrors the coupon list: shared demo rows (null household) plus
-  // the caller's own household. Other households' coupons are not found.
-  if (!coupon || !recipeRowMatchesScope(coupon.householdId, householdId)) {
+  if (!coupon || !rowMatchesScope(coupon.householdId, householdId)) {
     return notFoundResponse();
   }
   return NextResponse.json(serializeCoupon(coupon));
@@ -41,7 +46,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       where: { id },
       select: { householdId: true },
     });
-    // Writes are exact-household only: shared demo coupons are read-only.
+    // Writes are exact-household only (sample coupons are never DB rows).
     if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
       return notFoundResponse();
     }

@@ -271,10 +271,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    // Guests never add to the shared catalog.
+    if (!user) {
+      return NextResponse.json(
+        { error: "Sign in to save recipes.", code: "SIGN_IN_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const householdId = await resolveHouseholdId();
     const body = await req.json();
     const data = sanitizeRecipeWritePayload(createSchema.parse(body));
-    const user = await getCurrentUser();
     const tax = resolveTaxonomyForWrite({
       title: data.title,
       description: data.description,

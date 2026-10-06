@@ -2,6 +2,12 @@
 
 import { useState, type MouseEvent } from "react";
 import Link from "next/link";
+import {
+  addLocalShopping,
+  readLocalShopping,
+  writeLocalShopping,
+} from "@/lib/local-shopping-list";
+import { fetchViewer } from "@/lib/viewer-client";
 
 type Item = { name: string; quantity?: number; unit?: string };
 
@@ -32,6 +38,23 @@ export function AddToShoppingList({
     setBusy(true);
     setStatus(null);
     try {
+      // Guests: the list lives in this browser only.
+      const viewer = await fetchViewer();
+      if (viewer.kind === "guest") {
+        const r = addLocalShopping(
+          readLocalShopping(),
+          items.map((i) => ({
+            name: i.name,
+            quantity: i.quantity ?? null,
+            unit: i.unit ?? null,
+            recipeId: recipeId ?? null,
+            recipeTitle: recipeTitle ?? null,
+          }))
+        );
+        writeLocalShopping(r.items);
+        setStatus(`Added ${r.added} to list (saved in this browser)`);
+        return;
+      }
       const res = await fetch("/api/shopping-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -45,12 +68,14 @@ export function AddToShoppingList({
           })),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setStatus(data.error || "Failed");
+        setStatus(typeof data.error === "string" ? data.error : "Failed");
       } else {
         setStatus(`Added ${data.added ?? items.length} to list`);
       }
+    } catch {
+      setStatus("Could not add to the list");
     } finally {
       setBusy(false);
     }
@@ -69,7 +94,11 @@ export function AddToShoppingList({
       <Link href="/shopping-list" className="text-xs font-medium text-ember-700 hover:underline">
         Open list
       </Link>
-      {status && <span className="text-xs text-sage-600">{status}</span>}
+      {status && (
+        <span className="text-xs text-sage-600" data-testid="add-to-list-status">
+          {status}
+        </span>
+      )}
     </div>
   );
 }

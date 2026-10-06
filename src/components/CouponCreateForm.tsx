@@ -12,7 +12,7 @@ export function CouponCreateForm() {
     brand: "",
     title: "",
     discountText: "",
-    terms: "Demo coupon. One use per household. Not a real manufacturer offer.",
+    terms: "One use per household. Not a real manufacturer offer.",
     codeValue: "",
     codeType: "qr" as "qr" | "barcode",
     expiresAt: "",

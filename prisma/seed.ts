@@ -50,29 +50,9 @@ async function main() {
     await prisma.user.deleteMany();
   } else {
     console.log(
-      "Non-destructive seed: upserting demo staples only when missing (set FF_FORCE_RESET=1 to wipe)."
+      "Non-destructive seed: upserting shared recipes/catalogs only when missing (set FF_FORCE_RESET=1 to wipe)."
     );
   }
-
-  const pantry = [
-    { name: "White rice", quantity: 4, unit: "cups", category: "Grains", tags: j(["staple", "struggle"]) },
-    { name: "Eggs", quantity: 12, unit: "each", category: "Proteins", tags: j(["staple", "struggle"]) },
-    { name: "Canned tuna", quantity: 2, unit: "cans", category: "Canned", tags: j(["staple", "struggle"]) },
-    { name: "Yellow onion", quantity: 3, unit: "each", category: "Produce", tags: j(["staple"]) },
-    { name: "Garlic", quantity: 1, unit: "head", category: "Produce", tags: j(["staple", "flavor"]) },
-    { name: "Potatoes", quantity: 5, unit: "each", category: "Produce", tags: j(["staple", "struggle"]) },
-    { name: "Carrots", quantity: 4, unit: "each", category: "Produce", tags: j([]) },
-    { name: "Green cabbage", quantity: 1, unit: "head", category: "Produce", tags: j(["struggle"]) },
-    { name: "Soy sauce", quantity: 1, unit: "bottle", category: "Oils & Condiments", tags: j(["flavor", "booster"]) },
-    { name: "White vinegar", quantity: 1, unit: "bottle", category: "Oils & Condiments", tags: j(["flavor", "booster"]) },
-    { name: "Vegetable oil", quantity: 1, unit: "bottle", category: "Oils & Condiments", tags: j(["staple"]) },
-    { name: "Peanut butter", quantity: 1, unit: "jar", category: "Proteins", tags: j(["struggle", "flavor"]) },
-    { name: "Chili flakes", quantity: 1, unit: "jar", category: "Spices", tags: j(["flavor", "booster"]) },
-    { name: "Salt", quantity: 1, unit: "box", category: "Spices", tags: j(["staple"]) },
-    { name: "Black pepper", quantity: 1, unit: "jar", category: "Spices", tags: j(["staple"]) },
-    { name: "Flour tortillas", quantity: 10, unit: "each", category: "Grains", tags: j([]) },
-    { name: "Cheddar cheese", quantity: 8, unit: "oz", category: "Dairy", tags: j([]) },
-  ];
 
   const recipes = [
     {
@@ -778,17 +758,8 @@ async function main() {
   ];
 
 
-  // Ensure demo pantry (null household) by name — never delete user items
-  let pantryCreated = 0;
-  for (const item of pantry) {
-    const existing = await prisma.pantryItem.findFirst({
-      where: { name: item.name, householdId: null },
-    });
-    if (!existing) {
-      await prisma.pantryItem.create({ data: item });
-      pantryCreated += 1;
-    }
-  }
+  // No shared (null-household) pantry: guests get a browser-only demo pantry
+  // (src/lib/demo-pantry.ts) and new households start empty.
 
 
   // Non-destructive: merge meal-slot tags onto existing shared recipes when missing
@@ -1077,145 +1048,35 @@ async function main() {
     }
   }
 
-  const coupons = [
-    {
-      brand: "Sunrise Grains",
-      title: "Any Sunrise rice 2 lb+",
-      discountText: "$1.00 OFF",
-      terms: "One coupon per purchase. Valid on Sunrise white or brown rice 2 lb or larger. Not stackable with other Sunrise offers. Demo only.",
-      codeValue: "SUNRISE-RICE-100",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 60),
-      clipped: true,
-    },
-    {
-      brand: "Valley Beans Co.",
-      title: "Black, pinto, or dry beans (canned or bag)",
-      discountText: "BOGO 50% OFF",
-      terms: "Buy one can, get second 50% off equal or lesser value. Limit 2. Demo manufacturer coupon.",
-      codeValue: "812345678901",
-      codeType: "barcode",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
-      clipped: false,
-    },
-    {
-      brand: "Harbor Catch",
-      title: "Chunk light tuna (5 oz)",
-      discountText: "$0.75 OFF",
-      terms: "Valid on Harbor Catch chunk light tuna 5 oz cans. Limit one. Demo only.",
-      codeValue: "HARBOR-TUNA-75",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      clipped: true,
-    },
-    {
-      brand: "Golden Nest",
-      title: "Large eggs dozen",
-      discountText: "$1.50 OFF",
-      terms: "Any Golden Nest large grade A dozen. Cannot be combined with store card fuel offers. Demo.",
-      codeValue: "GOLDEN-EGGS-150",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 20),
-      clipped: false,
-    },
-    {
-      brand: "Al Dente Mill",
-      title: "Any spaghetti or pasta 12 oz+",
-      discountText: "$1.00 OFF",
-      terms: "Valid on Al Dente spaghetti, penne, or elbows 12 oz or larger. One per purchase. Demo manufacturer coupon for missing-staple deals.",
-      codeValue: "ALDENTE-PASTA-100",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 50),
-      clipped: true,
-    },
-    {
-      brand: "Red Jar Kitchen",
-      title: "Pasta sauce or tomato sauce 24 oz",
-      discountText: "$0.75 OFF",
-      terms: "Any Red Jar pasta sauce or tomato sauce 24 oz. Limit one. Demo — matches missing tomato/sauce staples on struggle meals.",
-      codeValue: "REDJAR-SAUCE-75",
-      codeType: "barcode",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 40),
-      clipped: false,
-    },
-    {
-      brand: "Meadow Creamery",
-      title: "Salted or unsalted butter sticks",
-      discountText: "$1.00 OFF",
-      terms: "Meadow Creamery butter sticks (salted or unsalted). Demo coupon for Lemon-Garlic Butter Pasta near-miss.",
-      codeValue: "MEADOW-BUTTER-100",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 35),
-      clipped: true,
-    },
-    {
-      brand: "Spice Route",
-      title: "Any Spice Route chili flakes",
-      discountText: "FREE jar ≤ $2.50",
-      terms: "Receive one Spice Route chili flakes jar up to $2.50 free with any $10 Spice Route purchase. Expired sample for filter demos.",
-      codeValue: "SPICE-CHILI-FREE",
-      codeType: "barcode",
-      expiresAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-      clipped: false,
-    },
-    {
-      brand: "Lumen Soy",
-      title: "Lumen soy sauce 10 oz",
-      discountText: "$0.50 OFF",
-      terms: "One use. Mark used after redeem in app for demo tracking.",
-      codeValue: "LUMEN-SOY-50",
-      codeType: "qr",
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90),
-      clipped: false,
-      used: true,
-      usedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-    },
-  ];
+  // No shared (null-household) coupons: guests see static sample coupons
+  // (src/lib/sample-coupons.ts); households only see their own.
 
-
-  let couponsCreated = 0;
-  for (const c of coupons) {
-    const existing = await prisma.coupon.findFirst({
-      where: { codeValue: c.codeValue, householdId: null },
-    });
-    if (!existing) {
-      await prisma.coupon.create({ data: c });
-      couponsCreated += 1;
-    }
-  }
-
-  // Optional Pro demo user + household (upsert — never wipe other users)
-  // Password is set only when the account is first created; re-running the seed
-  // never resets an existing account's password. Override with FF_PRO_DEMO_PASSWORD.
-  let proUser = await prisma.user.findUnique({
-    where: { email: "pro@fridgeforge.local" },
+  // Optional Pro demo account. It is never created with a default password and
+  // an existing account is never modified here (password, plan, suspension and
+  // household are left exactly as they are), so re-running the seed cannot
+  // reactivate a suspended account. Set FF_PRO_DEMO_PASSWORD to create it on a
+  // fresh database.
+  const proEmail = "pro@fridgeforge.local";
+  const existingPro = await prisma.user.findUnique({
+    where: { email: proEmail },
+    select: { id: true, disabled: true },
   });
-  let proCreated = false;
-  if (!proUser) {
-    const proHash = await bcrypt.hash(
-      process.env.FF_PRO_DEMO_PASSWORD || "prodemo",
-      10
-    );
-    proUser = await prisma.user.create({
+  let proStatus: string;
+  if (existingPro) {
+    proStatus = existingPro.disabled
+      ? "exists, suspended (left untouched)"
+      : "exists (left untouched)";
+  } else if (process.env.FF_PRO_DEMO_PASSWORD) {
+    const proHash = await bcrypt.hash(process.env.FF_PRO_DEMO_PASSWORD, 10);
+    const proUser = await prisma.user.create({
       data: {
-        email: "pro@fridgeforge.local",
+        email: proEmail,
         name: "Pro Demo",
         passwordHash: proHash,
         plan: "pro",
       },
     });
-    proCreated = true;
-  }
-
-  let household = await prisma.household.findFirst({
-    where: {
-      members: { some: { userId: proUser.id, role: "owner" } },
-    },
-  });
-  // Shared null-household staples are created above; do not clone into demo households
-  // (shared catalog is visible via recipeScopeWhere).
-  if (!household) {
-    household = await prisma.household.create({
+    const household = await prisma.household.create({
       data: {
         name: "Demo Pro Kitchen",
         inviteCode: generateInviteCode(),
@@ -1226,6 +1087,9 @@ async function main() {
     });
     // no-op kept for API parity; returns 0
     await cloneStapleRecipesToHousehold(prisma, household.id);
+    proStatus = "created from FF_PRO_DEMO_PASSWORD";
+  } else {
+    proStatus = "not created (set FF_PRO_DEMO_PASSWORD to create it)";
   }
 
   // Promote known owner + FF_ADMIN_EMAILS to admin only when no admin exists yet
@@ -1252,11 +1116,9 @@ async function main() {
   );
 
     console.log(
-    `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}, stories +${storiesFilled}), coupons +${couponsCreated}, howto courses +${howtoCoursesEnsured} (new lessons +${howtoLessonsEnsured}). forceReset=${forceReset}`
+    `Seed ensure: recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}, stories +${storiesFilled}), howto courses +${howtoCoursesEnsured} (new lessons +${howtoLessonsEnsured}). forceReset=${forceReset}`
   );
-  console.log(
-    `Demo Pro user: pro@fridgeforge.local (${proCreated ? "created now; password from FF_PRO_DEMO_PASSWORD or default" : "existing; password unchanged"}) — household "${household.name}" (shared staples via catalog, not cloned)`
-  );
+  console.log(`Demo Pro user: ${proStatus}`);
 }
 
 main()

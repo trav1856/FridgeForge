@@ -372,7 +372,8 @@ export function Splash() {
                 </li>
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-sage-500">
-                Guests can look around without signing in.
+                Guests can look around without signing in, with a demo
+                pantry and sample coupons that stay in the browser.
               </p>
             </div>
           </div>

@@ -18,6 +18,7 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
   if (!deals.length) return null;
 
   const count = deals.length;
+  const allSamples = deals.every((d) => d.sample);
 
   if (compact) {
     return (
@@ -26,7 +27,9 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
         role="status"
       >
         <p className="text-sm font-semibold text-ember-900">
-          You have {count} deal{count === 1 ? "" : "s"} available for this dish
+          {allSamples
+            ? `${count} sample coupon${count === 1 ? "" : "s"} for this dish (not valid in stores)`
+            : `You have ${count} deal${count === 1 ? "" : "s"} available for this dish`}
         </p>
         <ul className="mt-1.5 space-y-1">
           {deals.map((d) => (
@@ -36,8 +39,9 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
                 className="font-semibold text-ember-700 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                {d.brand}
+                {d.sample ? "Sample coupon" : d.brand}
               </Link>
+              {d.sample && <SampleTag />}
               <span className="font-bold text-sage-900">{d.discountText}</span>
               <span className="text-sage-500">· {d.title}</span>
             </li>
@@ -59,12 +63,24 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg font-bold text-ember-900">
-            You have deals available for this dish
+            {allSamples
+              ? "Sample coupons for this dish"
+              : "You have deals available for this dish"}
           </h2>
           <p className="mt-1 text-sm text-sage-700">
-            {count} manufacturer coupon{count === 1 ? "" : "s"} match
-            {count === 1 ? "es" : ""} ingredients you&apos;re missing — clip and
-            redeem at the store.
+            {allSamples ? (
+              <>
+                {count} sample coupon{count === 1 ? "" : "s"} match
+                {count === 1 ? "es" : ""} ingredients you&apos;re missing. Samples
+                show how deals work and are not valid in stores.
+              </>
+            ) : (
+              <>
+                {count} manufacturer coupon{count === 1 ? "" : "s"} match
+                {count === 1 ? "es" : ""} ingredients you&apos;re missing — clip
+                and redeem at the store.
+              </>
+            )}
           </p>
           <ul className="mt-3 space-y-2">
             {deals.map((d) => (
@@ -74,7 +90,8 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
               >
                 <div className="min-w-0">
                   <div className="font-semibold text-sage-900">
-                    {d.brand}{" "}
+                    {d.sample ? "Sample coupon" : d.brand}{" "}
+                    {d.sample && <SampleTag />}{" "}
                     <span className="text-ember-700">{d.discountText}</span>
                   </div>
                   <div className="truncate text-xs text-sage-600">{d.title}</div>
@@ -89,7 +106,7 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
                   className="btn-primary shrink-0 px-3 py-1.5 text-xs"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  Redeem
+                  {d.sample ? "View sample" : "Redeem"}
                 </Link>
               </li>
             ))}
@@ -97,5 +114,16 @@ export function DealsBanner({ deals, compact = false, className = "" }: Props) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function SampleTag() {
+  return (
+    <span
+      className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900"
+      data-testid="deal-sample-tag"
+    >
+      Sample
+    </span>
   );
 }

@@ -13,6 +13,9 @@ import type {
   WeeklyMenuPlanData,
 } from "@/lib/weekly-menu";
 import { MEAL_SLOTS } from "@/lib/weekly-menu";
+import { toCalcPantry } from "@/lib/demo-pantry";
+import { readDemoPantry, useDemoPantry } from "@/lib/demo-pantry-store";
+import { useViewer } from "@/lib/viewer-client";
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   breakfast: "Breakfast",
@@ -29,6 +32,14 @@ export function WeeklyMenuView() {
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const viewer = useViewer();
+  // Guests plan against the browser-only demo pantry (sent with each request, never stored).
+  const demo = viewer != null && viewer.kind !== "member";
+  const demoItems = useDemoPantry(demo);
+  const guestPantry = useCallback(
+    () => (demo ? { pantry: toCalcPantry(readDemoPantry()) } : {}),
+    [demo]
+  );
 
   const applyPayload = useCallback(
     (data: {
@@ -55,6 +66,7 @@ export function WeeklyMenuView() {
 
   const load = useCallback(
     async (opts?: { remix?: boolean }) => {
+      if (viewer == null) return;
       setLoading(true);
       setBusyKey(opts?.remix ? "week" : null);
       try {
@@ -62,7 +74,17 @@ export function WeeklyMenuView() {
           struggle: struggleMode ? "1" : "0",
         });
         if (opts?.remix) params.set("remix", "1");
-        const res = await fetch(`/api/weekly-menu?${params.toString()}`);
+        const res = demo
+          ? await fetch("/api/weekly-menu", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: opts?.remix ? "remix" : "build",
+                struggleMode,
+                ...guestPantry(),
+              }),
+            })
+          : await fetch(`/api/weekly-menu?${params.toString()}`);
         const data = await res.json();
         applyPayload(data);
       } catch {
@@ -72,12 +94,14 @@ export function WeeklyMenuView() {
         setBusyKey(null);
       }
     },
-    [struggleMode, applyPayload]
+    [struggleMode, applyPayload, viewer, demo, guestPantry]
   );
 
+  // Demo pantry edits (e.g. another tab) re-run the guest plan.
+  const demoVersion = demoItems ? demoItems.length : -1;
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, demoVersion]);
 
   const remixWeek = useCallback(async () => {
     setBusyKey("week");
@@ -88,6 +112,7 @@ export function WeeklyMenuView() {
         body: JSON.stringify({
           action: "remix",
           struggleMode,
+          ...guestPantry(),
         }),
       });
       const data = await res.json();
@@ -113,6 +138,7 @@ export function WeeklyMenuView() {
             dayIndex,
             slot,
             plan,
+            ...guestPantry(),
           }),
         });
         const data = await res.json();
@@ -123,7 +149,7 @@ export function WeeklyMenuView() {
         setBusyKey(null);
       }
     },
-    [struggleMode, plan, applyPayload]
+    [struggleMode, plan, applyPayload, guestPantry]
   );
 
   const remixDay = useCallback(
@@ -139,6 +165,7 @@ export function WeeklyMenuView() {
             struggleMode,
             dayIndex,
             plan,
+            ...guestPantry(),
           }),
         });
         const data = await res.json();
@@ -149,7 +176,7 @@ export function WeeklyMenuView() {
         setBusyKey(null);
       }
     },
-    [struggleMode, plan, applyPayload]
+    [struggleMode, plan, applyPayload, guestPantry]
   );
 
   const shoppingItems = useMemo(
@@ -172,7 +199,14 @@ export function WeeklyMenuView() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-sage-700">
               Breakfast, lunch, and dinner for seven days — picked from recipes
-              you can mostly make with your active pantry
+              you can mostly make with{" "}
+              {demo ? (
+                <span className="font-semibold text-amber-800" data-testid="menu-demo-label">
+                  the Demo pantry
+                </span>
+              ) : (
+                "your active pantry"
+              )}
               {pantryCount > 0 ? ` (${pantryCount} items)` : ""}. Missing
               staples show lightly, same idea as Cook Now.
               {struggleMode
@@ -203,7 +237,9 @@ export function WeeklyMenuView() {
         )}
         {!persisted && plan && (
           <p className="text-xs text-sage-500">
-            Guest session — plan stays for this visit; sign in to persist.
+            {demo
+              ? "Demo pantry plan — it stays for this visit only. Sign in to save your plan and use your own pantry."
+              : "Plan stays for this visit; join a household to save it."}
           </p>
         )}
 

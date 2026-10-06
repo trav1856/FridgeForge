@@ -1,16 +1,16 @@
 # FridgeForge Paid track (in progress)
 
 **Status:** scaffold · 1.1.0-alpha
-Guest mode (no login) remains fully usable; paid features layer on top.
+Guests (no login) can browse with a browser-only demo pantry, local shopping list and sample coupons; paid features layer on top.
 
 ## What landed in this alpha
 
 - Prisma models: User, Session, Household, HouseholdMember
-- Optional householdId on PantryItem, Recipe, Coupon (null = guest / legacy)
+- householdId on PantryItem, Coupon, CustomPantryStaple (always set; rows cascade when a household is deleted). Recipe.householdId null = shared catalog
 - Cookie session auth (ff_session) via /api/auth/*
 - Household create / join / list APIs
 - Account page (/account) for sign-up, sign-in, households, invite codes
-- Edition stub: canAccessLiveCoupons(user) — Premium (pro) only; demo coupons always visible
+- Edition stub: canAccessLiveCoupons(user) — Premium (pro) only; guests see static sample coupons
 - Soft Coupons upsell banner for non-Premium
 
 ## Try it
@@ -22,17 +22,17 @@ npm run dev
 ```
 
 1. Open http://localhost:3000/account
-2. Sign up, or use seed Premium: pro@fridgeforge.local / prodemo
+2. Sign up (each new account gets its own empty "{name}'s Kitchen")
 3. Create a household (owner + invite code) or join with a code
 4. Pantry/recipes GET+POST scope to first household when signed in
-5. Sign out — guest path uses householdId null again
+5. Sign out — guests get the browser-only demo pantry again
 
 ## Not yet
 
 - Live manufacturer deals network
 - Billing / Stripe
 - Household switcher UI (first membership is active)
-- Migrating guest rows into a household
+- (By design) demo pantry data is never copied into an account
 
 ## Later (not this scaffold)
 

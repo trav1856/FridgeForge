@@ -1,6 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  addLocalShopping,
+  clearLocalChecked,
+  readLocalShopping,
+  removeLocalShopping,
+  setLocalChecked,
+  sortLocalShopping,
+  writeLocalShopping,
+} from "@/lib/local-shopping-list";
+import { useViewer } from "@/lib/viewer-client";
 
 type Item = {
   id: string;
@@ -15,14 +26,27 @@ export function ShoppingListView() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
+  const viewer = useViewer();
+  // Guests keep their list in this browser (localStorage); nothing is stored server-side.
+  const local = viewer?.kind === "guest";
 
   const load = useCallback(async () => {
+    if (viewer == null) return;
     setLoading(true);
-    const res = await fetch("/api/shopping-list");
-    const data = await res.json();
-    setItems(data.items || []);
+    if (local) {
+      setItems(sortLocalShopping(readLocalShopping()));
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/shopping-list");
+      const data = await res.json();
+      setItems(data.items || []);
+    } catch {
+      setItems([]);
+    }
     setLoading(false);
-  }, []);
+  }, [viewer, local]);
 
   useEffect(() => {
     load();
@@ -45,6 +69,10 @@ export function ShoppingListView() {
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, checked } : i))
     );
+    if (local) {
+      writeLocalShopping(setLocalChecked(readLocalShopping(), id, checked));
+      return;
+    }
     await fetch(`/api/shopping-list/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -54,10 +82,19 @@ export function ShoppingListView() {
 
   async function remove(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
+    if (local) {
+      writeLocalShopping(removeLocalShopping(readLocalShopping(), id));
+      return;
+    }
     await fetch(`/api/shopping-list/${id}`, { method: "DELETE" });
   }
 
   async function clearChecked() {
+    if (local) {
+      writeLocalShopping(clearLocalChecked(readLocalShopping()));
+      await load();
+      return;
+    }
     await fetch("/api/shopping-list", { method: "DELETE" });
     await load();
   }
@@ -65,6 +102,14 @@ export function ShoppingListView() {
   async function addDraft(e: FormEvent) {
     e.preventDefault();
     if (!draft.trim()) return;
+    if (local) {
+      writeLocalShopping(
+        addLocalShopping(readLocalShopping(), [{ name: draft.trim() }]).items
+      );
+      setDraft("");
+      await load();
+      return;
+    }
     await fetch("/api/shopping-list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,6 +160,18 @@ export function ShoppingListView() {
           a recipe. Apple Notes sync is on the roadmap — use share / copy / SMS
           for now.
         </p>
+        {local && (
+          <p
+            className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            data-testid="shopping-local-note"
+          >
+            Guest list — saved in this browser only.{" "}
+            <Link href="/account" className="font-semibold underline">
+              Sign in
+            </Link>{" "}
+            to keep a list you can use on any device.
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary text-sm" onClick={shareList}>
             Share list
@@ -158,6 +215,7 @@ export function ShoppingListView() {
           {items.map((item) => (
             <li
               key={item.id}
+              data-testid="shopping-item"
               className={`card flex items-start gap-3 p-3 ${
                 item.checked ? "opacity-60" : ""
               }`}

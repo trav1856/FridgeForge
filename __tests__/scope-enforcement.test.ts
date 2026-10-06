@@ -209,13 +209,18 @@ describe("staples/[id]", () => {
 });
 
 describe("coupons/[id]", () => {
-  it("GET: shared + own visible, other household 404", async () => {
-    expect((await couponItemRoute.GET(req("GET"), ctx("c-shared"))).status).toBe(200);
+  it("GET: guests see samples only; members see their own household only", async () => {
+    // Guests: no DB coupons at all (legacy shared rows included), samples served statically.
+    expect((await couponItemRoute.GET(req("GET"), ctx("c-shared"))).status).toBe(404);
     expect((await couponItemRoute.GET(req("GET"), ctx("c-h1"))).status).toBe(404);
+    const sample = await couponItemRoute.GET(req("GET"), ctx("sample-rice"));
+    expect(sample.status).toBe(200);
+    expect((await sample.json()).sample).toBe(true);
     h.state.user = member("u1", "h1");
-    expect((await couponItemRoute.GET(req("GET"), ctx("c-shared"))).status).toBe(200);
+    expect((await couponItemRoute.GET(req("GET"), ctx("c-shared"))).status).toBe(404);
     expect((await couponItemRoute.GET(req("GET"), ctx("c-h1"))).status).toBe(200);
     expect((await couponItemRoute.GET(req("GET"), ctx("c-h2"))).status).toBe(404);
+    expect((await couponItemRoute.GET(req("GET"), ctx("sample-rice"))).status).toBe(404);
   });
 
   it("PATCH/DELETE: guests 401", async () => {

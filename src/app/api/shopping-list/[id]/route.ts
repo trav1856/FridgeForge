@@ -7,6 +7,8 @@ import { shoppingRowMatchesScope } from "@/lib/household";
 /** Load the row and check it belongs to the caller's list scope (same as GET). */
 async function loadOwnedItem(id: string) {
   const user = await getCurrentUser();
+  // Guest lists live in the browser; there are no anonymous server rows.
+  if (!user) return null;
   const actor = {
     householdId: getActiveHouseholdId(user),
     userId: user?.id ?? null,
