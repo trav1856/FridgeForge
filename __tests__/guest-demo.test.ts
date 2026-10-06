@@ -68,6 +68,8 @@ import * as shoppingItemRoute from "@/app/api/shopping-list/[id]/route";
 import * as recipesRoute from "@/app/api/recipes/route";
 import * as couponsRoute from "@/app/api/coupons/route";
 import * as starterRoute from "@/app/api/pantry/starter/route";
+import * as pantryRoute from "@/app/api/pantry/route";
+import * as staplesRoute from "@/app/api/pantry/staples/route";
 import {
   addDemoItem,
   demoPantryFixture,
@@ -230,6 +232,15 @@ describe("guest calculation endpoints are read-only", () => {
     expect(data.pantryCount).toBe(0);
     expect(data.demoPantry).toBe(false);
     expect(h.models.pantryItem!.findMany).toHaveBeenCalledWith({ where: { householdId: "h1" } });
+  });
+});
+
+describe("guests have no server pantry", () => {
+  it("GET /api/pantry and staples return [] without querying null-scope rows", async () => {
+    expect(await (await pantryRoute.GET()).json()).toEqual([]);
+    expect(await (await staplesRoute.GET(get("/api/pantry/staples"))).json()).toEqual([]);
+    expect(h.models.pantryItem?.findMany ?? vi.fn()).not.toHaveBeenCalled();
+    expectNoWrites();
   });
 });
 

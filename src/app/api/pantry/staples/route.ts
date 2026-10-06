@@ -16,6 +16,8 @@ const createSchema = z.object({
 
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
+  // Guests have no server-side custom staples (demo pantry is browser-only).
+  if (!householdId) return NextResponse.json([]);
   const category = req.nextUrl.searchParams.get("category") || undefined;
   const includeHidden =
     req.nextUrl.searchParams.get("includeHidden") === "1" ||

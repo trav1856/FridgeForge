@@ -33,9 +33,9 @@ const createSchema = z.object({
 });
 
 export async function GET() {
-  // Reads keep today's scope (guests: shared null-household rows). Guest rows are
-  // never moved into a household on sign-in.
+  // Guests have no server pantry: their demo pantry lives in the browser.
   const householdId = await resolveHouseholdId();
+  if (!householdId) return NextResponse.json([]);
   const items = await prisma.pantryItem.findMany({
     where: householdWhere(householdId),
     orderBy: [{ category: "asc" }, { name: "asc" }],
