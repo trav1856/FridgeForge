@@ -1,11 +1,10 @@
-# FridgeForge Community Edition
+# FridgeForge
 
-**Status: stable CE · v1.1.0-alpha (paid-track scaffold)**
+**Status: v1.1.0-alpha (paid-track scaffold)**
 
 **Cook great food from what you already have — especially on a budget.**
 
-This repository is the **Community Edition** — Apache-2.0, self-hostable, barcode-first pantry + recipes + struggle meals + demo coupons. The paid/cloud edition (households, live manufacturer deals network, priority support, Learn certificates sync) will be developed separately.
-
+This is the private, proprietary source repository for FridgeForge — a barcode-first pantry + recipes + struggle meals + coupons app. The paid tier (households, live manufacturer deals network, priority support, Learn certificates sync) is being built on top of the same codebase.
 
 FridgeForge is a mobile-first web app for pantry tracking, recipes, and smart meal suggestions. **Struggle Meal mode** optimizes for inexpensive staples (rice, beans, eggs, pasta, canned goods) turned into food you are proud to plate — with technique tips and cheap flavor boosters (soy, vinegar, spices, citrus).
 
@@ -13,7 +12,7 @@ FridgeForge is a mobile-first web app for pantry tracking, recipes, and smart me
 
 Too many meal apps assume a full grocery run. FridgeForge starts from scarcity and creativity: what is in the cupboard, what can you make tonight, and how do you make it taste like you meant it?
 
-## Community Edition (this repo — stable)
+## Features
 
 - Pantry CRUD — name, qty, unit, category/tags, optional expiration + barcode
 - **Barcode-first intake** — primary path: camera scan or type UPC/EAN → Open Food Facts → confirm → pantry
@@ -30,7 +29,7 @@ Too many meal apps assume a full grocery run. FridgeForge starts from scarcity a
 
 ## Out of scope / roadmap
 
-Not in Community Edition / early paid (documented for later):
+Not built yet (documented for later):
 
 - Grower marketplace
 - Shipping / fulfillment
@@ -189,7 +188,7 @@ Recipes are scored by pantry match ratio, can-make-now / near-miss (at most 2 ch
 
 ## Paid track (in progress)
 
-Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works without login** (nullable householdId).
+Auth + households scaffold the paid tier. **Guest mode still works without login** (nullable householdId).
 
 - Sign up / sign in at **/account**
 - Create or join a household (invite code)
@@ -199,16 +198,15 @@ Auth + households scaffold the paid/cloud edition. **Guest / CE mode still works
 
 ### Seed staples vs household starter pack
 
-CE seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Prefer safe db:seed after pulling.
+Seed recipes use null householdId for guests. Recipes tagged staple or classic clone into a new household on POST /api/households. Prefer safe db:seed after pulling.
 
 
-## Pricing (working)
+## Pricing
 
-- Self-host CE: free, ad-free, offline
-- Self-host Network: $1.99/mo (join cloud network)
-- Cloud Free: full app + light manufacturer banner ads
-- Cloud Pro: $4.99/mo, no ads + Pro network features
+Working pricing and paid-tier plans live in [PAID.md](./PAID.md).
 
 ## License
 
-Apache-2.0 — see LICENSE and NOTICE. Free to use and modify; keep copyright and attribution.
+Proprietary. Copyright (c) 2026 Aron Ozmeir / Solid Idea. All rights reserved.
+No license is granted to use, copy, modify, or distribute this code without
+written permission — see [LICENSE](./LICENSE).

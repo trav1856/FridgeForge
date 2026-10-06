@@ -1,12 +1,12 @@
 # FridgeForge Paid track (in progress)
 
 **Status:** scaffold · 1.1.0-alpha
-**Community Edition** remains Apache-2.0 and fully usable without login.
+Guest mode (no login) remains fully usable; paid features layer on top.
 
 ## What landed in this alpha
 
 - Prisma models: User, Session, Household, HouseholdMember
-- Optional householdId on PantryItem, Recipe, Coupon (null = guest / CE legacy)
+- Optional householdId on PantryItem, Recipe, Coupon (null = guest / legacy)
 - Cookie session auth (ff_session) via /api/auth/*
 - Household create / join / list APIs
 - Account page (/account) for sign-up, sign-in, households, invite codes
@@ -43,15 +43,14 @@ npm run dev
 
 - Visibility: `private` (default) | `household` | `public` | `invite` (selected households / share link)
 - Public recipes can be free to clone into another household’s book
-- Cross-household sharing is a cloud/network feature (Pro / Free+ads), not required for local CE
-- Monetization lean: self-host CE ad-free; cloud Free may use light ads or caps; Pro = no ads + network (live coupons, sharing, later F&B pulse)
+- Cross-household sharing is a cloud/network feature (Pro / Free+ads), not required for guest use
+- Monetization lean: cloud Free may use light ads or caps; Pro = no ads + network (live coupons, sharing, later F&B pulse)
 
 ## Pricing (working — 2026-09-05)
 
 | Tier | Price | What you get |
 |------|-------|----------------|
-| **Community Edition (self-host)** | Free | Full local app, ad-free, no cloud network |
-| **Self-host Network** | **$1.99/mo** | CE + join the network (shared recipes, live deals, later F&B pulse) |
+| **Self-host Network** | **$1.99/mo** | Self-hosted install + join the network (shared recipes, live deals, later F&B pulse) |
 | **Cloud Free** | Free | Full hosted app + light **manufacturer banner ads** (non-obstructive) |
 | **Cloud Pro** | **$4.99/mo** | No ads + Pro perks (live coupons, sharing network, priority support) |
 

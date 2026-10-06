@@ -124,7 +124,7 @@ export function getActiveHouseholdId(user: AuthUser | null): string | null {
   return user.memberships[0]!.householdId;
 }
 
-/** Resolve household scope for a request: auth+household → id, else null (CE guest). */
+/** Resolve household scope for a request: auth+household → id, else null (guest). */
 export async function resolveHouseholdId(): Promise<string | null> {
   const user = await getCurrentUser();
   return getActiveHouseholdId(user);

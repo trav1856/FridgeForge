@@ -19,7 +19,7 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const householdId = await resolveHouseholdId();
   const filter = req.nextUrl.searchParams.get("filter") || "all";
-  // Demo/CE coupons (null household) are always visible; household users also see theirs.
+  // Demo/guest coupons (null household) are always visible; household users also see theirs.
   const items = await prisma.coupon.findMany({
     where: sharedOrHouseholdWhere(householdId),
     orderBy: [{ clipped: "desc" }, { expiresAt: "asc" }, { brand: "asc" }],

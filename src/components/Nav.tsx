@@ -99,7 +99,7 @@ export function Nav() {
               <div className="truncate text-[10px] font-medium uppercase tracking-wider text-sage-500">
                 {planLabel
                   ? `${planLabel} · signed in`
-                  : "Community Edition · stable"}
+                  : "Cook what you have"}
               </div>
             </div>
           </Link>

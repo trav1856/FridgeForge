@@ -26,7 +26,7 @@ describe("generateInviteCode", () => {
 });
 
 describe("household scoping helpers", () => {
-  it("householdWhere passes through null for guest CE", () => {
+  it("householdWhere passes through null for guest", () => {
     expect(householdWhere(null)).toEqual({ householdId: null });
   });
 

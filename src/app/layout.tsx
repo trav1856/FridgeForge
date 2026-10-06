@@ -16,9 +16,9 @@ const sans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "FridgeForge Community Edition — Cook what you have",
+  title: "FridgeForge — Cook what you have",
   description:
-    "FridgeForge Community Edition (stable). Turn pantry staples into great meals with smart suggestions and Struggle Meal mode.",
+    "FridgeForge turns pantry staples into great meals with smart suggestions and Struggle Meal mode.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

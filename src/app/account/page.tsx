@@ -150,7 +150,7 @@ export default function AccountPage() {
     setBusy(true);
     await fetch("/api/auth/signout", { method: "POST" });
     setUser(null);
-    setMessage("Signed out. Guest / Community Edition mode is active.");
+    setMessage("Signed out. You're browsing as a guest.");
     setBusy(false);
   }
 
@@ -247,7 +247,7 @@ export default function AccountPage() {
         <h1 className="font-display text-3xl font-bold text-sage-900">Account</h1>
         <p className="mt-1 text-sm text-sage-600">
           Sign in for households (paid track scaffold). Guests keep working
-          without an account — Community Edition pantry/recipes stay local.
+          without an account — pantry and recipes stay local.
         </p>
       </div>
 

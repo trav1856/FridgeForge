@@ -311,8 +311,7 @@ export function Splash() {
                 Cook what you have
               </p>
               <p className="mt-2 max-w-xs text-sm text-sage-600">
-                A recipe + pantry app by Aron. Community Edition is stable and
-                self-hostable.
+                A recipe + pantry app by Aron.
               </p>
             </div>
           </div>
