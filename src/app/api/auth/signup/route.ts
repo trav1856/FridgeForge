@@ -9,10 +9,12 @@ import {
   publicUser,
 } from "@/lib/auth";
 import { allocateProfileSlugForCreate } from "@/lib/public-profile";
+import { recordSignIn } from "@/lib/activity";
+import { passwordSchema } from "@/lib/password-rules";
 
 const schema = z.object({
   email: z.string().email().max(200),
-  password: z.string().min(6).max(200),
+  password: passwordSchema,
   name: z.string().min(1).max(120).optional(),
 });
 
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createSession(created.id);
+    await recordSignIn(created.id).catch((e) => console.error("signup activity", e));
     const user = await getCurrentUser();
     if (!user) throw new AuthError("Session failed");
     return NextResponse.json(publicUser(user), { status: 201 });

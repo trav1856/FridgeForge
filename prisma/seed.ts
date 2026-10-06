@@ -1221,9 +1221,9 @@ async function main() {
     await cloneStapleRecipesToHousehold(prisma, household.id);
   }
 
-  // Promote known owner + FF_ADMIN_EMAILS to admin (non-destructive)
-  const { promoteAdminEmails } = await import("../src/lib/admin");
-  const promoted = await promoteAdminEmails();
+  // Promote known owner + FF_ADMIN_EMAILS to admin only when no admin exists yet
+  const { ensureBootstrapAdmin } = await import("../src/lib/admin");
+  const promoted = await ensureBootstrapAdmin();
   if (promoted > 0) {
     console.log(`Promoted ${promoted} user(s) to admin via bootstrap emails`);
   }

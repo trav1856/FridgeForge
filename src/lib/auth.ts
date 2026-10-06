@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import type { User } from "@prisma/client";
+import { shouldTouchActivity, touchActivity } from "@/lib/activity";
 
 export const SESSION_COOKIE = "ff_session";
 const SESSION_DAYS = 30;
@@ -93,6 +94,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (authUser.disabled) {
     await prisma.session.deleteMany({ where: { userId: authUser.id } }).catch(() => {});
     return null;
+  }
+  // Activity tracking: no write unless lastActiveAt is >5 min old; never blocks the request.
+  if (shouldTouchActivity(authUser.lastActiveAt)) {
+    void touchActivity(authUser.id, session.id).catch(() => {});
   }
   return authUser;
 }

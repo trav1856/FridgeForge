@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { getUserStats } from "@/lib/admin-user-stats";
+import { MiniBars } from "@/components/admin/MiniBars";
 
 export default async function AdminDashboardPage() {
+  const userStats = await getUserStats();
+  const signupsThisWeek = userStats.signupsByWeek[userStats.signupsByWeek.length - 1]?.count ?? 0;
   const [
     users,
     admins,
@@ -42,6 +46,44 @@ export default async function AdminDashboardPage() {
         Manage recipes, users, badges, and Struggle cards. Recipe ratings are available to all
         signed-in cooks — this panel is admin-only.
       </p>
+      <Link href="/admin/users" className="card block p-4 hover:opacity-95" data-testid="dashboard-user-activity">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-sage-500">
+            Users · sign-ups &amp; activity
+          </div>
+          <span className="text-xs font-semibold text-ember-700">Manage users →</span>
+        </div>
+        <div className="mt-2 grid gap-4 sm:grid-cols-3">
+          <div>
+            <div className="text-xs text-sage-600">New sign-ups / week</div>
+            <div className="flex items-end gap-3">
+              <div className="font-display text-3xl font-bold text-sage-900">{signupsThisWeek}</div>
+              <MiniBars
+                className="flex-1"
+                values={userStats.signupsByWeek.map((w) => w.count)}
+                labels={userStats.signupsByWeek.map((w) => `Week of ${w.weekStart}`)}
+              />
+            </div>
+            <div className="text-[11px] text-sage-500">This week · last 8 weeks</div>
+          </div>
+          <div>
+            <div className="text-xs text-sage-600">Active users</div>
+            <div className="font-display text-3xl font-bold text-sage-900">{userStats.active7}</div>
+            <div className="text-[11px] text-sage-500">
+              last 7 days · <b className="text-sage-800">{userStats.active30}</b> in 30 days
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-sage-600">Weekly active users</div>
+            <MiniBars
+              className="mt-1"
+              values={userStats.weeklyActive.map((w) => w.count)}
+              labels={userStats.weeklyActive.map((w) => `Week of ${w.weekStart}`)}
+            />
+            <div className="text-[11px] text-sage-500">Distinct users per week · tracking started with this release</div>
+          </div>
+        </div>
+      </Link>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {stats.map((s) => {
           const inner = (

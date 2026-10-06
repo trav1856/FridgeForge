@@ -42,6 +42,15 @@ model User {
   preferLowSodium Boolean        @default(false)
   /** JSON string array of allergen ids/labels the user avoids (personal; not a public silo). */
   allergenFlags String           @default("[]")
+  /** Activity: bumped from getCurrentUser() at most once per ~5 min (see lib/activity). */
+  lastActiveAt DateTime?
+  /** Set on successful sign-in (and sign-up, which signs in). */
+  lastSignInAt DateTime?
+  /** Suspend context; `disabled` stays the actual gate. */
+  disabledReason String?
+  disabledAt   DateTime?
+  /** Admin user id that suspended (no FK so it survives that admin's deletion). */
+  disabledById String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -59,17 +68,67 @@ model User {
   howToLessonProgress HowToLessonProgress[]
   howToBadges         HowToUserBadge[]
   weeklyMenuPlans     WeeklyMenuPlan[]
+  activeDays          UserActiveDay[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([createdAt])
+  @@index([lastActiveAt])
+  @@index([role])
+  @@index([plan])
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id         String    @id @default(cuid())
+  token      String    @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  /** Bumped together with User.lastActiveAt (throttled). */
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/** One row per user per active day (UTC), upserted by activity tracking. */
+model UserActiveDay {
   userId    String
-  expiresAt DateTime
+  day       DateTime @db.Date
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@id([userId, day])
+  @@index([day])
+}
+
+/** Admin-generated one-time password reset links. Only the sha256 of the token is stored. */
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  /** Admin who generated the link. */
+  createdById String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
+}
+
+/** Append-only log of admin actions. No FKs, so entries survive user deletion. */
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actorId      String
+  targetUserId String?
+  /** e.g. user.role, user.plan, user.suspend, user.unsuspend, user.sessions.revoke, user.reset_link, user.export, user.delete */
+  action       String
+  details      Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
 }
 
 model Household {

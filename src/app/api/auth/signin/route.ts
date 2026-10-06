@@ -8,6 +8,7 @@ import {
   publicUser,
   verifyPassword,
 } from "@/lib/auth";
+import { recordSignIn } from "@/lib/activity";
 
 const schema = z.object({
   email: z.string().email().max(200),
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     await createSession(userRow.id);
+    await recordSignIn(userRow.id).catch((e) => console.error("signin activity", e));
     const user = await getCurrentUser();
     if (!user) throw new AuthError("Session failed");
     return NextResponse.json(publicUser(user));

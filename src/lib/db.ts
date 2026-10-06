@@ -18,6 +18,9 @@ function clientIsCurrent(client: PrismaClient): boolean {
     howToLessonProgress?: unknown;
     struggleResource?: unknown;
     weeklyMenuPlan?: unknown;
+    adminAuditLog?: unknown;
+    passwordResetToken?: unknown;
+    userActiveDay?: unknown;
   };
   return (
     typeof c.recipeCookSession !== "undefined" &&
@@ -25,7 +28,10 @@ function clientIsCurrent(client: PrismaClient): boolean {
     typeof c.howToCourse !== "undefined" &&
     typeof c.howToLessonProgress !== "undefined" &&
     typeof c.struggleResource !== "undefined" &&
-    typeof c.weeklyMenuPlan !== "undefined"
+    typeof c.weeklyMenuPlan !== "undefined" &&
+    typeof c.adminAuditLog !== "undefined" &&
+    typeof c.passwordResetToken !== "undefined" &&
+    typeof c.userActiveDay !== "undefined"
   );
 }
 

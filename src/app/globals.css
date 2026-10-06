@@ -20,6 +20,11 @@ body {
   min-height: 100vh;
 }
 
+/* Admin users pages use a wider frame for the data table. */
+body:has(.ff-admin-wide) > main {
+  max-width: 80rem;
+}
+
 /* Signed-out splash at "/" brings its own full-bleed header/footer:
    hide the app Nav (and its Suspense fallback) and the narrow <main> frame. */
 body:has(.ff-splash) > header {
@@ -48,6 +53,12 @@ body:has(.ff-splash) > main {
   }
   .input {
     @apply w-full rounded-xl border border-sage-200 bg-white px-3 py-2.5 text-sm text-sage-900 placeholder:text-sage-400 focus:border-ember-400 focus:outline-none focus:ring-2 focus:ring-ember-200;
+  }
+  .select {
+    @apply input appearance-none bg-no-repeat pr-8;
+    background-image: url("/admin-select-chevron.svg");
+    background-position: right 10px center;
+    background-size: 12px;
   }
   .label {
     @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-sage-600;

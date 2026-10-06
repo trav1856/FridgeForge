@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
   AuthError,
@@ -37,7 +38,7 @@ export function adminBootstrapEmails(): string[] {
 
 /**
  * Non-destructive: ensure listed emails have role=admin.
- * Safe to call from seed or admin layout.
+ * Unconditional — use ensureBootstrapAdmin() from request paths / seed.
  */
 export async function promoteAdminEmails(
   emails: string[] = adminBootstrapEmails()
@@ -53,11 +54,34 @@ export async function promoteAdminEmails(
   return result.count;
 }
 
+/**
+ * Bootstrap only: promote the built-in / env admin emails when NO admin exists
+ * at all (fresh install, or every admin was removed directly in the DB).
+ * Once any admin exists this is a single cheap count and never re-promotes, so
+ * demoting a bootstrap email from /admin/users sticks.
+ */
+export async function ensureBootstrapAdmin(
+  emails: string[] = adminBootstrapEmails()
+): Promise<number> {
+  if (!emails.length) return 0;
+  const admins = await prisma.user.count({ where: { role: "admin" } });
+  if (admins > 0) return 0;
+  return promoteAdminEmails(emails);
+}
+
 export async function requireAdmin(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) throw new AuthError();
   if (user.disabled) throw new ForbiddenError("Account disabled");
   if (!isAdmin(user)) throw new ForbiddenError();
+  return user;
+}
+
+/** Server-component gate for admin pages (in addition to the /admin layout). */
+export async function requireAdminPage(): Promise<AuthUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/account");
+  if (!isAdmin(user)) redirect("/");
   return user;
 }
 

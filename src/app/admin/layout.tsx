@@ -1,15 +1,23 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { isAdmin, promoteAdminEmails } from "@/lib/admin";
+import { ensureBootstrapAdmin, isAdmin } from "@/lib/admin";
+import { AdminNav } from "@/components/admin/AdminNav";
+
+const ADMIN_LINKS = [
+  { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin/recipes", label: "Recipes" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/badges", label: "Badges" },
+  { href: "/admin/struggle", label: "Struggle" },
+];
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Bootstrap known / env admin emails before gate (non-destructive).
-  await promoteAdminEmails().catch(() => 0);
+  // Bootstrap known / env admin emails only while no admin exists at all.
+  await ensureBootstrapAdmin().catch(() => 0);
   const user = await getCurrentUser();
   if (!user) redirect("/account");
   if (!isAdmin(user)) {
@@ -27,23 +35,7 @@ export default async function AdminLayout({
             Site ops
           </h1>
         </div>
-        <nav className="flex flex-wrap gap-2 text-sm">
-          <Link href="/admin" className="btn-ghost text-xs">
-            Dashboard
-          </Link>
-          <Link href="/admin/recipes" className="btn-ghost text-xs">
-            Recipes
-          </Link>
-          <Link href="/admin/users" className="btn-ghost text-xs">
-            Users
-          </Link>
-          <Link href="/admin/badges" className="btn-ghost text-xs">
-            Badges
-          </Link>
-          <Link href="/admin/struggle" className="btn-ghost text-xs">
-            Struggle
-          </Link>
-        </nav>
+        <AdminNav links={ADMIN_LINKS} />
       </div>
       {children}
     </div>
