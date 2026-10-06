@@ -246,8 +246,8 @@ export default function AccountPage() {
       <div>
         <h1 className="font-display text-3xl font-bold text-sage-900">Account</h1>
         <p className="mt-1 text-sm text-sage-600">
-          Sign in for households (paid track scaffold). Guests keep working
-          without an account — pantry and recipes stay local.
+          Guests can browse recipes, the demo pantry, and coupons without an
+          account. Sign in to save your own pantry.
         </p>
       </div>
 
@@ -705,8 +705,8 @@ export default function AccountPage() {
             </h2>
             {user.households.length === 0 ? (
               <p className="text-sm text-sage-600">
-                No household yet. Create one or join with an invite code. Until
-                then, pantry/recipes use guest (null household) scope.
+                No household yet. Create one or join with an invite code to
+                save your pantry.
               </p>
             ) : (
               <ul className="space-y-3">

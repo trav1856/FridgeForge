@@ -138,23 +138,3 @@ export async function upsertPantryItem(
   });
   return { item: serializePantry(created), merged: false as const };
 }
-
-
-/**
- * Move guest/null-scoped *scanned* pantry rows (those with a barcode) into the
- * active household. Seed staples without barcodes stay on null for guests.
- * Returns how many rows were claimed.
- */
-export async function claimOrphanBarcodePantry(
-  householdId: string
-): Promise<number> {
-  if (!householdId) return 0;
-  const result = await prisma.pantryItem.updateMany({
-    where: {
-      householdId: null,
-      barcode: { not: null },
-    },
-    data: { householdId },
-  });
-  return result.count;
-}

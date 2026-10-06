@@ -39,7 +39,14 @@ export function CouponsView() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setError("Update failed");
+      const data = await res.json().catch(() => ({}));
+      setError(
+        res.status === 401 && typeof data?.error === "string"
+          ? data.error
+          : res.status === 404
+            ? "Sample coupons can't be changed."
+            : "Update failed"
+      );
       return;
     }
     await load();

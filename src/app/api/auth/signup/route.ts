@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import {
   AuthError,
   createSession,
+  generateInviteCode,
   getCurrentUser,
   hashPassword,
   publicUser,
@@ -11,6 +12,7 @@ import {
 import { allocateProfileSlugForCreate } from "@/lib/public-profile";
 import { recordSignIn } from "@/lib/activity";
 import { passwordSchema } from "@/lib/password-rules";
+import { personalKitchenName } from "@/lib/household";
 
 const schema = z.object({
   email: z.string().email().max(200),
@@ -37,14 +39,33 @@ export async function POST(req: NextRequest) {
       email,
       data.name?.trim() || null
     );
-    const created = await prisma.user.create({
-      data: {
-        email,
-        name: data.name?.trim() || null,
-        profileSlug,
-        passwordHash,
-        plan: "free",
-      },
+    const name = data.name?.trim() || null;
+    // Every new account gets its own empty household so it never shares the
+    // guest/demo pantry or anyone else's. No items are copied in.
+    const created = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          profileSlug,
+          passwordHash,
+          plan: "free",
+        },
+      });
+      let inviteCode = generateInviteCode();
+      for (let i = 0; i < 5; i++) {
+        const clash = await tx.household.findUnique({ where: { inviteCode } });
+        if (!clash) break;
+        inviteCode = generateInviteCode();
+      }
+      await tx.household.create({
+        data: {
+          name: personalKitchenName(name, email),
+          inviteCode,
+          members: { create: { userId: user.id, role: "owner" } },
+        },
+      });
+      return user;
     });
 
     await createSession(created.id);

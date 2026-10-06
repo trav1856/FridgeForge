@@ -88,10 +88,10 @@ describe("canEditRecipeImage", () => {
     ).toBe(false);
   });
 
-  it("allows guests only on guest/catalog-scoped (null household) recipes", () => {
+  it("never lets guests edit recipe photos (not even shared catalog rows)", () => {
     expect(
       canEditRecipeImage(recipeCatalog, { userId: null, householdId: null })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       canEditRecipeImage(recipeOwned, { userId: null, householdId: null })
     ).toBe(false);

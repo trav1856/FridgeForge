@@ -34,11 +34,17 @@ export function CouponCreateForm() {
             : null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error("Create failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          res.status === 401 && typeof data?.error === "string"
+            ? data.error
+            : "Could not create coupon"
+        );
+      }
       router.push(`/coupons/${data.id}`);
-    } catch {
-      setError("Could not create coupon");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create coupon");
       setBusy(false);
     }
   }

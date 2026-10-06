@@ -160,9 +160,9 @@ export async function deleteManagedRecipeUserImage(
 }
 
 /**
- * Who may set/clear a recipe photo — matches share manage + guest write rules:
+ * Who may set/clear a recipe photo:
  * - signed-in owner, or household member of the recipe's household
- * - guest (no user): guest-scoped recipes (householdId null) only
+ * - guests (no user): never (shared catalog photos are not guest-editable)
  */
 export function canEditRecipeImage(
   recipe: { ownerUserId: string | null; householdId: string | null },
@@ -178,8 +178,8 @@ export function canEditRecipeImage(
     }
     return false;
   }
-  // Guest session: only recipes in guest scope (null household), same as DELETE write.
-  return recipe.householdId == null;
+  // Guests never write to shared (null-household) rows.
+  return false;
 }
 
 

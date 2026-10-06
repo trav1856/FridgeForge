@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
+import { rowMatchesScope } from "@/lib/household";
+import { notFoundResponse, requireWriteScope } from "@/lib/write-scope";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -19,7 +21,16 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
     const { id } = await ctx.params;
+    const existing = await prisma.pantryItem.findUnique({
+      where: { id },
+      select: { householdId: true },
+    });
+    if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
+      return notFoundResponse();
+    }
     const body = await req.json();
     const data = updateSchema.parse(body);
     const item = await prisma.pantryItem.update({
@@ -54,7 +65,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
     const { id } = await ctx.params;
+    const existing = await prisma.pantryItem.findUnique({
+      where: { id },
+      select: { householdId: true },
+    });
+    if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
+      return notFoundResponse();
+    }
     await prisma.pantryItem.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {

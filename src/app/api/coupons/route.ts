@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { resolveHouseholdId } from "@/lib/auth";
 import { sharedOrHouseholdWhere } from "@/lib/household";
 import { serializeCoupon } from "@/lib/coupons";
+import { requireWriteScope } from "@/lib/write-scope";
 
 const createSchema = z.object({
   brand: z.string().min(1).max(80),
@@ -40,7 +41,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("coupons");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const body = await req.json();
     const data = createSchema.parse(body);
     const coupon = await prisma.coupon.create({

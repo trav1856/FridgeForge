@@ -14,6 +14,7 @@ export type AuthUser = User & {
     id: string;
     role: string;
     householdId: string;
+    createdAt?: Date;
     household: { id: string; name: string; inviteCode: string };
   }[];
 };
@@ -118,10 +119,25 @@ export class AuthError extends Error {
   }
 }
 
-/** First household membership id, or null (guest / no household yet). */
+/**
+ * Active household id, or null (guest / no household yet).
+ * Uses the most recently created membership so that a household joined by
+ * invite (or created later) wins over the personal kitchen made at signup.
+ */
 export function getActiveHouseholdId(user: AuthUser | null): string | null {
-  if (!user?.memberships?.length) return null;
-  return user.memberships[0]!.householdId;
+  const list = user?.memberships;
+  if (!list?.length) return null;
+  let pick = list[0]!;
+  for (const m of list) {
+    if (
+      m.createdAt &&
+      pick.createdAt &&
+      new Date(m.createdAt).getTime() > new Date(pick.createdAt).getTime()
+    ) {
+      pick = m;
+    }
+  }
+  return pick.householdId;
 }
 
 /** Resolve household scope for a request: auth+household → id, else null (guest). */

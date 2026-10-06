@@ -300,13 +300,21 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Sign in to delete recipes.", code: "SIGN_IN_REQUIRED" },
+        { status: 401 }
+      );
+    }
     const householdId = await resolveHouseholdId();
     const recipe = await prisma.recipe.findUnique({ where: { id } });
     if (!recipe || !recipeRowMatchesScope(recipe.householdId, householdId)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    // Guests cannot delete shared catalog; only exact household (or guest-owned null) rows
-    if (recipe.householdId == null && householdId != null) {
+    // Shared catalog rows (null household) can only be deleted by the user who
+    // owns them (admins use the admin recipes tools). Guests never delete.
+    if (recipe.householdId == null && recipe.ownerUserId !== user.id) {
       return NextResponse.json(
         { error: "Cannot delete shared catalog recipe" },
         { status: 403 }

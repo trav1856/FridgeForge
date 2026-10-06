@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveHouseholdId } from "@/lib/auth";
+import { requireWriteScope } from "@/lib/write-scope";
 import {
   PantryImageUploadError,
   clearPantryItemImage,
@@ -10,7 +10,9 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, ctx: Ctx) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const { id } = await ctx.params;
     let form: FormData;
     try {
@@ -44,7 +46,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const { id } = await ctx.params;
     const item = await clearPantryItemImage(id, { householdId });
     return NextResponse.json({ item, imageUrl: item.imageUrl });

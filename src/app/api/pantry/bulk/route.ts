@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveHouseholdId } from "@/lib/auth";
+import { requireWriteScope } from "@/lib/write-scope";
 import { upsertPantryItem } from "@/lib/pantry-upsert";
 
 const itemSchema = z.object({
@@ -19,7 +19,9 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const body = await req.json();
     const { items } = bodySchema.parse(body);
     const results = [];

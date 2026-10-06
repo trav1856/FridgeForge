@@ -5,7 +5,8 @@ import { resolveHouseholdId } from "@/lib/auth";
 import { householdWhere } from "@/lib/household";
 import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
-import { claimOrphanBarcodePantry, upsertPantryItem } from "@/lib/pantry-upsert";
+import { upsertPantryItem } from "@/lib/pantry-upsert";
+import { requireWriteScope } from "@/lib/write-scope";
 import { upsertCustomStaple } from "@/lib/custom-staples";
 import { findCatalogItem } from "@/lib/pantry-catalog";
 import { inferMeasureKind } from "@/lib/units";
@@ -32,15 +33,9 @@ const createSchema = z.object({
 });
 
 export async function GET() {
+  // Reads keep today's scope (guests: shared null-household rows). Guest rows are
+  // never moved into a household on sign-in.
   const householdId = await resolveHouseholdId();
-  // Scanned products written while guest (null HH) should follow the signed-in user.
-  if (householdId) {
-    try {
-      await claimOrphanBarcodePantry(householdId);
-    } catch (e) {
-      console.warn("claim orphan barcode pantry skipped", e);
-    }
-  }
   const items = await prisma.pantryItem.findMany({
     where: householdWhere(householdId),
     orderBy: [{ category: "asc" }, { name: "asc" }],
@@ -50,7 +45,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const body = await req.json();
     const data = createSchema.parse(body);
 

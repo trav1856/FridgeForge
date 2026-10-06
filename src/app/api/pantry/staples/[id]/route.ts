@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { resolveHouseholdId } from "@/lib/auth";
+import { requireWriteScope } from "@/lib/write-scope";
 import { rowMatchesScope } from "@/lib/household";
 import { serializeCustomStaple } from "@/lib/custom-staples";
 
@@ -17,8 +17,10 @@ const patchSchema = z.object({
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const { id } = await ctx.params;
-    const householdId = await resolveHouseholdId();
     const row = await prisma.customPantryStaple.findUnique({ where: { id } });
     if (!row || !rowMatchesScope(row.householdId, householdId)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -54,8 +56,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const guard = await requireWriteScope("pantry");
+  if (!guard.ok) return guard.response;
+  const householdId = guard.scope.householdId;
   const { id } = await ctx.params;
-  const householdId = await resolveHouseholdId();
   const row = await prisma.customPantryStaple.findUnique({ where: { id } });
   if (!row || !rowMatchesScope(row.householdId, householdId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

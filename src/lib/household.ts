@@ -65,3 +65,25 @@ export function recipeRowMatchesScope(
   if (activeHouseholdId === null) return false;
   return rowHouseholdId === activeHouseholdId;
 }
+
+/**
+ * Shopping list rows: household rows for members; personal rows (userId, no
+ * household) for signed-in users without one; anonymous rows for guests.
+ */
+export function shoppingRowMatchesScope(
+  row: { householdId: string | null; userId: string | null },
+  actor: { householdId: string | null; userId: string | null }
+): boolean {
+  if (actor.householdId != null) return row.householdId === actor.householdId;
+  if (actor.userId != null) {
+    return row.householdId == null && row.userId === actor.userId;
+  }
+  return row.householdId == null && row.userId == null;
+}
+
+/** "{name}'s Kitchen"; falls back to the email local part (before any "+"). */
+export function personalKitchenName(name: string | null, email: string): string {
+  const base = name?.trim() || email.split("@")[0]!.split("+")[0]!.trim();
+  if (!base) return "My Kitchen";
+  return `${base.slice(0, 100)}'s Kitchen`;
+}

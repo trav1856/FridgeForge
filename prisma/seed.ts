@@ -1185,20 +1185,27 @@ async function main() {
   }
 
   // Optional Pro demo user + household (upsert — never wipe other users)
-  const proHash = await bcrypt.hash("prodemo", 10);
-  const proUser = await prisma.user.upsert({
+  // Password is set only when the account is first created; re-running the seed
+  // never resets an existing account's password. Override with FF_PRO_DEMO_PASSWORD.
+  let proUser = await prisma.user.findUnique({
     where: { email: "pro@fridgeforge.local" },
-    create: {
-      email: "pro@fridgeforge.local",
-      name: "Pro Demo",
-      passwordHash: proHash,
-      plan: "pro",
-    },
-    update: {
-      plan: "pro",
-      passwordHash: proHash,
-    },
   });
+  let proCreated = false;
+  if (!proUser) {
+    const proHash = await bcrypt.hash(
+      process.env.FF_PRO_DEMO_PASSWORD || "prodemo",
+      10
+    );
+    proUser = await prisma.user.create({
+      data: {
+        email: "pro@fridgeforge.local",
+        name: "Pro Demo",
+        passwordHash: proHash,
+        plan: "pro",
+      },
+    });
+    proCreated = true;
+  }
 
   let household = await prisma.household.findFirst({
     where: {
@@ -1248,7 +1255,7 @@ async function main() {
     `Seed ensure: pantry +${pantryCreated}, recipes +${recipesCreated} (images refreshed ${recipesImaged}, taxonomy backfill ${recipesTaxonomied}, stories +${storiesFilled}), coupons +${couponsCreated}, howto courses +${howtoCoursesEnsured} (new lessons +${howtoLessonsEnsured}). forceReset=${forceReset}`
   );
   console.log(
-    `Demo Pro user: pro@fridgeforge.local / prodemo — household "${household.name}" invite ${household.inviteCode} (shared staples via catalog, not cloned)`
+    `Demo Pro user: pro@fridgeforge.local (${proCreated ? "created now; password from FF_PRO_DEMO_PASSWORD or default" : "existing; password unchanged"}) — household "${household.name}" (shared staples via catalog, not cloned)`
   );
 }
 

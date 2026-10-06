@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { serializeCoupon } from "@/lib/coupons";
+import { resolveHouseholdId } from "@/lib/auth";
+import { recipeRowMatchesScope, rowMatchesScope } from "@/lib/household";
+import { notFoundResponse, requireWriteScope } from "@/lib/write-scope";
 
 const patchSchema = z.object({
   clipped: z.boolean().optional(),
@@ -19,16 +22,29 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
+  const householdId = await resolveHouseholdId();
   const coupon = await prisma.coupon.findUnique({ where: { id } });
-  if (!coupon) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Read scope mirrors the coupon list: shared demo rows (null household) plus
+  // the caller's own household. Other households' coupons are not found.
+  if (!coupon || !recipeRowMatchesScope(coupon.householdId, householdId)) {
+    return notFoundResponse();
   }
   return NextResponse.json(serializeCoupon(coupon));
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("coupons");
+    if (!guard.ok) return guard.response;
     const { id } = await ctx.params;
+    const existing = await prisma.coupon.findUnique({
+      where: { id },
+      select: { householdId: true },
+    });
+    // Writes are exact-household only: shared demo coupons are read-only.
+    if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
+      return notFoundResponse();
+    }
     const body = await req.json();
     const data = patchSchema.parse(body);
     const coupon = await prisma.coupon.update({
@@ -61,7 +77,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("coupons");
+    if (!guard.ok) return guard.response;
     const { id } = await ctx.params;
+    const existing = await prisma.coupon.findUnique({
+      where: { id },
+      select: { householdId: true },
+    });
+    if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
+      return notFoundResponse();
+    }
     await prisma.coupon.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {

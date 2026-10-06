@@ -77,7 +77,8 @@ async function cloneRecipeForRequester(request: RequestWithRecipe) {
   const fromUser = await prisma.user.findUnique({
     where: { id: request.fromUserId },
     include: {
-      memberships: { orderBy: { createdAt: "asc" }, take: 1 },
+      // Same rule as getActiveHouseholdId: most recent membership is active.
+      memberships: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
   const requesterHouseholdId = fromUser?.memberships[0]?.householdId ?? null;

@@ -44,7 +44,8 @@ export function assertCanEditPantryItemImage(
   actor: { householdId: string | null }
 ): void {
   if (!canEditPantryItemImage(item, actor)) {
-    throw new PantryImageUploadError("Forbidden", 403);
+    // Same response as a missing row so other households' ids are not revealed.
+    throw new PantryImageUploadError("Not found", 404);
   }
 }
 

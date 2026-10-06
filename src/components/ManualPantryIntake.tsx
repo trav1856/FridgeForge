@@ -651,7 +651,12 @@ function EditPantryForm({
     setError(null);
     try {
       const res = await fetch(`/api/pantry/${editingId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data?.error === "string" ? data.error : "Delete failed"
+        );
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete item");

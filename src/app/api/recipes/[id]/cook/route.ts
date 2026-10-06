@@ -11,6 +11,7 @@ import {
 } from "@/lib/pantry-deduct";
 import { cookScopeKey } from "@/lib/cook-stat";
 import { pickUndoWithin24h } from "@/lib/cook-undo";
+import { requireWriteScope } from "@/lib/write-scope";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -193,9 +194,12 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
   try {
+    // Cooking deducts from the pantry: signed-in household members only.
+    const guard = await requireWriteScope("cook");
+    if (!guard.ok) return guard.response;
     const { id: recipeId } = await ctx.params;
-    const user = await getCurrentUser();
-    const householdId = await resolveHouseholdId();
+    const user = guard.scope.user;
+    const householdId = guard.scope.householdId;
 
     let body: {
       finalize?: boolean;
@@ -213,7 +217,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       const session = body.sessionId
         ? await prisma.recipeCookSession.findUnique({ where: { id: body.sessionId } })
         : await findActiveSession(recipeId, user?.id ?? null, householdId);
-      if (session?.active) {
+      if (session?.active && session.householdId === householdId) {
         await prisma.recipeCookSession.update({
           where: { id: session.id },
           data: { active: false },
@@ -416,9 +420,11 @@ async function undoMakingDifferent(
  */
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
+    const guard = await requireWriteScope("cook");
+    if (!guard.ok) return guard.response;
     const { id: recipeId } = await ctx.params;
-    const user = await getCurrentUser();
-    const householdId = await resolveHouseholdId();
+    const user = guard.scope.user;
+    const householdId = guard.scope.householdId;
     const different =
       req.nextUrl.searchParams.get("different") === "1" ||
       req.nextUrl.searchParams.get("makingDifferent") === "1";

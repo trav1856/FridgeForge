@@ -11,6 +11,7 @@ export function CouponRedeem({ id }: Props) {
   const [coupon, setCoupon] = useState<CouponDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bright, setBright] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -22,6 +23,35 @@ export function CouponRedeem({ id }: Props) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
   }, [id]);
+
+  const patchCoupon = useCallback(
+    async (couponId: string, body: Record<string, unknown>) => {
+      setNotice(null);
+      try {
+        const res = await fetch(`/api/coupons/${couponId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setNotice(
+            res.status === 401 && typeof data?.error === "string"
+              ? data.error
+              : res.status === 404
+                ? "Sample coupons can't be changed."
+                : "Could not update coupon."
+          );
+          return;
+        }
+      } catch {
+        setNotice("Could not update coupon.");
+        return;
+      }
+      await load();
+    },
+    [load]
+  );
 
   useEffect(() => {
     void load();
@@ -40,12 +70,7 @@ export function CouponRedeem({ id }: Props) {
 
   async function markUsed() {
     if (!coupon) return;
-    await fetch(`/api/coupons/${coupon.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ used: true, clipped: true }),
-    });
-    await load();
+    await patchCoupon(coupon.id, { used: true, clipped: true });
   }
 
   if (error) {
@@ -135,16 +160,25 @@ export function CouponRedeem({ id }: Props) {
           type="button"
           className="btn-secondary flex-1"
           onClick={() =>
-            void fetch(`/api/coupons/${coupon.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clipped: !coupon.clipped }),
-            }).then(load)
+            void patchCoupon(coupon.id, { clipped: !coupon.clipped })
           }
         >
           {coupon.clipped ? "Unclip" : "Clip / save"}
         </button>
       </div>
+
+      {notice && (
+        <p
+          role="alert"
+          data-testid="coupon-notice"
+          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm text-amber-900"
+        >
+          {notice}{" "}
+          <Link href="/account" className="font-semibold underline">
+            Account
+          </Link>
+        </p>
+      )}
 
       <p className="text-center text-[11px] text-sage-500">
         Demo codes only — not GS1 manufacturer coupons. Raise screen brightness

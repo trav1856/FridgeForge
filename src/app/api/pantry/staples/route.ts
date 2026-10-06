@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveHouseholdId } from "@/lib/auth";
+import { requireWriteScope } from "@/lib/write-scope";
 import {
   listCustomStaples,
   upsertCustomStaple,
@@ -28,7 +29,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const householdId = await resolveHouseholdId();
+    const guard = await requireWriteScope("pantry");
+    if (!guard.ok) return guard.response;
+    const householdId = guard.scope.householdId;
     const body = await req.json();
     const data = createSchema.parse(body);
     const staple = await upsertCustomStaple(data, householdId);
