@@ -34,6 +34,9 @@ export function Splash() {
               <div className="font-display text-lg font-bold leading-tight text-sage-900 group-hover:text-ember-700">
                 FridgeForge
               </div>
+              <div className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-sage-500">
+                Cook what you have
+              </div>
             </div>
           </Link>
           <nav className="hidden items-center gap-1 sm:flex" aria-label="Splash">
