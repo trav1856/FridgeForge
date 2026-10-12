@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AuthError, getCurrentUser, resolveHouseholdId } from "@/lib/auth";
-import { recipeRowMatchesScope } from "@/lib/household";
+import { canViewRecipe } from "@/lib/recipe-visibility";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -11,8 +11,16 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     if (!user) throw new AuthError();
     const { id: recipeId } = await ctx.params;
     const householdId = await resolveHouseholdId();
-    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
-    if (!recipe || !recipeRowMatchesScope(recipe.householdId, householdId)) {
+    const recipe = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      include: { shares: { select: { toUserId: true, toUserEmail: true, toHouseholdId: true } } },
+    });
+    // Anything you can open you can favorite (catalog, your household, global
+    // recipes by other cooks, recipes shared with you).
+    if (
+      !recipe ||
+      !canViewRecipe(recipe, { userId: user.id, userEmail: user.email, householdId })
+    ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     const existing = await prisma.recipeFavorite.findUnique({
