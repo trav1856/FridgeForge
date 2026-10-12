@@ -14,7 +14,7 @@ Stage 1 covers profile fields, photos, the public page and pins. Follows, commen
 - **Never public:** email, allergies, diet/food prefs, household, pantry, plan and role. Public payloads go through `toPublicProfileFields` and `PROFILE_USER_SELECT` in `src/lib/profile.ts`, and `__tests__/profile-stage1.test.ts` checks that.
 
 ## Photos
-Uploads go to `public/profile-images/u/` (same static approach as user recipe photos; git-ignored). Each upload is decoded with sharp (JPEG/PNG/WebP only, by content, not by the claimed MIME type; ≤8MB; ≤50MP), auto-oriented, then cropped on the server from zoom/position values. Output is WebP: avatar 400×400, banner 1500×500. No EXIF/GPS/XMP/ICC metadata is kept. The old file is deleted when replaced or removed, and on admin account delete.
+Uploads go to `public/profile-images/u/` (same storage approach as user recipe photos; git-ignored). They're served by `src/app/profile-images/u/[file]/route.ts`, because `next start` only serves `public/` files that existed when it started. Each upload is decoded with sharp (JPEG/PNG/WebP only, by content, not by the claimed MIME type; ≤8MB; ≤50MP), auto-oriented, then cropped on the server from zoom/position values. Output is WebP: avatar 400×400, banner 1500×500. No EXIF/GPS/XMP/ICC metadata is kept. The old file is deleted when replaced or removed, and on admin account delete.
 
 ## Pins
 `ProfilePin` (kind `own` | `favorite`, position 1–3). "My top 3" must be your own recipes. "Favorites from other cooks" must be recipes you've favorited that someone else wrote; the author is shown, and linked only if their profile is public. Visitors only see pins they're allowed to see (`canViewRecipe`), so household-only recipes stay hidden from outsiders.
