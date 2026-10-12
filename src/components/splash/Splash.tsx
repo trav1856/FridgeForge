@@ -294,8 +294,8 @@ export function Splash() {
 
       {/* Footer */}
       <footer className="border-t border-cream-300/60 bg-cream-50/80">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:flex-row sm:items-start sm:justify-between sm:gap-12">
+          <div className="flex shrink-0 items-center gap-3">
             <Image
               src="/logo.png"
               alt=""
@@ -307,15 +307,9 @@ export function Splash() {
               <div className="font-display text-lg font-bold text-sage-900">
                 FridgeForge
               </div>
-              <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.15em] text-sage-500">
-                Cook what you have
-              </p>
-              <p className="mt-2 max-w-xs text-sm text-sage-600">
-                A recipe + pantry app by Aron.
-              </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm sm:grid-cols-[repeat(3,auto)] sm:gap-x-14">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-sage-500">
                 Product
@@ -371,7 +365,7 @@ export function Splash() {
                   </Link>
                 </li>
               </ul>
-              <p className="mt-2 text-xs leading-relaxed text-sage-500">
+              <p className="mt-2 max-w-[15rem] text-xs leading-relaxed text-sage-500">
                 Guests can look around without signing in, with a demo
                 pantry and sample coupons that stay in the browser.
               </p>
@@ -381,7 +375,6 @@ export function Splash() {
         <div className="border-t border-cream-300/60">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-sage-500">
             <span>&copy; 2026 FridgeForge. All rights reserved.</span>
-            <span>Warm · modern · pantry-first</span>
           </div>
         </div>
       </footer>
