@@ -24,7 +24,11 @@ describe("splash auth validation", () => {
 
   it("signup enforces the 6-character minimum (matches /api/auth/signup)", () => {
     expect(validateSplashAuth("signup", { email: "a@b.co", password: "12345" })).toMatch(/at least 6/);
-    expect(validateSplashAuth("signup", { email: "a@b.co", password: "123456" })).toBeNull();
+    expect(
+      validateSplashAuth("signup", { email: "a@b.co", password: "123456", birthDate: "2000-01-02" })
+    ).toBeNull();
+    // Age gate: signup needs a date of birth.
+    expect(validateSplashAuth("signup", { email: "a@b.co", password: "123456" })).toMatch(/date of birth/i);
     expect(
       validateSplashAuth("signup", { email: "a@b.co", password: "x".repeat(201) })
     ).toMatch(/200/);

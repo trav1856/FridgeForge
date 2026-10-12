@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { issueResetToken, resetLinkUrl } from "@/lib/password-reset";
 import { deleteOrphanedRecipeImages } from "@/lib/recipe-image-cleanup";
 import { deleteManagedPantryUserImage } from "@/lib/pantry-user-images";
+import { deleteManagedProfileImage } from "@/lib/profile-images";
 
 /**
  * Admin user-management actions. Every mutation runs in a transaction and
@@ -471,6 +472,17 @@ export async function deleteUserInTx(
 }
 
 export async function deleteUser(actorId: string, targetId: string, confirmEmail: string) {
+  // Profile picture/banner files to remove once the row is gone.
+  let profileImages: (string | null)[] = [];
+  try {
+    const row = await prisma.user.findUnique({
+      where: { id: targetId },
+      select: { avatarUrl: true, bannerUrl: true },
+    });
+    profileImages = row ? [row.avatarUrl, row.bannerUrl] : [];
+  } catch {
+    profileImages = [];
+  }
   const summary = await prisma.$transaction(
     (tx) => deleteUserInTx(tx, actorId, targetId, confirmEmail),
     { ...SERIALIZABLE, timeout: 20_000 }
@@ -483,5 +495,6 @@ export async function deleteUser(actorId: string, targetId: string, confirmEmail
     const stillUsed = await prisma.pantryItem.count({ where: { imageUrl: url } });
     if (!stillUsed) await deleteManagedPantryUserImage(url);
   }
+  for (const url of profileImages) await deleteManagedProfileImage(url);
   return summary;
 }

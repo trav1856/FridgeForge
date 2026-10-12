@@ -46,3 +46,7 @@ next-env.d.ts
 !/public/recipe-images/import/.gitkeep
 eng.traineddata
 *.traineddata
+
+# Uploaded profile pictures / banners (Stage 1 profiles)
+/public/profile-images/u/*
+!/public/profile-images/u/.gitkeep

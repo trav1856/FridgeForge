@@ -211,3 +211,7 @@ Working pricing and paid-tier plans live in [PAID.md](./PAID.md).
 Proprietary. Copyright (c) 2026 Aron Ozmeir / Solid Idea. All rights reserved.
 No license is granted to use, copy, modify, or distribute this code without
 written permission — see [LICENSE](./LICENSE).
+
+## Cook profiles
+
+Public profiles live at `/u/[handle]` (edit at `/account/profile`): display name, handle, bio, X/Facebook links, profile photo + banner, pinned recipes and a Public/Private switch. Allergies, diet preferences, pantry and email are never shown. Signup requires a date of birth (13+; not stored). See [docs/profiles.md](docs/profiles.md).

@@ -19,6 +19,8 @@ export type SplashAuthInput = {
   email: string;
   password: string;
   name?: string;
+  /** YYYY-MM-DD, signup only (age gate; checked server-side, never stored). */
+  birthDate?: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,6 +46,9 @@ export function validateSplashAuth(
     if ((input.name ?? "").trim().length > NAME_MAX) {
       return `Name must be ${NAME_MAX} characters or fewer.`;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test((input.birthDate ?? "").trim())) {
+      return "Enter your date of birth.";
+    }
   }
   return null;
 }
@@ -54,10 +59,12 @@ export function splashAuthBody(
   input: SplashAuthInput
 ): Record<string, string> {
   const name = (input.name ?? "").trim();
+  const birthDate = (input.birthDate ?? "").trim();
   return {
     email: input.email.trim(),
     password: input.password,
     ...(mode === "signup" && name ? { name } : {}),
+    ...(mode === "signup" && birthDate ? { birthDate } : {}),
   };
 }
 

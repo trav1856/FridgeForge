@@ -51,6 +51,19 @@ model User {
   disabledAt   DateTime?
   /** Admin user id that suspended (no FK so it survives that admin's deletion). */
   disabledById String?
+  /** Public profile (Stage 1). `name` is the display name; `profileSlug` is the @handle. */
+  bio          String?
+  /** Normalized https URLs only (see lib/profile-fields). */
+  socialX      String?
+  socialFacebook String?
+  /** Managed /profile-images/u/... WebP paths. */
+  avatarUrl    String?
+  bannerUrl    String?
+  /** false = "This profile is private" to everyone but the owner. */
+  profilePublic Boolean          @default(true)
+  /** When the user confirmed they meet the minimum age (DOB itself is never stored). */
+  ageConfirmedAt DateTime?
+  profilePins  ProfilePin[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sessions     Session[]
@@ -254,6 +267,7 @@ model Recipe {
   household        Household?         @relation(fields: [householdId], references: [id], onDelete: SetNull)
   owner            User?              @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   favorites        RecipeFavorite[]
+  profilePins      ProfilePin[]
   shares           RecipeShare[]
   requests         RecipeRequest[]
   reviews          RecipeReview[]
@@ -582,4 +596,20 @@ model StruggleResource {
   @@index([kind, sortOrder])
   @@index([published])
   @@index([kind, published, sortOrder])
+}
+
+/** Pinned recipes on a public profile: kind "own" (my top 3) or "favorite" (from other cooks). */
+model ProfilePin {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  kind      String
+  position  Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, position])
+  @@unique([userId, kind, recipeId])
+  @@index([recipeId])
 }

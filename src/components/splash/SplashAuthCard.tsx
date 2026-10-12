@@ -21,6 +21,7 @@ import {
 export function SplashAuthCard() {
   const [mode, setMode] = useState<SplashAuthMode>("signin");
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function SplashAuthCard() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (busy || done) return;
-    const input = { email, password, name };
+    const input = { email, password, name, birthDate };
     const invalid = validateSplashAuth(mode, input);
     if (invalid) {
       setError(invalid);
@@ -169,6 +170,25 @@ export function SplashAuthCard() {
               autoComplete="name"
               maxLength={NAME_MAX}
             />
+          </div>
+        )}
+        {mode === "signup" && (
+          <div>
+            <label className="label" htmlFor="splash-dob">
+              Date of birth
+            </label>
+            <input
+              id="splash-dob"
+              className="input"
+              type="date"
+              required
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+            />
+            <p className="mt-1 text-[11px] text-sage-500">
+              You must be 13 or older. Used only to check your age; it isn&apos;t saved.
+            </p>
           </div>
         )}
         <div>

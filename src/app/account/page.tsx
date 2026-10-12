@@ -86,6 +86,7 @@ export default function AccountPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [householdName, setHouseholdName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export default function AccountPage() {
             email,
             password,
             ...(mode === "signup" && name ? { name } : {}),
+            ...(mode === "signup" ? { birthDate } : {}),
           }),
         }
       );
@@ -242,7 +244,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className={clsx("mx-auto space-y-6", user ? "max-w-none" : "max-w-lg")}>
       <div>
         <h1 className="font-display text-3xl font-bold text-sage-900">Account</h1>
         <p className="mt-1 text-sm text-sage-600">
@@ -298,6 +300,25 @@ export default function AccountPage() {
                 />
               </div>
             )}
+            {mode === "signup" && (
+              <div>
+                <label className="label" htmlFor="dob">
+                  Date of birth
+                </label>
+                <input
+                  id="dob"
+                  type="date"
+                  required
+                  className="input"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  autoComplete="bday"
+                />
+                <p className="mt-1 text-[11px] text-sage-500">
+                  You must be 13 or older. Used only to check your age; it isn&apos;t saved.
+                </p>
+              </div>
+            )}
             <div>
               <label className="label" htmlFor="email">
                 Email
@@ -335,8 +356,9 @@ export default function AccountPage() {
           </form>
         </div>
       ) : (
-        <>
-          <div className="card p-5 space-y-3">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
+          <div className="min-w-0 space-y-6">
+          <div className="card p-5 space-y-3" data-testid="account-identity">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="font-semibold text-sage-900">
@@ -349,6 +371,9 @@ export default function AccountPage() {
               ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link href="/account/profile" className="btn-primary text-sm">
+                Edit profile
+              </Link>
               {user.profileSlug ? (
                 <a
                   href={`/u/${user.profileSlug}`}
@@ -379,6 +404,81 @@ export default function AccountPage() {
           <RecipeRequestsInbox />
 
           <HowToBadgesPanel />
+
+          <div className="card p-5 space-y-4">
+            <h2 className="font-display text-xl font-bold text-sage-900">
+              Households
+            </h2>
+            {user.households.length === 0 ? (
+              <p className="text-sm text-sage-600">
+                No household yet. Create one or join with an invite code to
+                save your pantry.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {user.households.map((h) => (
+                  <li
+                    key={h.id}
+                    className="rounded-xl border border-cream-300 bg-cream-50/80 px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium text-sage-900">{h.name}</div>
+                      <span className="badge bg-sage-100 text-sage-700">
+                        {h.role}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-sage-600">
+                      Invite code:{" "}
+                      <code className="rounded bg-white px-1.5 py-0.5 font-mono text-sage-900">
+                        {h.inviteCode}
+                      </code>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <form onSubmit={onCreateHousehold} className="space-y-2 border-t border-cream-300 pt-4">
+              <label className="label" htmlFor="hh-name">
+                Create household
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="hh-name"
+                  className="input"
+                  value={householdName}
+                  onChange={(e) => setHouseholdName(e.target.value)}
+                  placeholder="Our kitchen"
+                  required
+                />
+                <button type="submit" className="btn-primary shrink-0" disabled={busy}>
+                  Create
+                </button>
+              </div>
+            </form>
+
+            <form onSubmit={onJoinHousehold} className="space-y-2">
+              <label className="label" htmlFor="invite">
+                Join with invite code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="invite"
+                  className="input font-mono uppercase"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="ABCD2345"
+                  required
+                />
+                <button type="submit" className="btn-secondary shrink-0" disabled={busy}>
+                  Join
+                </button>
+              </div>
+            </form>
+          </div>
+          </div>
+
+          <div className="min-w-0 space-y-6">
 
           <div className="card p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -701,78 +801,8 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="card p-5 space-y-4">
-            <h2 className="font-display text-xl font-bold text-sage-900">
-              Households
-            </h2>
-            {user.households.length === 0 ? (
-              <p className="text-sm text-sage-600">
-                No household yet. Create one or join with an invite code to
-                save your pantry.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {user.households.map((h) => (
-                  <li
-                    key={h.id}
-                    className="rounded-xl border border-cream-300 bg-cream-50/80 px-3 py-2"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-medium text-sage-900">{h.name}</div>
-                      <span className="badge bg-sage-100 text-sage-700">
-                        {h.role}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-sage-600">
-                      Invite code:{" "}
-                      <code className="rounded bg-white px-1.5 py-0.5 font-mono text-sage-900">
-                        {h.inviteCode}
-                      </code>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <form onSubmit={onCreateHousehold} className="space-y-2 border-t border-cream-300 pt-4">
-              <label className="label" htmlFor="hh-name">
-                Create household
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="hh-name"
-                  className="input"
-                  value={householdName}
-                  onChange={(e) => setHouseholdName(e.target.value)}
-                  placeholder="Our kitchen"
-                  required
-                />
-                <button type="submit" className="btn-primary shrink-0" disabled={busy}>
-                  Create
-                </button>
-              </div>
-            </form>
-
-            <form onSubmit={onJoinHousehold} className="space-y-2">
-              <label className="label" htmlFor="invite">
-                Join with invite code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="invite"
-                  className="input font-mono uppercase"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="ABCD2345"
-                  required
-                />
-                <button type="submit" className="btn-secondary shrink-0" disabled={busy}>
-                  Join
-                </button>
-              </div>
-            </form>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
