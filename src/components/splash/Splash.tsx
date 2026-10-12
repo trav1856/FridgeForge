@@ -307,6 +307,9 @@ export function Splash() {
               <div className="font-display text-lg font-bold text-sage-900">
                 FridgeForge
               </div>
+              <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.15em] text-sage-500">
+                Cook what you have
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm sm:grid-cols-[repeat(3,auto)] sm:gap-x-14">
