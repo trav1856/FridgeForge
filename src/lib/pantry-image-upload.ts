@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { serializePantry } from "@/lib/mappers";
+import { ImageReencodeError } from "@/lib/image-reencode";
 import {
   canEditPantryItemImage,
   deleteManagedPantryUserImage,
@@ -63,7 +64,13 @@ export async function setPantryItemImageFromUpload(
   });
   if (!check.ok) throw new PantryImageUploadError(check.error, 400);
 
-  const imageUrl = await savePantryUserImageFile(file.bytes, check.ext);
+  let imageUrl: string;
+  try {
+    imageUrl = await savePantryUserImageFile(file.bytes);
+  } catch (e) {
+    if (e instanceof ImageReencodeError) throw new PantryImageUploadError(e.message, e.status);
+    throw e;
+  }
   const updated = await prisma.pantryItem.update({
     where: { id: itemId },
     data: { imageUrl },

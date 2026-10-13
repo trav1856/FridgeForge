@@ -161,6 +161,7 @@ model Household {
   cookSessions RecipeCookSession[]
   cookStats    RecipeCookStat[]
   weeklyMenuPlans WeeklyMenuPlan[]
+  productOverrides HouseholdProductOverride[]
 }
 
 model HouseholdMember {
@@ -612,4 +613,44 @@ model ProfilePin {
   @@unique([userId, kind, position])
   @@unique([userId, kind, recipeId])
   @@index([recipeId])
+}
+
+/**
+ * Shared product info keyed by barcode (UPC-A / EAN-13 / EAN-8, normalized).
+ * First save wins. Only product info + photo is ever exposed; createdBy* is
+ * internal for admin moderation.
+ */
+model SharedProduct {
+  id                    String   @id @default(cuid())
+  barcode               String   @unique
+  name                  String
+  size                  String?
+  unit                  String?
+  category              String?
+  imageUrl              String?
+  createdByUserId       String?
+  createdByHouseholdId  String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([createdByUserId, createdAt])
+  @@index([name])
+}
+
+/** Household-only product info for a barcode; beats SharedProduct for that household. */
+model HouseholdProductOverride {
+  id          String    @id @default(cuid())
+  householdId String
+  barcode     String
+  name        String
+  size        String?
+  unit        String?
+  category    String?
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, barcode])
+  @@index([barcode])
 }

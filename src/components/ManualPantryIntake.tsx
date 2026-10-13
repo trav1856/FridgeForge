@@ -13,6 +13,10 @@ import {
   type CatalogItem,
 } from "@/lib/pantry-catalog";
 import { PantryPhotoUpload } from "./PantryPhotoUpload";
+import { BarcodePhotoField } from "./BarcodePhotoField";
+import { ItemPhotoPicker } from "./ItemPhotoPicker";
+import { validateBarcode } from "@/lib/barcode";
+import { contributeProduct, lookupBarcode, uploadItemPhoto } from "@/lib/product-client";
 import { usePantryWriter } from "./PantryWriterContext";
 import {
   defaultUnitForItem,
@@ -79,6 +83,10 @@ export function ManualPantryIntake({
   const [saving, setSaving] = useState(false);
   const [customs, setCustoms] = useState<CustomStapleDTO[]>([]);
   const [manageOpen, setManageOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [prefillImage, setPrefillImage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [lookedUp, setLookedUp] = useState<string | null>(null);
 
   const chip: CatalogChip | null = useMemo(
     () => CATALOG_CHIPS.find((c) => c.id === chipId) ?? null,
@@ -230,9 +238,35 @@ export function ManualPantryIntake({
     }
   }
 
+  async function onBarcodeConfirmed(code: string) {
+    if (code === lookedUp) return;
+    setLookedUp(code);
+    const hit = await lookupBarcode(code).catch(() => null);
+    if (!hit?.found || !hit.name) return;
+    if (hit.source === "household" || hit.source === "shared") {
+      setSelected(null);
+      setCustomName(hit.name);
+      if (hit.suggestedQuantity) setQuantity(String(hit.suggestedQuantity));
+      if (hit.suggestedUnit) setUnit(hit.suggestedUnit);
+      setPrefillImage(hit.imageUrl ?? null);
+      setNotice(
+        hit.source === "household"
+          ? "Filled in from your kitchen's saved info for this barcode. Edit anything before saving."
+          : "Filled in from the shared product info for this barcode. Edit anything before saving."
+      );
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
+    const barcodeRaw = details.barcode.trim();
+    const bc = barcodeRaw ? validateBarcode(barcodeRaw) : null;
+    if (bc && !bc.ok) {
+      setError(bc.error);
+      return;
+    }
     if (!name) {
       setError("Pick a catalog item or enter a custom name");
       return;
@@ -262,13 +296,24 @@ export function ManualPantryIntake({
         unit: resolvedUnit,
         category,
         tags,
-        barcode: details.barcode.trim() || null,
+        barcode: bc?.ok ? bc.code : null,
         expirationDate: details.expirationDate
           ? new Date(details.expirationDate).toISOString()
           : null,
+        ...(!photoFile && prefillImage ? { imageUrl: prefillImage } : {}),
         merge: true,
       };
-      await writer.add(payload);
+      const added = (await writer.add(payload)) as { item: { id?: string; name: string } };
+      const itemId = added.item?.id;
+      let msg: string | null = null;
+      if (writer.mode === "server" && itemId) {
+        if (photoFile) await uploadItemPhoto(itemId, photoFile);
+        if (bc?.ok) msg = await contributeProduct(itemId).catch(() => null);
+      }
+      setPhotoFile(null);
+      setPrefillImage(null);
+      setLookedUp(null);
+      setNotice(msg ? `Added “${name}”. ${msg}` : `Added “${name}”.`);
       setSelected(null);
       setCustomName("");
       setQuantity("");
@@ -298,6 +343,12 @@ export function ManualPantryIntake({
           or add your own (customs stay under that category).
         </p>
       </div>
+
+      {notice && (
+        <p className="rounded-lg bg-sage-50 px-3 py-2 text-sm text-sage-800" role="status" data-testid="pantry-add-notice">
+          {notice}
+        </p>
+      )}
 
       <div>
         <p className="label">1. Category</p>
@@ -467,6 +518,19 @@ export function ManualPantryIntake({
                 </div>
               )}
 
+              <div className="grid gap-4 rounded-xl border border-sage-200/80 bg-white/70 p-3 sm:grid-cols-2">
+                {writer.mode === "server" ? (
+                  <ItemPhotoPicker file={photoFile} onFile={setPhotoFile} fallbackUrl={prefillImage} />
+                ) : (
+                  <p className="text-xs text-sage-600">Sign in to add your own item photos.</p>
+                )}
+                <BarcodePhotoField
+                  value={details.barcode}
+                  onChange={(v) => setDetails({ ...details, barcode: v })}
+                  onConfirmed={(c) => void onBarcodeConfirmed(c)}
+                />
+              </div>
+
               <details
                 className="rounded-xl border border-dashed border-sage-300/80 bg-sage-50/40"
                 open={moreOpen}
@@ -490,18 +554,6 @@ export function ManualPantryIntake({
                           expirationDate: e.target.value,
                         })
                       }
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Barcode (optional)</label>
-                    <input
-                      className="input"
-                      inputMode="numeric"
-                      value={details.barcode}
-                      onChange={(e) =>
-                        setDetails({ ...details, barcode: e.target.value })
-                      }
-                      placeholder="UPC / EAN"
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -612,6 +664,13 @@ function EditPantryForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const bcRaw = form.barcode.trim();
+    const bc = bcRaw ? validateBarcode(bcRaw) : null;
+    // Older items may carry non-GTIN codes; only block a newly typed bad code.
+    if (bc && !bc.ok && bcRaw !== (initial.barcode || "").trim()) {
+      setError(bc.error);
+      return;
+    }
     try {
       const qty = Number(form.quantity);
       const payload = {
@@ -623,12 +682,13 @@ function EditPantryForm({
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
-        barcode: form.barcode.trim() || null,
+        barcode: bc?.ok ? bc.code : bcRaw || null,
         expirationDate: form.expirationDate
           ? new Date(form.expirationDate).toISOString()
           : null,
       };
       await writer.update(editingId, payload);
+      if (writer.mode === "server" && bc?.ok) await contributeProduct(editingId).catch(() => null);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save item");
@@ -732,12 +792,10 @@ function EditPantryForm({
             }
           />
         </div>
-        <div>
-          <label className="label">Barcode (optional)</label>
-          <input
-            className="input"
+        <div className="sm:col-span-2">
+          <BarcodePhotoField
             value={form.barcode}
-            onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+            onChange={(v) => setForm({ ...form, barcode: v })}
           />
         </div>
         <div className="sm:col-span-2">

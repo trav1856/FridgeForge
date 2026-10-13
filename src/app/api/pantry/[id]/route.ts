@@ -5,6 +5,7 @@ import { stringifyArray } from "@/lib/json";
 import { serializePantry } from "@/lib/mappers";
 import { rowMatchesScope } from "@/lib/household";
 import { notFoundResponse, requireWriteScope } from "@/lib/write-scope";
+import { deleteManagedPantryUserImage } from "@/lib/pantry-user-images";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -70,12 +71,13 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     const { id } = await ctx.params;
     const existing = await prisma.pantryItem.findUnique({
       where: { id },
-      select: { householdId: true },
+      select: { householdId: true, imageUrl: true },
     });
     if (!existing || !rowMatchesScope(existing.householdId, guard.scope.householdId)) {
       return notFoundResponse();
     }
     await prisma.pantryItem.delete({ where: { id } });
+    await deleteManagedPantryUserImage(existing.imageUrl);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete item" }, { status: 500 });

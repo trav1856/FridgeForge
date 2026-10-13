@@ -8,7 +8,7 @@ import {
 } from "@/lib/pantry-images";
 
 /** Keep in sync with PANTRY_USER_IMAGE_MAX_BYTES in pantry-user-images.ts */
-const PANTRY_USER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const PANTRY_USER_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
 type Props = {
   itemId: string;

@@ -3,11 +3,12 @@ import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
 import { rowMatchesScope } from "@/lib/household";
 import { isUserPantryImage } from "@/lib/pantry-images";
+import { reencodePhoto } from "@/lib/image-reencode";
 
 export { isUserPantryImage };
 
-/** Max upload size for user pantry photos (5 MiB). */
-export const PANTRY_USER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/** Max upload size for user pantry photos (8 MiB; phone camera shots). */
+export const PANTRY_USER_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
 export const PANTRY_USER_IMAGE_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -68,15 +69,16 @@ function filenameFromPublicPath(url: string): string | null {
   return url.slice("/pantry-images/user/".length);
 }
 
-/** Write validated bytes; returns public path `/pantry-images/user/...`. */
-export async function savePantryUserImageFile(
-  bytes: Buffer,
-  ext: string
-): Promise<string> {
+/**
+ * Re-encode (verify image, auto-orient, strip EXIF/GPS, WebP ≤1200px) and
+ * write; returns public path `/pantry-images/user/<name>.webp`.
+ */
+export async function savePantryUserImageFile(bytes: Buffer): Promise<string> {
+  const webp = await reencodePhoto(bytes);
   const dir = pantryUserImagesDir();
   await mkdir(dir, { recursive: true });
-  const filename = `${Date.now().toString(36)}-${randomBytes(8).toString("hex")}${ext}`;
-  await writeFile(path.join(dir, filename), bytes);
+  const filename = `${Date.now().toString(36)}-${randomBytes(8).toString("hex")}.webp`;
+  await writeFile(path.join(dir, filename), webp, { mode: 0o644 });
   return pantryUserImagePublicPath(filename);
 }
 

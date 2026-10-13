@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { PANTRY_CATEGORIES } from "@/lib/categories";
 import { usePantryWriter } from "./PantryWriterContext";
+import { canonicalBarcode } from "@/lib/barcode";
+import { contributeProduct } from "@/lib/product-client";
 
 type NutritionSnap = {
   caloriesPer100g?: number | null;
@@ -24,6 +26,8 @@ type LookupResult = {
   imageUrl?: string | null;
   nutrition?: NutritionSnap | null;
   isLikelyNonFood?: boolean;
+  suggestedQuantity?: number | null;
+  source?: "household" | "shared" | "openfoodfacts" | null;
 };
 
 type ConfirmForm = {
@@ -141,21 +145,26 @@ export function BarcodeIntake({ onAdded }: Props) {
     imageUrl?: string | null;
     nutritionJson?: string | null;
   }) {
-    const data = await writer.add({
+    const code = canonicalBarcode(payload.barcode) ?? (payload.barcode || null);
+    const data = (await writer.add({
       name: payload.name.trim(),
       quantity: payload.quantity || 1,
       unit: payload.unit.trim() || "each",
       category: payload.category || null,
-      barcode: payload.barcode || null,
+      barcode: code,
       imageUrl: payload.imageUrl || null,
       nutritionJson: payload.nutritionJson || null,
       merge: true,
-    });
+    })) as { item: { id?: string; name: string }; merged: boolean };
     const label = data.item?.name || payload.name;
+    let extra: string | null = null;
+    if (writer.mode === "server" && data.item?.id && canonicalBarcode(code)) {
+      extra = await contributeProduct(data.item.id).catch(() => null);
+    }
     setStatus(
-      data.merged
+      (data.merged
         ? `Merged into “${label}” in your pantry`
-        : `Added “${label}” to your pantry`
+        : `Added “${label}” to your pantry`) + (extra ? `. ${extra}` : "")
     );
     setConfirm(null);
     setNotFound(false);
@@ -189,6 +198,25 @@ export function BarcodeIntake({ onAdded }: Props) {
       // Network/OFF failure: still create an unknown item (user intent).
       if (!res.ok && res.status !== 502) {
         throw new Error(data.error || "Lookup failed");
+      }
+
+      if (data.found && data.name && (data.source === "household" || data.source === "shared")) {
+        // Kitchen-saved or shared product info: prefill and let them confirm/edit.
+        setImageUrl(data.imageUrl || null);
+        setConfirm({
+          name: data.name,
+          quantity: String(data.suggestedQuantity || 1),
+          unit: data.suggestedUnit || "each",
+          category: data.suggestedCategory || "Other",
+          barcode: data.barcode || cleaned,
+          imageUrl: data.imageUrl || null,
+        });
+        setStatus(
+          data.source === "household"
+            ? "Found your kitchen's saved info for this barcode. Check it and save."
+            : "Found shared product info for this barcode. Check it and save."
+        );
+        return;
       }
 
       if (data.found && data.name) {

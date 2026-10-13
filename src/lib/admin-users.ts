@@ -30,6 +30,10 @@ export const AUDIT_ACTIONS = [
   "user.reset_link",
   "user.export",
   "user.delete",
+  "product.update",
+  "product.photo.replace",
+  "product.photo.remove",
+  "product.delete",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -42,6 +46,10 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "user.reset_link": "generated reset link",
   "user.export": "exported data",
   "user.delete": "deleted account",
+  "product.update": "edited shared product",
+  "product.photo.replace": "replaced shared product photo",
+  "product.photo.remove": "removed shared product photo",
+  "product.delete": "deleted shared product",
 };
 
 /** Delete requires an export by the same admin within this window. */

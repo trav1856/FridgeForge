@@ -50,3 +50,5 @@ eng.traineddata
 # Uploaded profile pictures / banners (Stage 1 profiles)
 /public/profile-images/u/*
 !/public/profile-images/u/.gitkeep
+
+/public/product-images/*
