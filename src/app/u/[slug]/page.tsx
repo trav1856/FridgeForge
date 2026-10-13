@@ -236,8 +236,18 @@ export default async function PublicProfilePage({ params }: Props) {
                   <li key={r.id}>
                     <Link
                       href={`/recipes/${r.id}`}
-                      className="block h-full rounded-2xl border border-cream-300 bg-white/90 px-4 py-3 transition hover:border-ember-200 hover:shadow-card"
+                      className="block h-full overflow-hidden rounded-2xl border border-cream-300 bg-white/90 transition hover:border-ember-200 hover:shadow-card"
                     >
+                      <div className="relative aspect-[16/10] bg-cream-100" data-testid="profile-recipe-image">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={r.imageUrl || "/recipe-images/placeholder.svg"}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="px-4 pb-3 pt-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-semibold text-sage-900">{r.title}</span>
                         <span className="badge bg-sage-100 text-sage-700">{visibilityLabel(r.visibility)}</span>
@@ -250,6 +260,7 @@ export default async function PublicProfilePage({ params }: Props) {
                         {r.isStruggleMeal && <span>Struggle meal</span>}
                         {r.cookTimeMinutes != null && <span>{r.cookTimeMinutes} min</span>}
                         <span className="capitalize">{r.costTier}</span>
+                      </div>
                       </div>
                     </Link>
                   </li>
