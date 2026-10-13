@@ -10,11 +10,18 @@ import {
   reviewStatsFor,
 } from "@/lib/recipe-review-stats";
 import {
-  defaultProfileSlugBase,
+  allocateRandomHandle,
+  isAutoSlugFromEmail,
   isValidProfileSlug,
   slugifyProfileBase,
-  uniquifySlug,
 } from "@/lib/profile-slug";
+
+/** Handles are random (cook-xxxxxx) and never derived from the email. */
+async function freeRandomHandle(): Promise<string> {
+  return allocateRandomHandle(async (c) =>
+    Boolean(await prisma.user.findUnique({ where: { profileSlug: c }, select: { id: true } }))
+  );
+}
 
 export type PublicProfileBadge = HowToBadgeDTO & {
   awardedAt: string;
@@ -78,18 +85,14 @@ export async function ensureUserProfileSlug(user: {
   name: string | null;
   profileSlug: string | null;
 }): Promise<string> {
-  if (user.profileSlug && isValidProfileSlug(user.profileSlug)) {
+  if (
+    user.profileSlug &&
+    isValidProfileSlug(user.profileSlug) &&
+    !isAutoSlugFromEmail(user.profileSlug, user.email, user.name)
+  ) {
     return user.profileSlug;
   }
-  const base = defaultProfileSlugBase(user.email, user.name);
-  const existing = await prisma.user.findMany({
-    where: { profileSlug: { not: null } },
-    select: { profileSlug: true },
-  });
-  const taken = new Set(
-    existing.map((u) => u.profileSlug).filter((s): s is string => Boolean(s))
-  );
-  const slug = uniquifySlug(base, (c) => taken.has(c));
+  const slug = await freeRandomHandle();
   await prisma.user.update({
     where: { id: user.id },
     data: { profileSlug: slug },
@@ -97,19 +100,12 @@ export async function ensureUserProfileSlug(user: {
   return slug;
 }
 
+/** New accounts get a random handle; `email`/`name` are intentionally unused. */
 export async function allocateProfileSlugForCreate(
-  email: string,
-  name?: string | null
+  _email?: string,
+  _name?: string | null
 ): Promise<string> {
-  const base = defaultProfileSlugBase(email, name);
-  const existing = await prisma.user.findMany({
-    where: { profileSlug: { not: null } },
-    select: { profileSlug: true },
-  });
-  const taken = new Set(
-    existing.map((u) => u.profileSlug).filter((s): s is string => Boolean(s))
-  );
-  return uniquifySlug(base, (c) => taken.has(c));
+  return freeRandomHandle();
 }
 
 export async function getPublicProfileBySlug(

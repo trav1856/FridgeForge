@@ -58,10 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(data.password);
-    const profileSlug = await allocateProfileSlugForCreate(
-      email,
-      data.name?.trim() || null
-    );
+    const profileSlug = await allocateProfileSlugForCreate();
     const name = data.name?.trim() || null;
     // Every new account gets its own empty household so it never shares the
     // guest/demo pantry or anyone else's. No items are copied in.

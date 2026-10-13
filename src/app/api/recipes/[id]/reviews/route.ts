@@ -15,11 +15,12 @@ function serializeReview(r: {
   body: string;
   createdAt: Date;
   updatedAt: Date;
-  user?: { name: string | null; email: string } | null;
+  user?: { name: string | null; profileSlug: string | null } | null;
 }) {
+  // Never fall back to the email: name, then @handle, then "Cook".
   const displayName =
     r.user?.name?.trim() ||
-    (r.user?.email ? r.user.email.split("@")[0] : "Cook");
+    (r.user?.profileSlug ? `@${r.user.profileSlug}` : "Cook");
   return {
     id: r.id,
     recipeId: r.recipeId,
@@ -56,7 +57,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     }
     const reviews = await prisma.recipeReview.findMany({
       where: { recipeId },
-      include: { user: { select: { name: true, email: true } } },
+      include: { user: { select: { name: true, profileSlug: true } } },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         stars: validated.stars,
         body: validated.body,
       },
-      include: { user: { select: { name: true, email: true } } },
+      include: { user: { select: { name: true, profileSlug: true } } },
     });
     return NextResponse.json({ review: serializeReview(review) });
   } catch (err) {
