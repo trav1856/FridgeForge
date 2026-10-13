@@ -61,9 +61,11 @@ export function BarcodePhotoField({ value, onChange, onConfirmed }: Props) {
       return;
     }
     const digits = code.replace(/\D/g, "");
-    onChange(digits);
     const v = validateBarcode(digits);
-    setNote(v.ok ? `Read ${digits}. Check it matches the label.` : `Read ${digits}, but ${v.error.toLowerCase()}`);
+    // Scanners report UPC-A as EAN-13 with a leading 0; show the canonical form.
+    const shown = v.ok ? v.code : digits;
+    onChange(shown);
+    setNote(v.ok ? `Read ${shown}. Check it matches the label.` : `Read ${digits}, but ${v.error.toLowerCase()}`);
     if (v.ok) onConfirmed?.(v.code);
   }
 
