@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "@zip.js/zip.js": "^2.23.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0",
     "clsx": "^2.1.1",
@@ -31,9 +32,9 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.34.3",
     "tesseract.js": "^6.0.1",
-    "zod": "^3.24.2",
-    "sharp": "^0.34.3"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

@@ -10,6 +10,7 @@ const ADMIN_LINKS = [
   { href: "/admin/badges", label: "Badges" },
   { href: "/admin/struggle", label: "Struggle" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/export", label: "Export" },
 ];
 
 export default async function AdminLayout({

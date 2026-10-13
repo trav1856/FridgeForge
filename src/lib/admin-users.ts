@@ -34,6 +34,9 @@ export const AUDIT_ACTIONS = [
   "product.photo.replace",
   "product.photo.remove",
   "product.delete",
+  "export.create",
+  "export.download",
+  "export.failed",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -50,6 +53,9 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "product.photo.replace": "replaced shared product photo",
   "product.photo.remove": "removed shared product photo",
   "product.delete": "deleted shared product",
+  "export.create": "created data export",
+  "export.download": "downloaded data export",
+  "export.failed": "data export failed",
 };
 
 /** Delete requires an export by the same admin within this window. */

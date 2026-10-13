@@ -654,3 +654,33 @@ model HouseholdProductOverride {
   @@unique([householdId, barcode])
   @@index([barcode])
 }
+
+/**
+ * Admin export / backup jobs. Zips live outside public/ (FF_EXPORT_DIR,
+ * default ops/exports), chmod 600, deleted when they expire. Download links are
+ * one-time: only the sha256 of the current link token is stored.
+ */
+model ExportJob {
+  id              String    @id @default(cuid())
+  /** full | user | content */
+  kind            String
+  targetUserId    String?
+  /** queued | running | done | failed | expired */
+  status          String    @default("queued")
+  progress        String?
+  encrypted       Boolean   @default(false)
+  fileName        String?
+  sizeBytes       Int?
+  manifestSha256  String?
+  error           String?
+  linkTokenHash   String?   @unique
+  linkExpiresAt   DateTime?
+  downloadCount   Int       @default(0)
+  expiresAt       DateTime?
+  createdById     String
+  createdAt       DateTime  @default(now())
+  finishedAt      DateTime?
+
+  @@index([createdById, createdAt])
+  @@index([status])
+}
