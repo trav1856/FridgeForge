@@ -211,3 +211,29 @@ describe("admin only", () => {
     expect((await createPOST(post({ kind: "full" }, { "sec-fetch-site": "cross-site" }))).status).toBe(403);
   });
 });
+
+describe("one build at a time", () => {
+  it("two simultaneous starts: one runs, the other gets 429", async () => {
+    const jobs: Record<string, unknown>[] = [];
+    Object.assign(h.prisma, {
+      exportJob: {
+        findMany: vi.fn(async () => []),
+        count: vi.fn(async () => jobs.filter((j) => j.status === "running").length),
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => { const j = { id: `j${jobs.length}`, createdAt: new Date(), ...data }; jobs.push(j); return j; }),
+        update: vi.fn(async () => ({})),
+      },
+      adminAuditLog: { create: vi.fn(async () => ({})) },
+      $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(h.prisma)),
+    });
+    const { startExport, ExportError } = await import("@/lib/export/jobs");
+    const rs = await Promise.allSettled([
+      startExport({ actorId: "a1", kind: "content" }),
+      startExport({ actorId: "a1", kind: "content" }),
+    ]);
+    expect(rs.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rej = rs.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    expect(rej.reason).toBeInstanceOf(ExportError);
+    expect(rej.reason.status).toBe(429);
+    await new Promise((r) => setTimeout(r, 200));
+  });
+});

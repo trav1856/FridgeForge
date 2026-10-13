@@ -23,6 +23,8 @@ export class ExportError extends Error {
 }
 
 const running = new Set<string>();
+/** Serializes the check-then-create in startExport (one server process). */
+let starting = false;
 
 export function hashToken(t: string) {
   return createHash("sha256").update(t).digest("hex");
@@ -119,6 +121,23 @@ export async function diskInfo() {
 }
 
 export async function startExport(opts: {
+  actorId: string;
+  kind: ExportKind;
+  targetUserId?: string | null;
+  password?: string | null;
+}) {
+  if (starting || running.size > 0) {
+    throw new ExportError("Another export is still building. Try again when it finishes.", 429);
+  }
+  starting = true;
+  try {
+    return await startExportLocked(opts);
+  } finally {
+    starting = false;
+  }
+}
+
+async function startExportLocked(opts: {
   actorId: string;
   kind: ExportKind;
   targetUserId?: string | null;
