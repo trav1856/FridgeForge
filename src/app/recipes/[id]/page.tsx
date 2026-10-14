@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChefBadge } from "@/components/content/ChefBadge";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
@@ -110,6 +111,9 @@ export default async function RecipeDetailPage({ params }: Props) {
     shares?: unknown;
   };
   const recipe = serializeRecipe(rest);
+  const chef = recipe.chefProfileId
+    ? await prisma.featuredProfile.findFirst({ where: { id: recipe.chefProfileId, hidden: false }, select: { slug: true, name: true } })
+    : null;
 
   const nutritionEstimate = estimateRecipeNutrition(
     recipe.ingredients,
@@ -318,6 +322,7 @@ export default async function RecipeDetailPage({ params }: Props) {
           ← Recipes
         </Link>
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {chef && <ChefBadge href={`/chefs/${chef.slug}`} name={chef.name} />}
           <Link
             href={costTierFilterHref(recipe.costTier)}
             className={`badge hover:underline ${recipe.costTier === "cheap" ? "bg-sage-100 text-sage-800" : "bg-ember-50 text-ember-800"}`}

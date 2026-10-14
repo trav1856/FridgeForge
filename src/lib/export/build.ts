@@ -29,14 +29,15 @@ export const UPLOAD_DIRS = [
   "product-images/shared",
   "product-images/household",
   "badge-images",
+  "content-images", // chef photos, Kitchen Table covers + inline photos
 ] as const;
 
 export const ENCRYPTION_METHOD = "AES-256 (WinZip AE-2) via @zip.js/zip.js";
 
-const USER_COL_RE = /^(userId|ownerUserId|fromUserId|toUserId|targetUserId|createdById|createdByUserId|disabledById|actorId)$/;
+const USER_COL_RE = /^(userId|ownerUserId|fromUserId|toUserId|targetUserId|createdById|createdByUserId|disabledById|actorId|authorUserId)$/;
 const HH_COL_RE = /^(householdId|toHouseholdId|createdByHouseholdId)$/;
 const EMAIL_COL_RE = /^(email|toUserEmail)$/;
-const LOCAL_IMG_RE = /\/(recipe-images|badge-images|product-images\/shared|pantry-images|profile-images)\/[A-Za-z0-9._\/-]+\.(?:jpe?g|png|webp|gif|svg)/g;
+const LOCAL_IMG_RE = /\/(recipe-images|badge-images|product-images\/shared|pantry-images|profile-images|content-images)\/[A-Za-z0-9._\/-]+\.(?:jpe?g|png|webp|gif|svg)/g;
 
 export function exportDir(): string {
   return process.env.FF_EXPORT_DIR || path.join(process.cwd(), "ops", "exports");
@@ -252,7 +253,11 @@ export async function selectUser(tables: TableInfo[], userId: string): Promise<{
   return { sel, householdIds: hh };
 }
 
-export const CONTENT_MODELS = ["HowToBadge", "HowToCourse", "HowToLesson", "StruggleResource", "Recipe", "RecipeIngredient", "SharedProduct"];
+export const CONTENT_MODELS = [
+  "HowToBadge", "HowToCourse", "HowToLesson", "StruggleResource",
+  // Chef's Corner + The Kitchen Table: visible profiles, live posts, their pins (linked accounts removed).
+  "FeaturedProfile", "Recipe", "RecipeIngredient", "SharedProduct", "Post", "FeaturedPin",
+];
 
 /** Content only: public/global recipes, how-tos, badges, shared products. Personal links nulled. */
 export async function selectContent(tables: TableInfo[]): Promise<Selection> {
@@ -260,16 +265,27 @@ export async function selectContent(tables: TableInfo[]): Promise<Selection> {
   const sel: Selection = [];
   const recipes = await readTable(byModel.get("Recipe")!, { sql: `"visibility" IN ('global','public')`, params: [] });
   const ids = recipes.map((r) => r.id as string);
+  const profT = byModel.get("FeaturedProfile");
+  const visibleProfiles = new Set(profT ? (await readTable(profT, { sql: `"hidden" = false`, params: [] })).map((r) => r.id as string) : []);
   for (const m of CONTENT_MODELS) {
     const t = byModel.get(m);
     if (!t) continue;
     let rows: Row[];
     if (m === "Recipe") rows = recipes;
     else if (m === "RecipeIngredient") rows = ids.length ? await readTable(t, { sql: `"recipeId" = ANY($1)`, params: [ids] }) : [];
+    else if (m === "FeaturedProfile") rows = await readTable(t, { sql: `"hidden" = false`, params: [] });
+    else if (m === "Post") rows = await readTable(t, { sql: `"status" IN ('published','scheduled') AND "publishedAt" <= now()`, params: [] });
+    else if (m === "FeaturedPin") {
+      const posts = sel.find((x) => x.t.model === "Post")?.rows.map((r) => r.id as string) ?? [];
+      const profs = sel.find((x) => x.t.model === "FeaturedProfile")?.rows.map((r) => r.id as string) ?? [];
+      rows = await readTable(t, { sql: `"postId" = ANY($1) OR "profileId" = ANY($2)`, params: [posts, profs] });
+    }
     else rows = await readTable(t);
     rows = rows.map((r) => {
       const o = redactRow(t, r);
       for (const c of Object.keys(o)) if (USER_COL_RE.test(c) || HH_COL_RE.test(c) || EMAIL_COL_RE.test(c)) o[c] = null;
+      if ((m === "Recipe" || m === "Post") && o.chefProfileId !== undefined && !visibleProfiles.has(o.chefProfileId as string)) o.chefProfileId = null;
+      if (m === "Post" && o.profileId && !visibleProfiles.has(o.profileId as string)) o.profileId = null;
       return o;
     });
     sel.push({ t, rows });
@@ -345,7 +361,7 @@ export async function buildExportZip(opts: {
       const r = await selectUser(tables, opts.targetUserId);
       sel = r.sel;
       addTables(b, sel, "data");
-      const imgs = referencedImages(sel, /^\/(recipe-images\/user|recipe-images\/import|profile-images|pantry-images\/user|product-images)\//);
+      const imgs = referencedImages(sel, /^\/(recipe-images\/user|recipe-images\/import|profile-images|pantry-images\/user|product-images|content-images)\//);
       for (const u of imgs) {
         const abs = path.join(publicDir(), u);
         try { await b.addFile(`uploads${u}`, abs); } catch { /* referenced but missing */ }
@@ -359,7 +375,7 @@ export async function buildExportZip(opts: {
       await progress("Collecting content");
       sel = await selectContent(tables);
       addTables(b, sel, "content");
-      const imgs = referencedImages(sel, /^\/(recipe-images\/(?!import\/)|badge-images\/|product-images\/shared\/)/);
+      const imgs = referencedImages(sel, /^\/(recipe-images\/(?!import\/)|badge-images\/|product-images\/shared\/|content-images\/)/);
       for (const u of imgs) {
         const abs = path.join(publicDir(), u);
         try { await b.addFile(`uploads${u}`, abs); } catch { /* referenced but missing */ }

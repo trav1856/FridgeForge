@@ -37,6 +37,14 @@ export const AUDIT_ACTIONS = [
   "export.create",
   "export.download",
   "export.failed",
+  "user.chef",
+  "user.chef_publish",
+  "post.publish",
+  "post.unpublish",
+  "post.reject",
+  "profile.feature",
+  "pin.add",
+  "pin.remove",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -56,6 +64,14 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "export.create": "created data export",
   "export.download": "downloaded data export",
   "export.failed": "data export failed",
+  "user.chef": "changed chef account",
+  "user.chef_publish": "changed chef publish rights",
+  "post.publish": "published post",
+  "post.unpublish": "unpublished post",
+  "post.reject": "sent post back to draft",
+  "profile.feature": "changed featured chef",
+  "pin.add": "pinned to home",
+  "pin.remove": "unpinned from home",
 };
 
 /** Delete requires an export by the same admin within this window. */

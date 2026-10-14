@@ -6,6 +6,7 @@ import { RecipeOfTheWeek } from "@/components/RecipeOfTheWeek";
 import { PopularThisWeek } from "@/components/PopularThisWeek";
 import { Splash } from "@/components/splash/Splash";
 import { getCurrentUser } from "@/lib/auth";
+import { FeaturedStrip } from "@/components/content/FeaturedStrip";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <FeaturedStrip />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[

@@ -1,3 +1,4 @@
+import { ChefBadge } from "@/components/content/ChefBadge";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -42,6 +43,7 @@ export async function RecipeOfTheWeek() {
     tags: parseStringArray(r.tags),
     costTier: r.costTier,
     isStruggleMeal: r.isStruggleMeal,
+    chefProfileId: r.chefProfileId ?? null,
     kosherEligible: Boolean(r.kosherEligible),
     halalEligible: Boolean(r.halalEligible),
     vegetarianEligible: Boolean(r.vegetarianEligible),
@@ -95,6 +97,7 @@ export async function RecipeOfTheWeek() {
                   >
                     {r.costTier}
                   </span>
+                  {r.chefProfileId && <ChefBadge />}
                   {r.isStruggleMeal && (
                     <span className="badge bg-ember-600 text-white">
                       struggle meal

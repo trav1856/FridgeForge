@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChefBadge } from "@/components/content/ChefBadge";
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 
 import { useStruggleMode } from "./StruggleModeProvider";
@@ -37,6 +38,7 @@ type Suggestion = {
     description: string | null;
     costTier: string;
     isStruggleMeal: boolean;
+  chefProfileId?: string | null;
     kosherEligible?: boolean;
     halalEligible?: boolean;
     vegetarianEligible?: boolean;
@@ -545,6 +547,7 @@ function Section({
                       >
                         {s.recipe.costTier}
                       </span>
+                      {s.recipe.chefProfileId && <ChefBadge />}
                       {s.recipe.isStruggleMeal && (
                         <span className="badge bg-ember-600 text-white">
                           struggle

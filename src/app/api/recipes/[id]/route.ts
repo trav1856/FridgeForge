@@ -1,3 +1,4 @@
+import { syncRecipeChefCredit } from "@/lib/content/profiles";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -284,6 +285,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       });
     });
 
+    // Chef accounts: public recipes carry the Featured Chef credit automatically.
+    await syncRecipeChefCredit(id).catch(() => {});
     return NextResponse.json(serializeRecipe(updated));
   } catch (err) {
     if (err instanceof AuthError) {

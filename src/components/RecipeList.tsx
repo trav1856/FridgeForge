@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChefBadge } from "@/components/content/ChefBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useStruggleMode } from "./StruggleModeProvider";
@@ -39,6 +40,7 @@ type Recipe = {
   meatType?: string | null;
   servings: number;
   isStruggleMeal: boolean;
+  chefProfileId?: string | null;
   kosherEligible?: boolean;
   halalEligible?: boolean;
   vegetarianEligible?: boolean;
@@ -528,6 +530,7 @@ export function RecipeList() {
                     >
                       {r.costTier}
                     </span>
+                    {r.chefProfileId && <ChefBadge />}
                     {r.isStruggleMeal && (
                       <span className="badge bg-ember-600 text-white">
                         struggle meal

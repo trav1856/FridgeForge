@@ -154,6 +154,8 @@ export function publicUser(user: AuthUser) {
     profileSlug: user.profileSlug ?? null,
     plan: user.plan,
     role: user.role === "admin" ? "admin" : "user",
+    isChef: Boolean(user.isChef),
+    chefCanPublish: Boolean(user.chefCanPublish),
     disabled: Boolean(user.disabled),
     isJewish: Boolean(user.isJewish),
     isObservant: Boolean(user.isObservant),

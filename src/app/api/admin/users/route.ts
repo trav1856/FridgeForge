@@ -12,6 +12,8 @@ import {
   unsuspendUser,
   SUSPEND_REASON_MAX,
 } from "@/lib/admin-users";
+import { setChefCanPublish, setChefFlag } from "@/lib/content/profiles";
+import { ContentError } from "@/lib/content/util";
 
 /** Same filters as /admin/users (q, role, plan, status, active, signedUp, from, to, sort, dir, page). */
 export async function GET(req: NextRequest) {
@@ -44,6 +46,9 @@ const patchSchema = z.object({
   /** Required when disabled=true (suspend). */
   reason: z.string().max(SUSPEND_REASON_MAX).optional(),
   plan: z.enum(["free", "pro"]).optional(),
+  /** Admin-only "Chef account" flag + per-chef direct-publish toggle (audit-logged). */
+  isChef: z.boolean().optional(),
+  chefCanPublish: z.boolean().optional(),
 });
 
 /** Role / plan / suspend. Guards + audit live in lib/admin-users. */
@@ -60,15 +65,17 @@ export async function PATCH(req: NextRequest) {
     if (data.role) user = await setUserRole(admin.id, data.id, data.role);
     if (data.disabled === true) user = await suspendUser(admin.id, data.id, data.reason!);
     if (data.disabled === false) user = await unsuspendUser(admin.id, data.id);
+    if (data.isChef !== undefined) user = await setChefFlag(admin, data.id, data.isChef);
+    if (data.chefCanPublish !== undefined) user = await setChefCanPublish(admin, data.id, data.chefCanPublish);
     if (!user) return NextResponse.json({ error: "Nothing to change" }, { status: 400 });
     return NextResponse.json({
-      user: { id: user.id, email: user.email, role: user.role, plan: user.plan, disabled: user.disabled },
+      user: { id: user.id, email: user.email, role: user.role, plan: user.plan, disabled: user.disabled, isChef: (user as { isChef?: boolean }).isChef ?? undefined, chefCanPublish: (user as { chefCanPublish?: boolean }).chefCanPublish ?? undefined },
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.flatten() }, { status: 400 });
     }
-    if (err instanceof AdminActionError) {
+    if (err instanceof AdminActionError || err instanceof ContentError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     const res = adminErrorResponse(err);

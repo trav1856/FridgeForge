@@ -13,7 +13,8 @@ Admin only. Every POST checks same-origin (`src/lib/same-origin.ts`).
   email), the files those rows reference, `README.md` with the household note.
   No dump.
 - **Content only**: global/public recipes + ingredients, how-to badges,
-  courses, lessons, struggle resources, shared products, with every user and
+  courses, lessons, struggle resources, shared products, visible Chef's Corner
+  profiles, live Kitchen Table posts and their home pins, with every user and
   household column set to null; referenced images; `import-content.mjs`.
 
 ## Secrets

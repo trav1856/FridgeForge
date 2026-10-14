@@ -13,6 +13,9 @@ export type AdminUserActionsProps = {
     disabled: boolean;
     disabledReason: string | null;
     disabledSummary: string | null;
+    isChef: boolean;
+    chefCanPublish: boolean;
+    chefProfileSlug: string | null;
   };
   isSelf: boolean;
   isLastAdmin: boolean;
@@ -348,6 +351,51 @@ export function AdminUserActions({ user, isSelf, isLastAdmin, activeSessions, de
             </div>
           )}
         </div>
+      </div>
+
+      <div className={rowCls} data-testid="chef-controls">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4"
+            checked={user.isChef}
+            disabled={!!busy}
+            data-testid="chk-chef"
+            onChange={(e) =>
+              patch("chef", { isChef: e.target.checked }, e.target.checked ? "Chef account on. Their profile is in Chef's Corner." : "Chef account off. Profile hidden.")
+            }
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-sage-900">Chef account</span>
+            <span className="block text-xs text-sage-600">
+              Gets a self-managed chef profile in Chef&apos;s Corner, the Featured Chef badge on their public recipes, and can write Kitchen Table posts.
+              {user.isChef && user.chefProfileSlug ? (
+                <>
+                  {" "}
+                  <a className="font-semibold text-ember-700 hover:underline" href={`/chefs/${user.chefProfileSlug}`}>View profile</a>
+                </>
+              ) : null}
+            </span>
+          </span>
+        </label>
+        {user.isChef && (
+          <label className="mt-3 flex items-start gap-3 pl-7">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+              checked={user.chefCanPublish}
+              disabled={!!busy}
+              data-testid="chk-chef-publish"
+              onChange={(e) =>
+                patch("chef-publish", { chefCanPublish: e.target.checked }, e.target.checked ? "Posts publish directly." : "Posts now need admin review.")
+              }
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-sage-900">Can publish directly</span>
+              <span className="block text-xs text-sage-600">Off = every post goes to the review queue first.</span>
+            </span>
+          </label>
+        )}
       </div>
 
       <div className={rowCls}>

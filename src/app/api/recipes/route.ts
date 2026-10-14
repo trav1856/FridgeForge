@@ -1,3 +1,4 @@
+import { syncRecipeChefCredit } from "@/lib/content/profiles";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -359,6 +360,7 @@ export async function POST(req: NextRequest) {
       },
       include: { ingredients: true },
     });
+    await syncRecipeChefCredit(recipe.id).catch(() => {});
     return NextResponse.json(serializeRecipe(recipe), { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {

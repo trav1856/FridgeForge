@@ -8,81 +8,131 @@ datasource db {
 }
 
 model User {
-  id           String            @id @default(cuid())
-  email        String            @unique
-  name         String?
-  /** Public profile URL segment (/u/[profileSlug]); unique when set. */
-  profileSlug  String?           @unique
-  passwordHash String?
-  plan         String            @default("free") // free | pro (pro displays as Premium)
-  /** user | admin */
-  role         String            @default("user")
-  /** Soft-disable: blocked from sign-in when true */
-  disabled     Boolean           @default(false)
-  /** Dietary identity / prefs (Account). Observant only meaningful when isJewish.
-   *  Religion (Jewish/Muslim) ≠ food (Kosher/Halal). Kosher food supersedes Halal food. */
-  isJewish     Boolean           @default(false)
-  isObservant  Boolean           @default(false)
-  /** Soft prefer kosher + personal kosher chrome (badges/warnings); never a public silo. */
-  preferKosher Boolean           @default(false)
-  /** Soft prefer Halal + personal chrome; religion flag — not cleared by isJewish alone. */
-  isMuslim     Boolean           @default(false)
-  /** Soft prefer Halal + personal chrome; cleared/disabled when preferKosher or Observant. */
-  preferHalal  Boolean           @default(false)
-  /** Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary). */
-  preferVegetarian Boolean       @default(false)
-  preferPescatarian Boolean      @default(false)
-  preferVegan Boolean            @default(false)
-  /** Macro / lifestyle prefs (stack with religion/kosher/halal; carnivore mutually exclusive with plant). */
-  preferCarnivore Boolean        @default(false)
-  preferAtkins Boolean           @default(false)
-  preferLowCarb Boolean          @default(false)
-  preferLowSugar Boolean         @default(false)
-  /** Prefer low sodium (not “low salt”). */
-  preferLowSodium Boolean        @default(false)
-  /** JSON string array of allergen ids/labels the user avoids (personal; not a public silo). */
-  allergenFlags String           @default("[]")
-  /** Activity: bumped from getCurrentUser() at most once per ~5 min (see lib/activity). */
-  lastActiveAt DateTime?
-  /** Set on successful sign-in (and sign-up, which signs in). */
-  lastSignInAt DateTime?
-  /** Suspend context; `disabled` stays the actual gate. */
-  disabledReason String?
-  disabledAt   DateTime?
-  /** Admin user id that suspended (no FK so it survives that admin's deletion). */
-  disabledById String?
-  /** Public profile (Stage 1). `name` is the display name; `profileSlug` is the @handle. */
-  bio          String?
-  /** Normalized https URLs only (see lib/profile-fields). */
-  socialX      String?
-  socialFacebook String?
-  /** Managed /profile-images/u/... WebP paths. */
-  avatarUrl    String?
-  bannerUrl    String?
-  /** false = "This profile is private" to everyone but the owner. */
-  profilePublic Boolean          @default(true)
-  /** When the user confirmed they meet the minimum age (DOB itself is never stored). */
-  ageConfirmedAt DateTime?
-  profilePins  ProfilePin[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  sessions     Session[]
-  memberships  HouseholdMember[]
-  favorites    RecipeFavorite[]
-  ownedRecipes Recipe[]          @relation("RecipeOwner")
-  sharesSent   RecipeShare[]     @relation("ShareFrom")
-  sharesReceived RecipeShare[]   @relation("ShareTo")
-  recipeRequestsSent     RecipeRequest[] @relation("RecipeRequestFrom")
-  recipeRequestsReceived RecipeRequest[] @relation("RecipeRequestTo")
-  shoppingItems ShoppingListItem[]
-  reviews      RecipeReview[]
-  cookSessions RecipeCookSession[]
-  cookStats    RecipeCookStat[]
-  howToLessonProgress HowToLessonProgress[]
-  howToBadges         HowToUserBadge[]
-  weeklyMenuPlans     WeeklyMenuPlan[]
-  activeDays          UserActiveDay[]
-  passwordResetTokens PasswordResetToken[]
+  id                     String                @id @default(cuid())
+  email                  String                @unique
+  name                   String?
+  /**
+   * Public profile URL segment (/u/[profileSlug]); unique when set.
+   */
+  profileSlug            String?               @unique
+  passwordHash           String?
+  plan                   String                @default("free") // free | pro (pro displays as Premium)
+  /**
+   * user | admin
+   */
+  role                   String                @default("user")
+  /**
+   * Soft-disable: blocked from sign-in when true
+   */
+  disabled               Boolean               @default(false)
+  /**
+   * Dietary identity / prefs (Account). Observant only meaningful when isJewish.
+   * Religion (Jewish/Muslim) ≠ food (Kosher/Halal). Kosher food supersedes Halal food.
+   */
+  isJewish               Boolean               @default(false)
+  isObservant            Boolean               @default(false)
+  /**
+   * Soft prefer kosher + personal kosher chrome (badges/warnings); never a public silo.
+   */
+  preferKosher           Boolean               @default(false)
+  /**
+   * Soft prefer Halal + personal chrome; religion flag — not cleared by isJewish alone.
+   */
+  isMuslim               Boolean               @default(false)
+  /**
+   * Soft prefer Halal + personal chrome; cleared/disabled when preferKosher or Observant.
+   */
+  preferHalal            Boolean               @default(false)
+  /**
+   * Plant prefs: priority vegan > vegetarian > pescatarian (mutually exclusive primary).
+   */
+  preferVegetarian       Boolean               @default(false)
+  preferPescatarian      Boolean               @default(false)
+  preferVegan            Boolean               @default(false)
+  /**
+   * Macro / lifestyle prefs (stack with religion/kosher/halal; carnivore mutually exclusive with plant).
+   */
+  preferCarnivore        Boolean               @default(false)
+  preferAtkins           Boolean               @default(false)
+  preferLowCarb          Boolean               @default(false)
+  preferLowSugar         Boolean               @default(false)
+  /**
+   * Prefer low sodium (not “low salt”).
+   */
+  preferLowSodium        Boolean               @default(false)
+  /**
+   * JSON string array of allergen ids/labels the user avoids (personal; not a public silo).
+   */
+  allergenFlags          String                @default("[]")
+  /**
+   * Activity: bumped from getCurrentUser() at most once per ~5 min (see lib/activity).
+   */
+  lastActiveAt           DateTime?
+  /**
+   * Set on successful sign-in (and sign-up, which signs in).
+   */
+  lastSignInAt           DateTime?
+  /**
+   * Suspend context; `disabled` stays the actual gate.
+   */
+  disabledReason         String?
+  disabledAt             DateTime?
+  /**
+   * Admin user id that suspended (no FK so it survives that admin's deletion).
+   */
+  disabledById           String?
+  /**
+   * Public profile (Stage 1). `name` is the display name; `profileSlug` is the @handle.
+   */
+  bio                    String?
+  /**
+   * Normalized https URLs only (see lib/profile-fields).
+   */
+  socialX                String?
+  socialFacebook         String?
+  /**
+   * Managed /profile-images/u/... WebP paths.
+   */
+  avatarUrl              String?
+  bannerUrl              String?
+  /**
+   * false = "This profile is private" to everyone but the owner.
+   */
+  profilePublic          Boolean               @default(true)
+  /**
+   * When the user confirmed they meet the minimum age (DOB itself is never stored).
+   */
+  ageConfirmedAt         DateTime?
+  profilePins            ProfilePin[]
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  sessions               Session[]
+  memberships            HouseholdMember[]
+  favorites              RecipeFavorite[]
+  ownedRecipes           Recipe[]              @relation("RecipeOwner")
+  sharesSent             RecipeShare[]         @relation("ShareFrom")
+  sharesReceived         RecipeShare[]         @relation("ShareTo")
+  recipeRequestsSent     RecipeRequest[]       @relation("RecipeRequestFrom")
+  recipeRequestsReceived RecipeRequest[]       @relation("RecipeRequestTo")
+  shoppingItems          ShoppingListItem[]
+  reviews                RecipeReview[]
+  cookSessions           RecipeCookSession[]
+  cookStats              RecipeCookStat[]
+  howToLessonProgress    HowToLessonProgress[]
+  howToBadges            HowToUserBadge[]
+  weeklyMenuPlans        WeeklyMenuPlan[]
+  activeDays             UserActiveDay[]
+  passwordResetTokens    PasswordResetToken[]
+  /**
+   * Admin-only flag: this account is a chef (manages its own featured profile + Kitchen Table posts).
+   */
+  isChef                 Boolean               @default(false)
+  /**
+   * Chef posts publish without review when true; admins can turn it off to require review.
+   */
+  chefCanPublish         Boolean               @default(true)
+  featuredProfile        FeaturedProfile?
+  posts                  Post[]                @relation("PostAuthor")
 
   @@index([createdAt])
   @@index([lastActiveAt])
@@ -96,14 +146,18 @@ model Session {
   userId     String
   expiresAt  DateTime
   createdAt  DateTime  @default(now())
-  /** Bumped together with User.lastActiveAt (throttled). */
+  /**
+   * Bumped together with User.lastActiveAt (throttled).
+   */
   lastUsedAt DateTime?
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-/** One row per user per active day (UTC), upserted by activity tracking. */
+/**
+ * One row per user per active day (UTC), upserted by activity tracking.
+ */
 model UserActiveDay {
   userId    String
   day       DateTime @db.Date
@@ -114,14 +168,18 @@ model UserActiveDay {
   @@index([day])
 }
 
-/** Admin-generated one-time password reset links. Only the sha256 of the token is stored. */
+/**
+ * Admin-generated one-time password reset links. Only the sha256 of the token is stored.
+ */
 model PasswordResetToken {
   id          String    @id @default(cuid())
   userId      String
   tokenHash   String    @unique
   expiresAt   DateTime
   usedAt      DateTime?
-  /** Admin who generated the link. */
+  /**
+   * Admin who generated the link.
+   */
   createdById String?
   createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -129,12 +187,16 @@ model PasswordResetToken {
   @@index([userId])
 }
 
-/** Append-only log of admin actions. No FKs, so entries survive user deletion. */
+/**
+ * Append-only log of admin actions. No FKs, so entries survive user deletion.
+ */
 model AdminAuditLog {
   id           String   @id @default(cuid())
   actorId      String
   targetUserId String?
-  /** e.g. user.role, user.plan, user.suspend, user.unsuspend, user.sessions.revoke, user.reset_link, user.export, user.delete */
+  /**
+   * e.g. user.role, user.plan, user.suspend, user.unsuspend, user.sessions.revoke, user.reset_link, user.export, user.delete
+   */
   action       String
   details      Json     @default("{}")
   createdAt    DateTime @default(now())
@@ -145,22 +207,22 @@ model AdminAuditLog {
 }
 
 model Household {
-  id         String            @id @default(cuid())
-  name       String
-  inviteCode String            @unique
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  members    HouseholdMember[]
-  pantryItems PantryItem[]
-  recipes    Recipe[]
-  coupons    Coupon[]
-  customStaples CustomPantryStaple[]
-  shoppingItems ShoppingListItem[]
-  recipeRequests RecipeRequest[]
-  sharesReceived RecipeShare[]
-  cookSessions RecipeCookSession[]
-  cookStats    RecipeCookStat[]
-  weeklyMenuPlans WeeklyMenuPlan[]
+  id               String                     @id @default(cuid())
+  name             String
+  inviteCode       String                     @unique
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  members          HouseholdMember[]
+  pantryItems      PantryItem[]
+  recipes          Recipe[]
+  coupons          Coupon[]
+  customStaples    CustomPantryStaple[]
+  shoppingItems    ShoppingListItem[]
+  recipeRequests   RecipeRequest[]
+  sharesReceived   RecipeShare[]
+  cookSessions     RecipeCookSession[]
+  cookStats        RecipeCookStat[]
+  weeklyMenuPlans  WeeklyMenuPlan[]
   productOverrides HouseholdProductOverride[]
 }
 
@@ -186,9 +248,13 @@ model PantryItem {
   tags           String     @default("[]") // JSON array string
   barcode        String?
   expirationDate DateTime?
-  /** Optional OFF/macros snapshot JSON: calories/protein/fat/carbs per 100g */
+  /**
+   * Optional OFF/macros snapshot JSON: calories/protein/fat/carbs per 100g
+   */
   nutritionJson  String?
-  /** Product thumb from Open Food Facts (or null → UI category/name icon). */
+  /**
+   * Product thumb from Open Food Facts (or null → UI category/name icon).
+   */
   imageUrl       String?
   householdId    String?
   createdAt      DateTime   @default(now())
@@ -200,81 +266,131 @@ model PantryItem {
 }
 
 model Recipe {
-  id               String             @id @default(cuid())
-  title            String
-  description      String?
-  steps            String             // JSON array of step strings
-  costTier         String             @default("cheap") // cheap | moderate
-  tags             String             @default("[]") // JSON array
-  /** Controlled cuisine label from recipe-taxonomy (e.g. Mexican, Italian). */
-  cuisine          String?
-  /** Controlled course: breakfast | lunch | dinner | main | side | starter | dessert | snack | drink */
-  course           String?
-  /** JSON array of food category labels (dairy, meat, vegetable, …). */
-  foodCategories   String             @default("[]")
-  /** Land-meat subtype when applicable: beef | pork | chicken | other. Null if no meat / unknown. Fish stays seafood. */
-  meatType         String?
-  /** JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy). */
-  origins          String             @default("[]")
-  /** Short cultural/history blurb shown as “Story behind this food” on detail. */
-  originStory      String?
-  /** JSON array of story media items: {id,kind:"image",url} (managed /recipe-images/user/ path) | {id,kind:"youtube",videoId}. */
-  originStoryMedia String             @default("[]")
-  /** Normalized dish family slug for variants (e.g. grilled-cheese). */
-  dishKey          String?
-  servings         Int                @default(2)
-  cookTimeMinutes  Int?               // null = unknown; excluded when maxMinutes filter is set
-  sourceUrl        String?
-  imageUrl         String?            // remote URL or /recipe-images/... path
-  isStruggleMeal   Boolean            @default(false)
-  /** Eligible if prepared with certified kosher ingredients (not a certification claim).
-   *  Independent of Jewish cuisine/origin — a dish can be Jewish and not kosher, or kosher and not Jewish cuisine. */
-  kosherEligible   Boolean            @default(false)
-  /** Eligible if prepared with certified halal ingredients (not a certification claim). */
-  halalEligible    Boolean            @default(false)
-  /** No meat/fish (dairy/eggs OK). */
-  vegetarianEligible Boolean          @default(false)
-  /** Fish/seafood OK; no land meat. */
-  pescatarianEligible Boolean         @default(false)
-  /** No animal products. */
-  veganEligible    Boolean            @default(false)
-  /** Animal-based (meat/fish/eggs); mutually exclusive with plant prefs for filtering. */
-  carnivoreEligible Boolean           @default(false)
-  /** Atkins-style low-carb friendly (independent of preferLowCarb). */
-  atkinsEligible   Boolean            @default(false)
-  lowCarbEligible  Boolean            @default(false)
-  lowSugarEligible Boolean            @default(false)
-  /** Low sodium (not “low salt”). */
-  lowSodiumEligible Boolean           @default(false)
-  /** Short note: how to adapt this recipe to kosher when not kosherEligible. */
-  kosherAdaptNote  String?
-  /** Short note: how to adapt this recipe to vegan when not veganEligible. */
-  veganAdaptNote   String?
-  /** Short note: how to adapt this recipe to vegetarian when not vegetarianEligible. */
+  id                  String              @id @default(cuid())
+  title               String
+  description         String?
+  steps               String // JSON array of step strings
+  costTier            String              @default("cheap") // cheap | moderate
+  tags                String              @default("[]") // JSON array
+  /**
+   * Controlled cuisine label from recipe-taxonomy (e.g. Mexican, Italian).
+   */
+  cuisine             String?
+  /**
+   * Controlled course: breakfast | lunch | dinner | main | side | starter | dessert | snack | drink
+   */
+  course              String?
+  /**
+   * JSON array of food category labels (dairy, meat, vegetable, …).
+   */
+  foodCategories      String              @default("[]")
+  /**
+   * Land-meat subtype when applicable: beef | pork | chicken | other. Null if no meat / unknown. Fish stays seafood.
+   */
+  meatType            String?
+  /**
+   * JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy).
+   */
+  origins             String              @default("[]")
+  /**
+   * Short cultural/history blurb shown as “Story behind this food” on detail.
+   */
+  originStory         String?
+  /**
+   * JSON array of story media items: {id,kind:"image",url} (managed /recipe-images/user/ path) | {id,kind:"youtube",videoId}.
+   */
+  originStoryMedia    String              @default("[]")
+  /**
+   * Normalized dish family slug for variants (e.g. grilled-cheese).
+   */
+  dishKey             String?
+  servings            Int                 @default(2)
+  cookTimeMinutes     Int? // null = unknown; excluded when maxMinutes filter is set
+  sourceUrl           String?
+  imageUrl            String? // remote URL or /recipe-images/... path
+  isStruggleMeal      Boolean             @default(false)
+  /**
+   * Eligible if prepared with certified kosher ingredients (not a certification claim).
+   * Independent of Jewish cuisine/origin — a dish can be Jewish and not kosher, or kosher and not Jewish cuisine.
+   */
+  kosherEligible      Boolean             @default(false)
+  /**
+   * Eligible if prepared with certified halal ingredients (not a certification claim).
+   */
+  halalEligible       Boolean             @default(false)
+  /**
+   * No meat/fish (dairy/eggs OK).
+   */
+  vegetarianEligible  Boolean             @default(false)
+  /**
+   * Fish/seafood OK; no land meat.
+   */
+  pescatarianEligible Boolean             @default(false)
+  /**
+   * No animal products.
+   */
+  veganEligible       Boolean             @default(false)
+  /**
+   * Animal-based (meat/fish/eggs); mutually exclusive with plant prefs for filtering.
+   */
+  carnivoreEligible   Boolean             @default(false)
+  /**
+   * Atkins-style low-carb friendly (independent of preferLowCarb).
+   */
+  atkinsEligible      Boolean             @default(false)
+  lowCarbEligible     Boolean             @default(false)
+  lowSugarEligible    Boolean             @default(false)
+  /**
+   * Low sodium (not “low salt”).
+   */
+  lowSodiumEligible   Boolean             @default(false)
+  /**
+   * Short note: how to adapt this recipe to kosher when not kosherEligible.
+   */
+  kosherAdaptNote     String?
+  /**
+   * Short note: how to adapt this recipe to vegan when not veganEligible.
+   */
+  veganAdaptNote      String?
+  /**
+   * Short note: how to adapt this recipe to vegetarian when not vegetarianEligible.
+   */
   vegetarianAdaptNote String?
-  /** Short note: how to adapt toward Halal when not satisfiesHalal. */
-  halalAdaptNote   String?
-  /** JSON string array of allergen tags (milk, eggs, fish, …) — public recipe info. */
-  allergenTags     String             @default("[]")
-  techniqueTips    String?            // JSON array
-  flavorBoosters   String?            // JSON array
-  /** global | household | shared  (legacy aliases: public→global, private→household) */
-  visibility       String             @default("household")
-  ownerUserId      String?
-  householdId      String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  ingredients      RecipeIngredient[]
-  household        Household?         @relation(fields: [householdId], references: [id], onDelete: SetNull)
-  owner            User?              @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  favorites        RecipeFavorite[]
-  profilePins      ProfilePin[]
-  shares           RecipeShare[]
-  requests         RecipeRequest[]
-  reviews          RecipeReview[]
-  cookSessions     RecipeCookSession[]
-  cookStats        RecipeCookStat[]
+  /**
+   * Short note: how to adapt toward Halal when not satisfiesHalal.
+   */
+  halalAdaptNote      String?
+  /**
+   * JSON string array of allergen tags (milk, eggs, fish, …) — public recipe info.
+   */
+  allergenTags        String              @default("[]")
+  techniqueTips       String? // JSON array
+  flavorBoosters      String? // JSON array
+  /**
+   * global | household | shared  (legacy aliases: public→global, private→household)
+   */
+  visibility          String              @default("household")
+  ownerUserId         String?
+  householdId         String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  ingredients         RecipeIngredient[]
+  household           Household?          @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  owner               User?               @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  favorites           RecipeFavorite[]
+  profilePins         ProfilePin[]
+  shares              RecipeShare[]
+  requests            RecipeRequest[]
+  reviews             RecipeReview[]
+  cookSessions        RecipeCookSession[]
+  cookStats           RecipeCookStat[]
+  /**
+   * Featured profile (chef) this recipe is credited to; shows the Featured Chef badge.
+   */
+  chefProfileId       String?
+  chefProfile         FeaturedProfile?    @relation(fields: [chefProfileId], references: [id], onDelete: SetNull)
 
+  @@index([chefProfileId])
   @@index([householdId])
   @@index([ownerUserId])
   @@index([visibility])
@@ -285,13 +401,13 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   recipeId String
   name     String
-  quantity Float  @default(1)
-  unit     String @default("each")
+  quantity Float   @default(1)
+  unit     String  @default("each")
   optional Boolean @default(false)
-  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 }
 
 model RecipeFavorite {
@@ -313,7 +429,9 @@ model RecipeShare {
   fromUserId    String
   toUserEmail   String?
   toUserId      String?
-  /** Optional: share with an entire household (all members can view). */
+  /**
+   * Optional: share with an entire household (all members can view).
+   */
   toHouseholdId String?
   accepted      Boolean    @default(false)
   acceptedAt    DateTime?
@@ -352,24 +470,22 @@ model Coupon {
   @@index([householdId])
 }
 
-
 model CustomPantryStaple {
-  id          String     @id @default(cuid())
-  name        String
-  category    String
-  measureKind String?
+  id            String     @id @default(cuid())
+  name          String
+  category      String
+  measureKind   String?
   suggestedUnit String?
-  hidden      Boolean    @default(false)
-  householdId String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  hidden        Boolean    @default(false)
+  householdId   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  household     Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([householdId, name, category])
   @@index([householdId])
   @@index([category])
 }
-
 
 model ShoppingListItem {
   id          String     @id @default(cuid())
@@ -391,12 +507,16 @@ model ShoppingListItem {
   @@index([checked])
 }
 
-/** Current week meal plan (breakfast/lunch/dinner × 7) per household or user. */
+/**
+ * Current week meal plan (breakfast/lunch/dinner × 7) per household or user.
+ */
 model WeeklyMenuPlan {
   id           String     @id @default(cuid())
   householdId  String?
   userId       String?
-  /** JSON WeeklyMenuPlanData */
+  /**
+   * JSON WeeklyMenuPlanData
+   */
   planJson     String
   struggleMode Boolean    @default(false)
   createdAt    DateTime   @default(now())
@@ -409,18 +529,18 @@ model WeeklyMenuPlan {
 }
 
 model RecipeRequest {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   recipeId    String
   fromUserId  String
   toUserId    String?
   householdId String?
-  status      String    @default("pending") // pending | accepted | declined
+  status      String     @default("pending") // pending | accepted | declined
   message     String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  fromUser    User      @relation("RecipeRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser      User?     @relation("RecipeRequestTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  recipe      Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  fromUser    User       @relation("RecipeRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User?      @relation("RecipeRequestTo", fields: [toUserId], references: [id], onDelete: SetNull)
   household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([recipeId])
@@ -452,13 +572,21 @@ model RecipeCookSession {
   recipeId       String
   userId         String?
   householdId    String?
-  /** When true, pantry deductions from this cook are still applied. */
+  /**
+   * When true, pantry deductions from this cook are still applied.
+   */
   active         Boolean    @default(true)
-  /** JSON: [{ pantryItemId, name, unit, deductedQty, quantityBefore, quantityAfter }] */
+  /**
+   * JSON: [{ pantryItemId, name, unit, deductedQty, quantityBefore, quantityAfter }]
+   */
   deductionsJson String     @default("[]")
-  /** JSON string array of low-stock nudge messages at cook time */
+  /**
+   * JSON string array of low-stock nudge messages at cook time
+   */
   lowStockJson   String     @default("[]")
-  /** Set when pantry restore undoes this cook (cancel or making different). */
+  /**
+   * Set when pantry restore undoes this cook (cancel or making different).
+   */
   undoneAt       DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -476,7 +604,9 @@ model RecipeCookSession {
 model RecipeCookStat {
   id          String     @id @default(cuid())
   recipeId    String
-  /** household:<id> | user:<id> | guest — unique with recipeId */
+  /**
+   * household:<id> | user:<id> | guest — unique with recipeId
+   */
   scopeKey    String
   userId      String?
   householdId String?
@@ -493,32 +623,35 @@ model RecipeCookStat {
   @@index([householdId])
 }
 
-
 model HowToBadge {
-  id          String          @id @default(cuid())
-  slug        String          @unique
+  id          String           @id @default(cuid())
+  slug        String           @unique
   title       String
   description String?
-  emoji       String          @default("🏅")
-  /** Public URL path e.g. /badge-images/xyz.jpg (local public/). */
+  emoji       String           @default("🏅")
+  /**
+   * Public URL path e.g. /badge-images/xyz.jpg (local public/).
+   */
   imageUrl    String?
-  /** howto = course award catalog; manual = admin-created award badge. */
-  kind        String          @default("howto")
-  createdAt   DateTime        @default(now())
+  /**
+   * howto = course award catalog; manual = admin-created award badge.
+   */
+  kind        String           @default("howto")
+  createdAt   DateTime         @default(now())
   courses     HowToCourse[]
   awards      HowToUserBadge[]
 }
 
 model HowToCourse {
-  id          String       @id @default(cuid())
-  slug        String       @unique
+  id          String        @id @default(cuid())
+  slug        String        @unique
   title       String
   description String?
-  sortOrder   Int          @default(0)
+  sortOrder   Int           @default(0)
   badgeId     String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  badge       HowToBadge?  @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  badge       HowToBadge?   @relation(fields: [badgeId], references: [id], onDelete: SetNull)
   lessons     HowToLesson[]
 
   @@index([sortOrder])
@@ -531,7 +664,9 @@ model HowToLesson {
   slug             String
   title            String
   summary          String?
-  /** Plain-text lesson body; paragraphs separated by blank lines. */
+  /**
+   * Plain-text lesson body; paragraphs separated by blank lines.
+   */
   body             String
   sortOrder        Int                   @default(0)
   estimatedMinutes Int?
@@ -546,11 +681,11 @@ model HowToLesson {
 }
 
 model HowToLessonProgress {
-  id          String     @id @default(cuid())
+  id          String      @id @default(cuid())
   userId      String
   lessonId    String
-  completedAt DateTime   @default(now())
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt DateTime    @default(now())
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson      HowToLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
@@ -562,7 +697,9 @@ model HowToUserBadge {
   id        String     @id @default(cuid())
   userId    String
   badgeId   String
-  /** Course that triggered the award (optional for future one-off badges). */
+  /**
+   * Course that triggered the award (optional for future one-off badges).
+   */
   courseId  String?
   awardedAt DateTime   @default(now())
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -573,21 +710,32 @@ model HowToUserBadge {
   @@index([badgeId])
 }
 
-
-/** Struggle Mode hub cards (budget tips + kids-eat-free) — admin-editable. */
+/**
+ * Struggle Mode hub cards (budget tips + kids-eat-free) — admin-editable.
+ */
 model StruggleResource {
   id        String   @id @default(cuid())
-  /** tip | kids_meal */
+  /**
+   * tip | kids_meal
+   */
   kind      String
   title     String
   slug      String   @unique
-  /** Short blurb on the list card. */
+  /**
+   * Short blurb on the list card.
+   */
   summary   String
-  /** Longer detail article (plain text; blank lines = paragraphs; optional markdown links). */
+  /**
+   * Longer detail article (plain text; blank lines = paragraphs; optional markdown links).
+   */
   body      String   @default("")
-  /** JSON array: [{ "label": string, "url": string }] */
+  /**
+   * JSON array: [{ "label": string, "url": string }]
+   */
   linksJson String   @default("[]")
-  /** Kids-meal cadence badge, e.g. "Wed", "Mon", "app Tue". */
+  /**
+   * Kids-meal cadence badge, e.g. "Wed", "Mon", "app Tue".
+   */
   whenLabel String?
   sortOrder Int      @default(0)
   published Boolean  @default(true)
@@ -599,7 +747,9 @@ model StruggleResource {
   @@index([kind, published, sortOrder])
 }
 
-/** Pinned recipes on a public profile: kind "own" (my top 3) or "favorite" (from other cooks). */
+/**
+ * Pinned recipes on a public profile: kind "own" (my top 3) or "favorite" (from other cooks).
+ */
 model ProfilePin {
   id        String   @id @default(cuid())
   userId    String
@@ -621,23 +771,25 @@ model ProfilePin {
  * internal for admin moderation.
  */
 model SharedProduct {
-  id                    String   @id @default(cuid())
-  barcode               String   @unique
-  name                  String
-  size                  String?
-  unit                  String?
-  category              String?
-  imageUrl              String?
-  createdByUserId       String?
-  createdByHouseholdId  String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  barcode              String   @unique
+  name                 String
+  size                 String?
+  unit                 String?
+  category             String?
+  imageUrl             String?
+  createdByUserId      String?
+  createdByHouseholdId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([createdByUserId, createdAt])
   @@index([name])
 }
 
-/** Household-only product info for a barcode; beats SharedProduct for that household. */
+/**
+ * Household-only product info for a barcode; beats SharedProduct for that household.
+ */
 model HouseholdProductOverride {
   id          String    @id @default(cuid())
   householdId String
@@ -661,26 +813,130 @@ model HouseholdProductOverride {
  * one-time: only the sha256 of the current link token is stored.
  */
 model ExportJob {
-  id              String    @id @default(cuid())
-  /** full | user | content */
-  kind            String
-  targetUserId    String?
-  /** queued | running | done | failed | expired */
-  status          String    @default("queued")
-  progress        String?
-  encrypted       Boolean   @default(false)
-  fileName        String?
-  sizeBytes       Int?
-  manifestSha256  String?
-  error           String?
-  linkTokenHash   String?   @unique
-  linkExpiresAt   DateTime?
-  downloadCount   Int       @default(0)
-  expiresAt       DateTime?
-  createdById     String
-  createdAt       DateTime  @default(now())
-  finishedAt      DateTime?
+  id             String    @id @default(cuid())
+  /**
+   * full | user | content
+   */
+  kind           String
+  targetUserId   String?
+  /**
+   * queued | running | done | failed | expired
+   */
+  status         String    @default("queued")
+  progress       String?
+  encrypted      Boolean   @default(false)
+  fileName       String?
+  sizeBytes      Int?
+  manifestSha256 String?
+  error          String?
+  linkTokenHash  String?   @unique
+  linkExpiresAt  DateTime?
+  downloadCount  Int       @default(0)
+  expiresAt      DateTime?
+  createdById    String
+  createdAt      DateTime  @default(now())
+  finishedAt     DateTime?
 
   @@index([createdById, createdAt])
   @@index([status])
+}
+
+/**
+ * Public featured profile. Today only profileType "chef" (Chef's Corner); the
+ * type field leaves room for other profile kinds later without a new table.
+ * Linked to a user account (self-managed) or admin-managed with userId null.
+ */
+model FeaturedProfile {
+  id          String        @id @default(cuid())
+  profileType String        @default("chef")
+  slug        String        @unique
+  name        String
+  photoUrl    String?
+  bio         String?
+  /**
+   * JSON string array, e.g. ["Le Cordon Bleu", "15 years line cook"].
+   */
+  credentials String        @default("[]")
+  /**
+   * JSON array of {label,url} https links.
+   */
+  links       String        @default("[]")
+  youtubeUrl  String?
+  userId      String?       @unique
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /**
+   * Set when an admin features/pins the profile; drives "most recently featured".
+   */
+  featuredAt  DateTime?
+  hidden      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  recipes     Recipe[]
+  posts       Post[]
+  pins        FeaturedPin[]
+
+  @@index([profileType, featuredAt])
+}
+
+/**
+ * The Kitchen Table: articles, how-tos and announcements.
+ */
+model Post {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  /**
+   * article | howto | announcement
+   */
+  kind             String           @default("article")
+  title            String
+  excerpt          String?
+  coverUrl         String?
+  /**
+   * Sanitized HTML (lib/content/sanitize).
+   */
+  bodyHtml         String           @default("")
+  tags             String           @default("[]")
+  relatedRecipeIds String           @default("[]")
+  /**
+   * draft | review | scheduled | published
+   */
+  status           String           @default("draft")
+  publishAt        DateTime?
+  publishedAt      DateTime?
+  /**
+   * null | "Sponsored" | "Partner"
+   */
+  sponsorLabel     String?
+  reviewNote       String?
+  authorUserId     String?
+  author           User?            @relation("PostAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  profileId        String?
+  profile          FeaturedProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  pins             FeaturedPin[]
+
+  @@index([status, publishAt])
+  @@index([authorUserId])
+  @@index([profileId])
+}
+
+/**
+ * Admin-pinned items for the home Featured strip.
+ */
+model FeaturedPin {
+  id          String           @id @default(cuid())
+  /**
+   * profile | post
+   */
+  kind        String
+  profileId   String?
+  profile     FeaturedProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  position    Int              @default(0)
+  createdById String?
+  createdAt   DateTime         @default(now())
+
+  @@index([position])
 }

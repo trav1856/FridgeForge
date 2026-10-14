@@ -142,6 +142,10 @@ Moves catalog content to another FridgeForge install:
   Owner and household are removed (set to null).
 - \`content/HowToBadge\`, \`HowToCourse\`, \`HowToLesson\`, \`StruggleResource\`.
 - \`content/SharedProduct\`: the shared barcode catalog, creator removed.
+- \`content/FeaturedProfile\`: Chef's Corner profiles that are visible, with the
+  linked account removed (userId set to null), so they import as admin-managed chefs.
+- \`content/Post\`: live Kitchen Table posts (no drafts), author account removed.
+- \`content/FeaturedPin\`: home-page pins for those chefs and posts.
 - \`uploads/\`: images those rows reference.
 
 No users, emails, households, pantries, reviews, favorites or sessions.
@@ -170,7 +174,7 @@ const require = createRequire(path.join(appDir, "package.json"));
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const ORDER = ["HowToBadge", "HowToCourse", "HowToLesson", "StruggleResource", "Recipe", "RecipeIngredient", "SharedProduct"];
+const ORDER = ["HowToBadge", "HowToCourse", "HowToLesson", "StruggleResource", "FeaturedProfile", "Recipe", "RecipeIngredient", "SharedProduct", "Post", "FeaturedPin"];
 const lower = (m) => m[0].toLowerCase() + m.slice(1);
 
 async function main() {

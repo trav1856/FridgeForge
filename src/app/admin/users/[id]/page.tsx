@@ -178,6 +178,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
   const isSelf = admin.id === user.id;
   const isLastAdmin = user.role === "admin" && !user.disabled && activeAdmins <= 1;
+  const chefProfile = await prisma.featuredProfile.findUnique({ where: { userId: user.id }, select: { slug: true } });
 
   const privateBy = new Map(privateRecipeCounts.map((r) => [r.householdId, r._count._all]));
   const deletePreview: string[] = [
@@ -233,6 +234,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-2xl font-bold text-sage-900">{user.name || user.email.split("@")[0]}</h2>
               <RoleBadge role={user.role} />
+              {user.isChef && <span className="badge bg-amber-100 font-semibold text-amber-900">Chef</span>}
               <PlanBadge plan={user.plan} />
               <StatusBadge disabled={user.disabled} />
               {isSelf && <span className="badge bg-cream-200 font-semibold text-sage-700">You</span>}
@@ -390,6 +392,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               disabled: user.disabled,
               disabledReason: user.disabledReason,
               disabledSummary,
+              isChef: user.isChef,
+              chefCanPublish: user.chefCanPublish,
+              chefProfileSlug: chefProfile?.slug ?? null,
             }}
             isSelf={isSelf}
             isLastAdmin={isLastAdmin}
@@ -406,7 +411,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 {audit.map((a) => {
                   const d = (a.details ?? {}) as Record<string, unknown>;
                   const extra =
-                    a.action === "user.role" || a.action === "user.plan"
+                    a.action === "user.role" || a.action === "user.plan" || a.action === "user.chef" || a.action === "user.chef_publish"
                       ? ` ${String(d.from)} → ${String(d.to)}`
                       : a.action === "user.suspend" && typeof d.reason === "string"
                         ? ` — “${d.reason}”`

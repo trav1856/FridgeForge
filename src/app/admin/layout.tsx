@@ -10,6 +10,9 @@ const ADMIN_LINKS = [
   { href: "/admin/badges", label: "Badges" },
   { href: "/admin/struggle", label: "Struggle" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/chefs", label: "Chefs" },
+  { href: "/admin/posts", label: "Posts" },
+  { href: "/admin/featured", label: "Featured" },
   { href: "/admin/export", label: "Export" },
 ];
 

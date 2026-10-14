@@ -80,6 +80,8 @@ export function Nav() {
 
   const accountActive = pathname.startsWith("/account");
   const adminActive = pathname.startsWith("/admin");
+  const chefsActive =
+    pathname.startsWith("/chefs") || pathname.startsWith("/kitchen-table") || pathname.startsWith("/studio");
 
   return (
     <header className="sticky top-0 z-40 border-b border-cream-300/70 bg-cream-50/90 backdrop-blur-md">
@@ -164,35 +166,50 @@ export function Nav() {
         </div>
       </div>
 
-      <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
-        {[
-          ...baseLinks,
-          ...(struggleMode ? [struggleLink] : []),
-        ].map((l) => {
-          const [hrefPath] = l.href.split("?");
-          let active = false;
-          if (l.href === "/") {
-            active = pathname === "/";
-          } else if (hrefPath === "/recipes") {
-            active = pathname.startsWith("/recipes");
-          } else {
-            active = pathname.startsWith(hrefPath!);
-          }
-          return (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={clsx(
-                "whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition",
-                active
-                  ? "bg-sage-800 text-cream-50"
-                  : "text-sage-700 hover:bg-sage-100"
-              )}
-            >
-              {l.label}
-            </Link>
-          );
-        })}
+      <nav className="mx-auto flex max-w-5xl items-center gap-1 px-3 pb-2" aria-label="Main">
+        <div className="ff-nav-scroll flex min-w-0 flex-1 gap-1 overflow-x-auto">
+          {[
+            ...baseLinks,
+            ...(struggleMode ? [struggleLink] : []),
+          ].map((l) => {
+            const [hrefPath] = l.href.split("?");
+            let active = false;
+            if (l.href === "/") {
+              active = pathname === "/";
+            } else if (hrefPath === "/recipes") {
+              active = pathname.startsWith("/recipes");
+            } else {
+              active = pathname.startsWith(hrefPath!);
+            }
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={clsx(
+                  "whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition sm:px-3.5",
+                  active
+                    ? "bg-sage-800 text-cream-50"
+                    : "text-sage-700 hover:bg-sage-100"
+                )}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
+        </div>
+        {/* Always the last item and always visible (outside the scroll area). */}
+        <Link
+          href="/chefs"
+          data-testid="nav-chefs"
+          className={clsx(
+            "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition sm:px-3.5",
+            chefsActive
+              ? "border-sage-800 bg-sage-800 text-cream-50"
+              : "border-ember-200 bg-ember-50 text-ember-800 hover:bg-ember-100"
+          )}
+        >
+          Chef&apos;s Corner
+        </Link>
       </nav>
     </header>
   );
