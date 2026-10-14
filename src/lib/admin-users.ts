@@ -45,6 +45,7 @@ export const AUDIT_ACTIONS = [
   "profile.feature",
   "pin.add",
   "pin.remove",
+  "analytics.export",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -72,6 +73,7 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "profile.feature": "changed featured chef",
   "pin.add": "pinned to home",
   "pin.remove": "unpinned from home",
+  "analytics.export": "exported analytics summary",
 };
 
 /** Delete requires an export by the same admin within this window. */

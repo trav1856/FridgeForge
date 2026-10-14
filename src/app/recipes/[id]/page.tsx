@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { serializeRecipe } from "@/lib/mappers";
 import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
+import { recordRecipeView } from "@/lib/demographics/taste";
 import { canRequestRecipe, recipeIsReadable } from "@/lib/recipe-request";
 import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
 import { RecipeDeals } from "@/components/RecipeDeals";
@@ -85,6 +86,10 @@ export default async function RecipeDetailPage({ params }: Props) {
     })
   )
     notFound();
+  if (user) {
+    // Private per-user taste history (cuisine snapshot); never blocks the page.
+    await recordRecipeView(user.id, { id: raw.id, cuisine: raw.cuisine ?? null }).catch(() => {});
+  }
   const showRequest = canRequestRecipe(
     {
       id: raw.id,

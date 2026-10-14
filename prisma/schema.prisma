@@ -133,6 +133,8 @@ model User {
   chefCanPublish         Boolean               @default(true)
   featuredProfile        FeaturedProfile?
   posts                  Post[]                @relation("PostAuthor")
+  userDemographics       UserDemographics[]
+  recipeViews            RecipeView[]
 
   @@index([createdAt])
   @@index([lastActiveAt])
@@ -389,6 +391,7 @@ model Recipe {
    */
   chefProfileId       String?
   chefProfile         FeaturedProfile?    @relation(fields: [chefProfileId], references: [id], onDelete: SetNull)
+  recipeViews         RecipeView[]
 
   @@index([chefProfileId])
   @@index([householdId])
@@ -939,4 +942,55 @@ model FeaturedPin {
   createdAt   DateTime         @default(now())
 
   @@index([position])
+}
+
+/**
+ * Optional, private demographics (account/profile). Never shown publicly.
+ * Aggregate research reports only include rows with researchConsent=true AND
+ * age16ConfirmedAt set (age checked from a date of birth that is not stored).
+ */
+model UserDemographics {
+  userId           String    @id
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * null = prefer not to say | "male" | "female"
+   */
+  sex              String?
+  /**
+   * JSON array of heritage ids (lib/demographics/options).
+   */
+  ethnicities      String    @default("[]")
+  /**
+   * JSON array of ISO 3166-1 alpha-2 codes.
+   */
+  originCountries  String    @default("[]")
+  researchConsent  Boolean   @default(false)
+  consentAt        DateTime?
+  /**
+   * When the user's age was verified as 16+ for research inclusion (DOB not stored).
+   */
+  age16ConfirmedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([researchConsent])
+}
+
+/**
+ * One row per user, recipe and day viewed (dedupes reloads). Cuisine copied at view time.
+ */
+model RecipeView {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  cuisine  String?
+  day      DateTime @db.Date
+  views    Int      @default(1)
+  lastAt   DateTime @default(now())
+
+  @@unique([userId, recipeId, day])
+  @@index([cuisine])
+  @@index([userId])
 }

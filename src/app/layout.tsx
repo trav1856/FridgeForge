@@ -40,6 +40,9 @@ export default function RootLayout({
             <Nav />
           </Suspense>
           <main className="mx-auto max-w-5xl px-4 py-6 pb-16">{children}</main>
+          <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs text-sage-600" data-testid="site-footer">
+            <a href="/privacy" className="hover:underline">Privacy</a>
+          </footer>
         </StruggleModeProvider>
       </body>
     </html>
