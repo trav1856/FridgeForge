@@ -52,7 +52,9 @@ async function deals(recipeId: string | null, guestPantryRaw: unknown) {
     : parseGuestPantry(guestPantryRaw);
   const coupons = householdId ? dbCoupons : sampleCouponsForMatching();
 
-  if (!recipe || !recipeRowMatchesScope(recipe.householdId, householdId)) {
+  // Global/public recipes are readable by everyone (e.g. a chef's recipe owned by their household).
+  const isPublic = recipe ? ["global", "public"].includes(recipe.visibility) : false;
+  if (!recipe || !(isPublic || recipeRowMatchesScope(recipe.householdId, householdId))) {
     return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
   }
 
