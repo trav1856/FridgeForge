@@ -17,7 +17,7 @@ function settingsChanged(plan: DietWeekPlan, s: ReturnType<typeof toSettings>) {
 
 export async function GET() {
   const auth = await requireProfileOwner();
-  if (!auth.ok) return auth.res;
+  if (!auth.ok) return NextResponse.json({ signedIn: false, settings: null, plan: null }, NS);
   const settings = await getDietSettings(auth.user.id);
   if (!settings) return NextResponse.json({ settings: null, plan: null }, NS);
   const householdId = await resolveHouseholdId();

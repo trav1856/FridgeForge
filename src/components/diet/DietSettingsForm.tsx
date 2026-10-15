@@ -24,8 +24,9 @@ export function DietSettingsForm() {
 
   useEffect(() => {
     fetch("/api/diet/settings", { cache: "no-store" }).then(async (r) => {
-      if (r.status === 401) { setSignedOut(true); return; }
-      const { settings } = (await r.json()) as { settings: S | null };
+      const x = (await r.json()) as { settings: S | null; signedIn?: boolean };
+      if (x.signedIn === false) { setSignedOut(true); return; }
+      const { settings } = x;
       if (settings) {
         setAgeBand(settings.ageBand); setDietType(settings.dietType); setKcal(String(settings.kcalTarget)); setMeals(settings.mealsPerDay);
         setCustom(settings.customSplit); setSplit(settings.split);
@@ -120,7 +121,7 @@ export function DietSettingsForm() {
         </label>
       )}
 
-      <DietDisclaimer />
+      <DietDisclaimer minor={minor} />
       <label className="flex items-start gap-2 text-sm text-sage-800">
         <input type="checkbox" className="mt-1" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} data-testid="diet-accept" />
         I understand these are estimates and not medical advice.

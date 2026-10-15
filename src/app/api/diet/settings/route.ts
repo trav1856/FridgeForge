@@ -11,8 +11,9 @@ const NS = { headers: { "Cache-Control": "no-store" } };
 
 export async function GET() {
   const auth = await requireProfileOwner();
-  if (!auth.ok) return auth.res;
-  return NextResponse.json({ settings: await getDietSettings(auth.user.id) }, NS);
+  // Guests get a 200 "signed out" answer so the page can show a sign-in prompt without a console error.
+  if (!auth.ok) return NextResponse.json({ signedIn: false, settings: null }, NS);
+  return NextResponse.json({ signedIn: true, settings: await getDietSettings(auth.user.id) }, NS);
 }
 
 export async function PUT(req: NextRequest) {

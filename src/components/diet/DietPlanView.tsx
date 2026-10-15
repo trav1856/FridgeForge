@@ -28,8 +28,8 @@ export function DietPlanView() {
 
   useEffect(() => {
     fetch("/api/diet/plan", { cache: "no-store" }).then(async (r) => {
-      if (r.status === 401) return setState("signedout");
       const x = await r.json();
+      if (x.signedIn === false) return setState("signedout");
       if (!x.settings) return setState("nosettings");
       setSettings(x.settings); setPlan(x.plan); setExcluded(x.excluded ?? null); setState("ready");
     }).catch(() => setErr("Couldn't load your plan."));
@@ -179,7 +179,7 @@ export function DietPlanView() {
           </ul>
         </section>
       )}
-      <DietDisclaimer compact />
+      <DietDisclaimer compact minor={s.ageBand === "minor"} />
     </div>
   );
 }

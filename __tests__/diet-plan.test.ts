@@ -26,7 +26,7 @@ import { mealRule, recipeAllowed, servingFit, dayCaps } from "@/lib/diet/rules";
 import { alternatives, buildWeek, fillDay, slotShares, slotsFor, scale, type Candidate, type Settings } from "@/lib/diet/planner";
 import { saveDietSettings, validateSettings } from "@/lib/diet/service";
 import { buildSnapshot } from "@/lib/nutrition/snapshot";
-import { DIET_DISCLAIMER } from "@/lib/diet/disclaimer";
+import { DIET_DISCLAIMER, DIET_DISCLAIMER_MINOR } from "@/lib/diet/disclaimer";
 import { GET as settingsGET, PUT as settingsPUT } from "@/app/api/diet/settings/route";
 import { GET as planGET, POST as planPOST } from "@/app/api/diet/plan/route";
 import { POST as nutritionPOST } from "@/app/api/admin/nutrition/route";
@@ -191,14 +191,18 @@ describe("settings validation", () => {
     expect(s).toMatchObject({ dietType: "keto", ageBand: "adult" });
     expect(JSON.stringify(h.settings.get("u2"))).not.toContain("1990");
   });
-  it("disclaimer text is present", () => { expect(DIET_DISCLAIMER).toMatch(/not medical or dietary advice/); });
+  it("disclaimer text is present; minor variant names no diet", () => {
+    expect(DIET_DISCLAIMER).toMatch(/not medical or dietary advice/);
+    expect(DIET_DISCLAIMER_MINOR).toMatch(/not medical or dietary advice/);
+    expect(DIET_DISCLAIMER_MINOR).not.toMatch(/keto|calorie intake/i);
+  });
 });
 
 describe("API guards", () => {
   it("guests get 401; cross-site blocked; non-admin 403 on admin nutrition", async () => {
-    expect((await settingsGET()).status).toBe(401);
+    const g = await settingsGET(); expect(g.status).toBe(200); expect((await g.json()).signedIn).toBe(false);
     expect((await settingsPUT(req("/api/diet/settings", "PUT", {}))).status).toBe(401);
-    expect((await planGET()).status).toBe(401);
+    expect(await (await planGET()).json()).toMatchObject({ signedIn: false, plan: null });
     expect((await planPOST(req("/api/diet/plan", "POST", { action: "build" }))).status).toBe(401);
     expect((await nutritionPOST(req("/api/admin/nutrition", "POST", { action: "recompute" }))).status).toBe(401);
     auth.user = { id: "u9", role: "user", disabled: false };
