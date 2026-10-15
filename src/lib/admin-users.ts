@@ -46,6 +46,8 @@ export const AUDIT_ACTIONS = [
   "pin.add",
   "pin.remove",
   "analytics.export",
+  "nutrition.recompute",
+  "nutrition.servings_flag",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -74,6 +76,8 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "pin.add": "pinned to home",
   "pin.remove": "unpinned from home",
   "analytics.export": "exported analytics summary",
+  "nutrition.recompute": "recomputed nutrition snapshots",
+  "nutrition.servings_flag": "changed servings review flag",
 };
 
 /** Delete requires an export by the same admin within this window. */

@@ -95,7 +95,7 @@ export default async function AdminRecipeDetailPage({ params }: Props) {
 
   const { owner, household, _count, ...rest } = raw;
   const recipe = serializeRecipe(rest);
-  const nutrition = estimateRecipeNutrition(recipe.ingredients, recipe.servings);
+  const nutrition = estimateRecipeNutrition(recipe.ingredients, recipe.servings, { context: { title: recipe.title, steps: recipe.steps } });
 
   const flags: AdminFlagValues = Object.fromEntries(
     ADMIN_FLAG_KEYS.map((k) => [k, Boolean(recipe[k])])

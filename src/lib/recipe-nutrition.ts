@@ -70,6 +70,10 @@ export type NutritionTableEntry = Macros & {
   gPerTsp?: number;
   /** Grams for one "each" / piece / clove / egg / etc. */
   gPerEach?: number;
+  /** Grams for one can (default 400 g when absent). */
+  gPerCan?: number;
+  /** Grams for one package (no default: unknown package size stays unmatched). */
+  gPerPackage?: number;
   /** Extra match phrases beyond the table key. */
   aliases?: string[];
 };
@@ -112,6 +116,7 @@ export const NUTRITION_TABLE: Record<string, NutritionTableEntry> = {
     carbs: 25,
     fiber: 1.8,
     gPerCup: 140, // cooked
+    gPerPackage: 454, // 1 lb box; weight/package amounts are re-mapped to "dry pasta"
     iron: 1.3,
     potassium: 44,
     calcium: 7,
@@ -293,6 +298,7 @@ aliases: ["vegetable oil", "cooking oil", "canola oil", "olive oil", "neutral oi
     carbs: 0,
     sodium: 247,
     gPerEach: 140, // typical can drained-ish
+    gPerCan: 140,
     saturatedFat: 0.2,
     cholesterol: 30,
     iron: 1.6,
@@ -309,6 +315,7 @@ aliases: ["vegetable oil", "cooking oil", "canola oil", "olive oil", "neutral oi
     sodium: 238,
     gPerCup: 170,
     gPerEach: 425, // can
+    gPerCan: 425,
     sugars: 0.3,
     iron: 2.1,
     potassium: 355,
@@ -410,6 +417,7 @@ aliases: ["carrots"],
     carbs: 3.9,
     fiber: 1.2,
     gPerEach: 123,
+    gPerCan: 400,
     gPerCup: 180,
     sugars: 2.6,
     potassium: 237,
@@ -653,6 +661,41 @@ aliases: ["lemon juice", "lemons"],
     iron: 0.2,
     aliases: ["stock", "chicken broth", "vegetable broth"],
   },
+  // ---- Oct 2026 additions (USDA FoodData Central rounded, per 100 g) ----
+  "dry pasta": { kcal: 371, protein: 13, fat: 1.5, carbs: 75, fiber: 3.2, sugars: 2.7, sodium: 6, iron: 3.3, potassium: 223, calcium: 21, gPerCup: 100, gPerPackage: 454, aliases: ["dry spaghetti", "uncooked pasta", "uncooked spaghetti"] },
+  "raw rice": { kcal: 365, protein: 7.1, fat: 0.7, carbs: 80, fiber: 1.3, sugars: 0.1, sodium: 5, iron: 0.8, potassium: 115, calcium: 28, gPerCup: 185, aliases: ["uncooked rice", "dry rice", "uncooked white rice", "raw white rice"] },
+  "whole chicken": { kcal: 215, protein: 18.6, fat: 15, carbs: 0, saturatedFat: 4.3, cholesterol: 75, sodium: 70, iron: 0.9, potassium: 189, calcium: 11, gPerEach: 1000, aliases: ["roasting chicken", "whole roasting chicken"] }, // gPerEach = edible meat+skin of a ~1.6 kg bird
+  ramen: { kcal: 440, protein: 10, fat: 17, carbs: 63, fiber: 2.4, sodium: 700, saturatedFat: 7.6, iron: 4.3, potassium: 120, calcium: 20, gPerEach: 85, aliases: ["ramen noodles", "instant noodles", "instant ramen"] }, // noodle block without seasoning packet
+  broccoli: { kcal: 34, protein: 2.8, fat: 0.4, carbs: 6.6, fiber: 2.6, sugars: 1.7, sodium: 33, potassium: 316, calcium: 47, iron: 0.7, gPerCup: 91, gPerEach: 300, aliases: ["broccoli florets", "broccoli crowns"] },
+  banana: { kcal: 89, protein: 1.1, fat: 0.3, carbs: 23, fiber: 2.6, sugars: 12, sodium: 1, potassium: 358, calcium: 5, iron: 0.3, gPerEach: 118, gPerCup: 225, aliases: ["bananas", "ripe bananas", "mashed banana"] },
+  "chocolate chips": { kcal: 480, protein: 4.2, fat: 30, carbs: 63, fiber: 5.9, sugars: 55, addedSugars: 52, saturatedFat: 18, sodium: 11, iron: 3.1, potassium: 365, calcium: 32, gPerCup: 170, gPerTbsp: 10, aliases: ["semisweet chocolate chips", "semi-sweet chocolate chips", "chocolate chunks"] },
+  apple: { kcal: 52, protein: 0.3, fat: 0.2, carbs: 14, fiber: 2.4, sugars: 10, sodium: 1, potassium: 107, calcium: 6, iron: 0.1, gPerEach: 182, gPerCup: 110, aliases: ["apples", "medium apples", "medium apple", "granny smith apples"] },
+  "canned pumpkin": { kcal: 34, protein: 1.1, fat: 0.3, carbs: 8.1, fiber: 2.9, sugars: 3.3, sodium: 5, potassium: 206, calcium: 26, iron: 1.4, gPerCup: 245, gPerCan: 425, aliases: ["pumpkin puree", "canned pure pumpkin", "pure pumpkin"] },
+  shortening: { kcal: 884, protein: 0, fat: 100, carbs: 0, saturatedFat: 25, transFat: 1, gPerCup: 205, gPerTbsp: 13, aliases: ["vegetable shortening"] },
+  prunes: { kcal: 107, protein: 1, fat: 0.2, carbs: 28, fiber: 3.1, sugars: 25, sodium: 1, potassium: 321, calcium: 19, iron: 0.4, gPerCup: 248, aliases: ["pitted prunes", "stewed prunes"] }, // stewed
+  apricots: { kcal: 85, protein: 1.2, fat: 0.2, carbs: 22, fiber: 2.6, sugars: 20, sodium: 4, potassium: 380, calcium: 18, iron: 1, gPerCup: 250, aliases: ["dried apricots", "stewed apricots"] }, // stewed dried
+  walnuts: { kcal: 654, protein: 15, fat: 65, carbs: 14, fiber: 6.7, saturatedFat: 6.1, sugars: 2.6, sodium: 2, potassium: 441, calcium: 98, iron: 2.9, gPerCup: 117, aliases: ["chopped walnuts", "walnut"] },
+  "orange juice": { kcal: 45, protein: 0.7, fat: 0.2, carbs: 10.4, fiber: 0.2, sugars: 8.4, sodium: 1, potassium: 200, calcium: 11, iron: 0.2, gPerCup: 248 },
+  "orange zest": { kcal: 97, protein: 1.5, fat: 0.2, carbs: 25, fiber: 10.6, gPerEach: 6, gPerTsp: 2, aliases: ["orange zested", "zested orange", "orange peel"] },
+  kimchi: { kcal: 15, protein: 1.1, fat: 0.5, carbs: 2.4, fiber: 1.6, sugars: 1.1, sodium: 498, potassium: 151, calcium: 33, iron: 2.5, gPerCup: 150, aliases: ["spicy kimchi", "napa kimchi"] },
+  "sesame seeds": { kcal: 573, protein: 18, fat: 50, carbs: 23, fiber: 12, saturatedFat: 7, sodium: 11, calcium: 975, iron: 14.6, potassium: 468, gPerTbsp: 9, gPerTsp: 3, aliases: ["toasted sesame seeds"] },
+  "hoisin sauce": { kcal: 220, protein: 3.3, fat: 3.4, carbs: 44, fiber: 2.8, sugars: 27, sodium: 1615, gPerTbsp: 16, aliases: ["hoisin"] },
+  mirin: { kcal: 230, protein: 0.2, fat: 0, carbs: 45, sugars: 40, sodium: 180, gPerTbsp: 18 },
+  "teriyaki sauce": { kcal: 89, protein: 5.9, fat: 0, carbs: 16, sugars: 14, sodium: 3833, gPerTbsp: 18, aliases: ["teriyaki"] },
+  "sour cream": { kcal: 198, protein: 2.4, fat: 19, carbs: 4.6, saturatedFat: 10, cholesterol: 59, sodium: 31, calcium: 101, potassium: 125, gPerTbsp: 12, gPerCup: 230 },
+  peas: { kcal: 77, protein: 5.2, fat: 0.4, carbs: 13.6, fiber: 4.5, sugars: 5, sodium: 108, potassium: 153, calcium: 22, iron: 1.5, gPerCup: 134, aliases: ["frozen peas", "green peas"] },
+  "bell pepper": { kcal: 26, protein: 1, fat: 0.3, carbs: 6, fiber: 2.1, sugars: 4.2, sodium: 4, potassium: 211, calcium: 7, iron: 0.4, gPerEach: 120, gPerCup: 150, aliases: ["red bell pepper", "green bell pepper", "bell peppers"] },
+  cinnamon: { kcal: 247, protein: 4, fat: 1.2, carbs: 81, fiber: 53, calcium: 1002, gPerTsp: 2.6, aliases: ["ground cinnamon"] },
+  cumin: { kcal: 375, protein: 18, fat: 22, carbs: 44, fiber: 11, iron: 66, gPerTsp: 2, aliases: ["ground cumin"] },
+  oregano: { kcal: 265, protein: 9, fat: 4.3, carbs: 69, fiber: 43, gPerTsp: 1, aliases: ["dried oregano"] },
+  ginger: { kcal: 335, protein: 9, fat: 4.2, carbs: 72, fiber: 14, gPerTsp: 1.8, aliases: ["ground ginger"] },
+  "ground cloves": { kcal: 274, protein: 6, fat: 13, carbs: 66, fiber: 34, gPerTsp: 2.1 },
+  "five spice": { kcal: 350, protein: 8, fat: 9, carbs: 70, fiber: 35, gPerTsp: 2, aliases: ["chinese five spice", "chinese five spice powder", "five spice powder"] },
+  "baking powder": { kcal: 53, protein: 0, fat: 0, carbs: 28, sodium: 10600, calcium: 5876, gPerTsp: 4.6 },
+  "baking soda": { kcal: 0, protein: 0, fat: 0, carbs: 0, sodium: 27360, gPerTsp: 4.6 },
+  "vanilla extract": { kcal: 288, protein: 0.1, fat: 0.1, carbs: 12.7, sugars: 12.7, gPerTsp: 4.2, aliases: ["vanilla"] },
+  "bay leaves": { kcal: 313, protein: 7.6, fat: 8.4, carbs: 75, gPerEach: 0.2, aliases: ["bay leaf"] },
+  basil: { kcal: 23, protein: 3.2, fat: 0.6, carbs: 2.7, fiber: 1.6, gPerEach: 0.5, gPerCup: 24, aliases: ["fresh basil", "basil leaves"] },
 };
 
 const WEIGHT_TO_G: Record<string, number> = {
@@ -700,8 +743,6 @@ const COUNT_UNITS = new Set([
   "ea",
   "clove",
   "cloves",
-  "can",
-  "cans",
   "slice",
   "slices",
   "piece",
@@ -947,6 +988,11 @@ export function quantityToGrams(
     if (entry.gPerTsp != null) return qty * entry.gPerTsp * 3;
   }
 
+  if (key === "can" || key === "cans") return qty * (entry.gPerCan ?? 400);
+  if (key === "package" || key === "packages" || key === "pkg" || key === "box") {
+    return entry.gPerPackage != null ? qty * entry.gPerPackage : null;
+  }
+
   const ml = VOLUME_TO_ML[key];
   if (ml != null) {
     const gPerCup = entry.gPerCup ?? 200; // generic dry/liquid fallback
@@ -966,7 +1012,11 @@ export function quantityToGrams(
 
 export type IngredientNutritionLine = {
   name: string;
+  quantity?: number;
+  unit?: string;
   matched: boolean;
+  /** Unmatched line that is too small to matter (spices, leaveners, a splash). */
+  minor?: boolean;
   key?: string;
   grams?: number;
   macros?: Macros;
@@ -982,6 +1032,8 @@ export type RecipeNutritionEstimate = {
   /** e.g. "Based on 5 of 6 ingredients" when partial */
   coverageLabel: string | null;
   lines: IngredientNutritionLine[];
+  /** Human-readable interpretation choices (e.g. "Spaghetti counted as dry weight"). */
+  assumptions: string[];
 };
 
 export type EstimateOptions = {
@@ -990,7 +1042,48 @@ export type EstimateOptions = {
    * When a name matches, prefer those per-100g macros over the built-in table.
    */
   pantryNutritionByName?: Record<string, string | null | undefined>;
+  /** Recipe title + steps, used to decide raw vs cooked rice. */
+  context?: { title?: string | null; steps?: string[] | string | null };
 };
+
+/** Bumped whenever the table or interpretation rules change (snapshots store it). */
+export const NUTRITION_ESTIMATOR_VERSION = 2;
+
+const WEIGHT_UNIT_KEYS = new Set(["oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds", "g", "gram", "grams", "kg", "kilogram", "kilograms"]);
+const PACKAGE_UNIT_KEYS = new Set(["package", "packages", "pkg", "box"]);
+
+function stepsText(steps: string[] | string | null | undefined): string {
+  if (!steps) return "";
+  if (Array.isArray(steps)) return steps.join(" ");
+  try { const a = JSON.parse(steps); if (Array.isArray(a)) return a.join(" "); } catch { /* plain text */ }
+  return String(steps);
+}
+
+/** Raw (uncooked) rice? Name wins, then steps; default = cooked (legacy behaviour). */
+export function riceIsRaw(name: string, ctx?: EstimateOptions["context"]): { raw: boolean; certain: boolean } {
+  const n = name.toLowerCase();
+  if (/\b(uncooked|raw|dry)\b/.test(n)) return { raw: true, certain: true };
+  if (/\b(cooked|leftover|day-old|day old|cold)\b/.test(n)) return { raw: false, certain: true };
+  const st = stepsText(ctx?.steps).toLowerCase();
+  if (/\b(cold|leftover|day-old|day old|cooked) (white |brown |jasmine )?rice\b/.test(st)) return { raw: false, certain: true };
+  if (/\b(rinse|cook|boil|simmer|steam)\b[^.]{0,30}\brice\b|\bcombine rice with\b|\brice cooker\b/.test(st)) return { raw: true, certain: true };
+  return { raw: false, certain: false };
+}
+
+/** "2 each | tsp. toasted sesame seeds" → unit tsp, name "toasted sesame seeds". */
+function liftUnitFromName(name: string, unit: string): { name: string; unit: string } {
+  const u = normalizeUnitKey(unit || "each");
+  if (u !== "each" && u !== "ea" && u !== "") return { name, unit };
+  const m = name.match(/^\s*(tsp|teaspoons?|tbsp|tablespoons?|cups?)\.?\s+(.+)$/i);
+  return m ? { name: m[2]!, unit: m[1]!.toLowerCase() } : { name, unit };
+}
+
+function isMinorLine(qty: number, unit: string): boolean {
+  const k = normalizeUnitKey(unit || "");
+  if (k === "tsp" || k === "teaspoon" || k === "teaspoons") return true;
+  if ((k === "tbsp" || k === "tablespoon" || k === "tablespoons") && qty <= 1) return true;
+  return false;
+}
 
 function lookupPantryMacros(
   name: string,
@@ -1021,12 +1114,31 @@ export function estimateRecipeNutrition(
   const safeServings =
     Number.isFinite(servings) && servings > 0 ? servings : 1;
 
-  for (const ing of ingredients) {
+  const assumptions: string[] = [];
+  for (const rawIng of ingredients) {
+    const lifted = liftUnitFromName(rawIng.name, rawIng.unit);
+    const ing = { ...rawIng, name: lifted.name, unit: lifted.unit };
     const pantryMacros = lookupPantryMacros(
       ing.name,
       options?.pantryNutritionByName
     );
-    const found = findNutritionEntry(ing.name);
+    let found = findNutritionEntry(ing.name);
+    if (found?.key === "pasta" && !/\bcooked\b/i.test(ing.name)) {
+      const uk = normalizeUnitKey(ing.unit || "");
+      if (WEIGHT_UNIT_KEYS.has(uk) || PACKAGE_UNIT_KEYS.has(uk)) {
+        found = { key: "dry pasta", entry: NUTRITION_TABLE["dry pasta"]! };
+        assumptions.push(`${rawIng.name}: weight/package amount counted as dry pasta`);
+      }
+    }
+    if (found?.key === "rice") {
+      const r = riceIsRaw(ing.name, options?.context);
+      if (r.raw) {
+        found = { key: "raw rice", entry: NUTRITION_TABLE["raw rice"]! };
+        assumptions.push(`${rawIng.name}: counted as uncooked rice`);
+      } else if (!r.certain) {
+        assumptions.push(`${rawIng.name}: assumed already cooked (recipe doesn't say)`);
+      }
+    }
 
     // Need an entry (or at least gPerEach/volume heuristics) to convert mass.
     // Pantry OFF only gives per-100g — still need grams from table heuristics or weight units.
@@ -1046,13 +1158,13 @@ export function estimateRecipeNutrition(
         : null);
 
     if (!entryForGrams) {
-      lines.push({ name: ing.name, matched: false });
+      lines.push({ name: rawIng.name, quantity: rawIng.quantity, unit: rawIng.unit, matched: false, minor: isMinorLine(ing.quantity, ing.unit) });
       continue;
     }
 
     const grams = quantityToGrams(ing.quantity, ing.unit, entryForGrams);
     if (grams == null || grams <= 0) {
-      lines.push({ name: ing.name, matched: false });
+      lines.push({ name: rawIng.name, quantity: rawIng.quantity, unit: rawIng.unit, matched: false, minor: isMinorLine(ing.quantity, ing.unit) });
       continue;
     }
 
@@ -1064,7 +1176,9 @@ export function estimateRecipeNutrition(
     const lineAccum = emptyMacros();
     addMacros(lineAccum, per100, scale);
     lines.push({
-      name: ing.name,
+      name: rawIng.name,
+      quantity: rawIng.quantity,
+      unit: rawIng.unit,
       matched: true,
       key: found?.key,
       grams: Math.round(grams),
@@ -1074,8 +1188,10 @@ export function estimateRecipeNutrition(
   }
 
   const totalCount = ingredients.length;
-  const roundedTotal = roundMacros(total);
   const perServing = roundMacros(total, safeServings);
+  // Whole recipe is always the displayed per-serving × servings, so the card's
+  // two views (and diet-plan portions) agree exactly.
+  const roundedTotal = scaleMacros(perServing, safeServings);
 
   let coverageLabel: string | null = null;
   if (totalCount === 0) {
@@ -1096,5 +1212,49 @@ export function estimateRecipeNutrition(
     totalCount,
     coverageLabel,
     lines,
+    assumptions,
   };
+}
+
+/** Multiply rounded macros by a factor (servings, or a diet-plan portion) and re-round. */
+export function scaleMacros(m: Macros, factor: number): Macros {
+  const out: Macros = {
+    kcal: roundMacro(m.kcal * factor),
+    protein: roundMacro(m.protein * factor),
+    fat: roundMacro(m.fat * factor),
+    carbs: roundMacro(m.carbs * factor),
+  };
+  for (const key of OPTIONAL_MACRO_KEYS) {
+    const v = m[key];
+    if (v != null) out[key] = roundMacro(v * factor);
+  }
+  return out;
+}
+
+export const TRUST_KCAL_MIN = 50;
+export const TRUST_KCAL_MAX = 1500;
+
+export type NutritionTrust = {
+  trusted: boolean;
+  coveragePct: number;
+  reasons: string[];
+};
+
+/**
+ * Trusted = every non-minor ingredient matched, per-serving kcal plausible,
+ * and servings not flagged for review.
+ */
+export function assessNutritionTrust(
+  est: RecipeNutritionEstimate,
+  opts: { servingsSuspect?: boolean } = {}
+): NutritionTrust {
+  const reasons: string[] = [];
+  const coveragePct = est.totalCount ? Math.round((est.matchedCount / est.totalCount) * 100) : 0;
+  if (est.totalCount === 0) reasons.push("No ingredients");
+  const major = est.lines.filter((l) => !l.matched && !l.minor).map((l) => l.name);
+  if (major.length) reasons.push(`Not in the nutrition table: ${major.join(", ")}`);
+  if (est.totalCount > 0 && est.perServing.kcal < TRUST_KCAL_MIN) reasons.push(`Only ${est.perServing.kcal} kcal per serving (implausibly low)`);
+  if (est.perServing.kcal > TRUST_KCAL_MAX) reasons.push(`${est.perServing.kcal} kcal per serving (implausibly high; check servings)`);
+  if (opts.servingsSuspect) reasons.push("Servings count is waiting for review");
+  return { trusted: reasons.length === 0, coveragePct, reasons };
 }

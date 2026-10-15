@@ -135,6 +135,8 @@ model User {
   posts                  Post[]                @relation("PostAuthor")
   userDemographics       UserDemographics[]
   recipeViews            RecipeView[]
+  dietSettings           UserDietSettings?
+  dietPlan               DietMenuPlan?
 
   @@index([createdAt])
   @@index([lastActiveAt])
@@ -268,12 +270,12 @@ model PantryItem {
 }
 
 model Recipe {
-  id                  String              @id @default(cuid())
+  id                  String                   @id @default(cuid())
   title               String
   description         String?
   steps               String // JSON array of step strings
-  costTier            String              @default("cheap") // cheap | moderate
-  tags                String              @default("[]") // JSON array
+  costTier            String                   @default("cheap") // cheap | moderate
+  tags                String                   @default("[]") // JSON array
   /**
    * Controlled cuisine label from recipe-taxonomy (e.g. Mexican, Italian).
    */
@@ -285,7 +287,7 @@ model Recipe {
   /**
    * JSON array of food category labels (dairy, meat, vegetable, …).
    */
-  foodCategories      String              @default("[]")
+  foodCategories      String                   @default("[]")
   /**
    * Land-meat subtype when applicable: beef | pork | chicken | other. Null if no meat / unknown. Fish stays seafood.
    */
@@ -293,7 +295,7 @@ model Recipe {
   /**
    * JSON array of ethnicity/national-origin foodways ids (see recipe-taxonomy).
    */
-  origins             String              @default("[]")
+  origins             String                   @default("[]")
   /**
    * Short cultural/history blurb shown as “Story behind this food” on detail.
    */
@@ -301,51 +303,51 @@ model Recipe {
   /**
    * JSON array of story media items: {id,kind:"image",url} (managed /recipe-images/user/ path) | {id,kind:"youtube",videoId}.
    */
-  originStoryMedia    String              @default("[]")
+  originStoryMedia    String                   @default("[]")
   /**
    * Normalized dish family slug for variants (e.g. grilled-cheese).
    */
   dishKey             String?
-  servings            Int                 @default(2)
+  servings            Int                      @default(2)
   cookTimeMinutes     Int? // null = unknown; excluded when maxMinutes filter is set
   sourceUrl           String?
   imageUrl            String? // remote URL or /recipe-images/... path
-  isStruggleMeal      Boolean             @default(false)
+  isStruggleMeal      Boolean                  @default(false)
   /**
    * Eligible if prepared with certified kosher ingredients (not a certification claim).
    * Independent of Jewish cuisine/origin — a dish can be Jewish and not kosher, or kosher and not Jewish cuisine.
    */
-  kosherEligible      Boolean             @default(false)
+  kosherEligible      Boolean                  @default(false)
   /**
    * Eligible if prepared with certified halal ingredients (not a certification claim).
    */
-  halalEligible       Boolean             @default(false)
+  halalEligible       Boolean                  @default(false)
   /**
    * No meat/fish (dairy/eggs OK).
    */
-  vegetarianEligible  Boolean             @default(false)
+  vegetarianEligible  Boolean                  @default(false)
   /**
    * Fish/seafood OK; no land meat.
    */
-  pescatarianEligible Boolean             @default(false)
+  pescatarianEligible Boolean                  @default(false)
   /**
    * No animal products.
    */
-  veganEligible       Boolean             @default(false)
+  veganEligible       Boolean                  @default(false)
   /**
    * Animal-based (meat/fish/eggs); mutually exclusive with plant prefs for filtering.
    */
-  carnivoreEligible   Boolean             @default(false)
+  carnivoreEligible   Boolean                  @default(false)
   /**
    * Atkins-style low-carb friendly (independent of preferLowCarb).
    */
-  atkinsEligible      Boolean             @default(false)
-  lowCarbEligible     Boolean             @default(false)
-  lowSugarEligible    Boolean             @default(false)
+  atkinsEligible      Boolean                  @default(false)
+  lowCarbEligible     Boolean                  @default(false)
+  lowSugarEligible    Boolean                  @default(false)
   /**
    * Low sodium (not “low salt”).
    */
-  lowSodiumEligible   Boolean             @default(false)
+  lowSodiumEligible   Boolean                  @default(false)
   /**
    * Short note: how to adapt this recipe to kosher when not kosherEligible.
    */
@@ -365,20 +367,20 @@ model Recipe {
   /**
    * JSON string array of allergen tags (milk, eggs, fish, …) — public recipe info.
    */
-  allergenTags        String              @default("[]")
+  allergenTags        String                   @default("[]")
   techniqueTips       String? // JSON array
   flavorBoosters      String? // JSON array
   /**
    * global | household | shared  (legacy aliases: public→global, private→household)
    */
-  visibility          String              @default("household")
+  visibility          String                   @default("household")
   ownerUserId         String?
   householdId         String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
   ingredients         RecipeIngredient[]
-  household           Household?          @relation(fields: [householdId], references: [id], onDelete: SetNull)
-  owner               User?               @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  household           Household?               @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  owner               User?                    @relation("RecipeOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   favorites           RecipeFavorite[]
   profilePins         ProfilePin[]
   shares              RecipeShare[]
@@ -390,8 +392,9 @@ model Recipe {
    * Featured profile (chef) this recipe is credited to; shows the Featured Chef badge.
    */
   chefProfileId       String?
-  chefProfile         FeaturedProfile?    @relation(fields: [chefProfileId], references: [id], onDelete: SetNull)
+  chefProfile         FeaturedProfile?         @relation(fields: [chefProfileId], references: [id], onDelete: SetNull)
   recipeViews         RecipeView[]
+  nutrition           RecipeNutritionSnapshot?
 
   @@index([chefProfileId])
   @@index([householdId])
@@ -993,4 +996,71 @@ model RecipeView {
   @@unique([userId, recipeId, day])
   @@index([cuisine])
   @@index([userId])
+}
+
+/**
+ * Persisted per-recipe nutrition estimate (per serving), recomputed when the
+ * recipe inputs or the estimator version change. servingsSuspect/servingsNote
+ * are manual admin flags and survive recomputes.
+ */
+model RecipeNutritionSnapshot {
+  recipeId        String   @id
+  recipe          Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  version         Int
+  inputHash       String
+  servings        Int
+  kcal            Float
+  protein         Float
+  fat             Float
+  carbs           Float
+  fiber           Float    @default(0)
+  sugars          Float    @default(0)
+  saturatedFat    Float    @default(0)
+  sodium          Float    @default(0)
+  perServingJson  String
+  matchedCount    Int
+  totalCount      Int
+  coveragePct     Int
+  trusted         Boolean  @default(false)
+  reasons         String   @default("[]")
+  assumptions     String   @default("[]")
+  unmatched       String   @default("[]")
+  servingsSuspect Boolean  @default(false)
+  servingsNote    String?
+  computedAt      DateTime @default(now())
+
+  @@index([trusted])
+}
+
+/**
+ * Private diet-plan settings (one per user). DOB is never stored; only an age band.
+ */
+model UserDietSettings {
+  userId               String   @id
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dietType             String   @default("balanced")
+  kcalTarget           Int
+  mealsPerDay          Int      @default(3)
+  proteinPct           Int?
+  carbsPct             Int?
+  fatPct               Int?
+  tolerancePct         Int      @default(10)
+  /**
+   * "adult" | "minor"
+   */
+  ageBand              String
+  disclaimerAcceptedAt DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+/**
+ * The user's current 7-day diet plan (JSON DietWeekPlan).
+ */
+model DietMenuPlan {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planJson  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

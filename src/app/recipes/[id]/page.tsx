@@ -7,6 +7,8 @@ import { getCurrentUser, resolveHouseholdId } from "@/lib/auth";
 import { recordRecipeView } from "@/lib/demographics/taste";
 import { canRequestRecipe, recipeIsReadable } from "@/lib/recipe-request";
 import { estimateRecipeNutrition } from "@/lib/recipe-nutrition";
+import { recipeDietFit } from "@/lib/diet/fit";
+import { DietFitBadge } from "@/components/diet/DietFitBadge";
 import { RecipeDeals } from "@/components/RecipeDeals";
 import { RecipeImage } from "@/components/RecipeImage";
 import { RecipeIngredients } from "@/components/RecipeIngredients";
@@ -122,8 +124,10 @@ export default async function RecipeDetailPage({ params }: Props) {
 
   const nutritionEstimate = estimateRecipeNutrition(
     recipe.ingredients,
-    recipe.servings
+    recipe.servings,
+    { context: { title: raw.title, steps: raw.steps } }
   );
+  const dietFit = user ? await recipeDietFit(user.id, raw).catch(() => null) : null;
 
   const hasPlaybook =
     recipe.techniqueTips.length > 0 || recipe.flavorBoosters.length > 0;
@@ -551,6 +555,7 @@ export default async function RecipeDetailPage({ params }: Props) {
         >
           {nutritionEstimate.totalCount > 0 && (
             <div id="nutrition">
+              {dietFit && <DietFitBadge fit={dietFit} />}
               <RecipeNutritionCard estimate={nutritionEstimate} />
             </div>
           )}
